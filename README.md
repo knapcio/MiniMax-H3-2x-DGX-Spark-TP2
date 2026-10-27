@@ -131,9 +131,12 @@ request is bounded by `H3_TP2_REQUEST_TIMEOUT_S` (4 h) and the API by `VLLM_OMNI
 
 ## Next
 
-- Longer than 15 s is a model limit (duration range 4 to 15 s), not a memory one any more: the 15 s render leaves 25 GB
-  free on both hosts. The next memory-shaped question is 50 steps at 15 s (the 20-step clips here are the agent's
-  default), which only costs time.
+- Longer than 15 s is a model limit (duration range 4 to 15 s), not a memory one: with the cap lifted
+  (`H3_TP2_MAX_OUTPUT_SECONDS=20`, experiment only) a 20 s 1344x768 clip rendered in 6740 s with 20 GB still free on
+  both hosts and looked coherent to the last frame on a calm landscape prompt (`results/20261027-20s-out-of-spec/`).
+  One sample outside the model's training range; the serving configuration keeps the 15 s cap.
+- Measured all-to-all share of a denoising step at 20 s: 2.9 % including the permute copies, 2.1 % inside the
+  collectives. That is the ceiling for `H3_TP2_A2A_OVERLAP`.
 - Attention is 57 % of a denoising step at 10 s and 66 % at 15 s (fit of step time against sequence length:
   t ≈ 4.9e-4·S + 8.8e-9·S² s); an exact, faster attention kernel for SM121 is the only lever above 10 %. Of the exact
   kernels installed here cuDNN is already the fastest: vLLM's FlashAttention-2 is 3 % slower and torch's flash SDPA

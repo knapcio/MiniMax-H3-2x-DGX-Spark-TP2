@@ -39,3 +39,6 @@
   for any mask or joint tensor and for non-default scatter/gather axes, and no longer claims identity "by
   construction"; phase timers synchronise the device at each boundary; uint8 test covers all batch elements, exact
   ties and infinities. `H3_TP2_A2A_OVERLAP=<groups>` (off by default) added; GPU measurement pending.
+- 2026-10-27 10:14: 20 s 1344x768 (out of spec, `H3_TP2_MAX_OUTPUT_SECONDS=20`) renders in 6740.1 s, peak 92.7 GB,
+  min free 20.6/22.4 GB, coherent output on the bench prompt. All-to-all timing: 2.9 % of the denoising phase
+  (`results/20261027-20s-out-of-spec/`).
