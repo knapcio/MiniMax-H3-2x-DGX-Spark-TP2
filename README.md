@@ -95,8 +95,10 @@ by 53 s), the audio mean level fades by 18 dB and the model inserts shot changes
 hard cut in the one sample so far (`results/20261027-v030-continuation-30s-1344/`). Asking for "one single continuous
 take, no cuts, no transitions" in the
 prompt removes the shot changes and the hand-over bumps at the seams (`results/20261027-v030-continuation-prompt/`,
-+25 % time for the longer prompt); the motion and audio decay remain and per-window prompts and a driving soundtrack
-(`audio_mode=lock_source`) are being measured against them. Request shape in `scripts/render.sh` (`TASK=ref2va`, `EXTRA_JSON`).
++25 % time for the longer prompt); the motion and audio decay remain. A driving soundtrack (`audio_mode=lock_source`, `audio_reference`) removes both:
+flat audio level, no motion decay, no shot changes over 30 s with the plain prompt
+(`results/20261027-v030-continuation-audiolock/`), at the price of not generating the audio. Per-window prompts are
+the next measurement. Request shape in `scripts/render.sh` (`TASK=ref2va`, `EXTRA_JSON`).
 
 ## The model
 

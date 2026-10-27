@@ -72,3 +72,5 @@
 - 2026-10-27 21:15: 30 s continuation at 1344x768: 10113.9 s, peak 78.8 GB, min free 26 GB; first seam a hard cut
   (one sample), audio -29 -> -41 dB. Experiment switches added for the night queue: per-window seed step, local-time
   windows (temporal offset), reference short edge.
+- 2026-10-27 22:35: driving soundtrack (`lock_source`) on the 30 s clip: no audio fade, no motion decay, no shot changes,
+  seams smooth; 4858 s (+34 %, partly sustained-load drift to be re-measured).
