@@ -105,3 +105,14 @@ same-seed frame digest (`h3_tp2 frames sha256` in the head journal, framemd5 in 
   the same plan for fewer heads is verified only by the frame digest for the configurations listed in the README.
 - `H3_TP2_MAX_OUTPUT_SECONDS=<s>`: lifts the pipeline's 15 s cap (model specification is 4-15 s; above it the DiT
   extrapolates its temporal RoPE and the VAE runs lengths it was not validated on). Experiment only.
+
+## vLLM-Omni versions
+
+The recipe is measured on commit `e1aa6eae` (vLLM 0.26.0). The same package loads on v0.30.0 (vLLM 0.30.0, torch
+2.13): every hook it uses still exists there with the same name, and the differences are handled at import time:
+upstream v0.30 quantises the video to uint8 on the GPU itself and releases the stage cache before the VAE decode, so
+`h3_output` keeps only its phase timers and frame digest; the worker is constructed with keyword arguments; the
+executor's newer shutdown reads a few more attributes, which `_init_broadcast_queue` pre-creates; the duration limit
+moved to `model_executor.models.minimax_h3.long_video` (15 s, or 30 s / 300 s with `long_video=true` in full /
+continuation mode). Continuation is Ref2VA-only: windows of 107..345 frames (17n+5) with a 22-frame latent-tail
+overlap, `diffuse` is called once per window and `decode` once for the whole clip.

@@ -48,3 +48,9 @@
 - 2026-10-27 11:06: expandable_segments measured: identical frames, 1 GB less peak, 664.0 s vs 643.0 s; rejected. The
   serving configuration is final: defaults (uint8 output, VAE on both GPUs, cache freed before decode) plus the
   experimental 20 s cap on the owner's decision.
+- 2026-10-27 11:20: the package also loads on vLLM-Omni v0.30.0 (the first release with the MiniMax-H3 long-video
+  continuation, PR #7838): executor placeholders for the newer shutdown path, worker thread budget via
+  `set_multiprocessing_worker_envs`, keyword worker init, upstream's own GPU uint8 path and stage-cache release
+  detected (our conversion and cache patches step aside), frame digest hooked on the shared encoder entry, duration
+  cap routed through `long_video.max_output_seconds`. `render.sh` takes `TASK=ref2va` and `EXTRA_JSON`. Not yet run on
+  the Sparks: the v0.30 venv and the Ref2VA partition are being installed.
