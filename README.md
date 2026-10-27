@@ -135,7 +135,9 @@ request is bounded by `H3_TP2_REQUEST_TIMEOUT_S` (4 h) and the API by `VLLM_OMNI
   free on both hosts. The next memory-shaped question is 50 steps at 15 s (the 20-step clips here are the agent's
   default), which only costs time.
 - Attention is 57 % of a denoising step at 10 s and 66 % at 15 s (fit of step time against sequence length:
-  t ≈ 4.9e-4·S + 8.8e-9·S² s); an exact, faster attention kernel for SM121 is the only lever above 10 %.
+  t ≈ 4.9e-4·S + 8.8e-9·S² s); an exact, faster attention kernel for SM121 is the only lever above 10 %. Of the exact
+  kernels installed here cuDNN is already the fastest: vLLM's FlashAttention-2 is 3 % slower and torch's flash SDPA
+  4-7 % slower on the per-rank shapes (`scripts/attn-bench.py`, `results/20261027-attn-bench/`).
 - Ulysses sequence parallel issues three all-to-alls per attention layer (q, k, v) with a permute copy each; one fused
   all-to-all without the copies is bit-identical and worth ~1-2 s per step. The fabric itself is not the bottleneck
   (≈ 53 GB per step per direction at 19.5 GB/s is 3-6 % of a step).
