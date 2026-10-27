@@ -72,6 +72,14 @@ the head journal) and `scripts/verify-output.sh`'s framemd5 of the decoded video
 Tried, not adopted (lossy, so out of scope here): Cache-DiT / caching profiles, Turbo or distilled step LoRAs, NVFP4 or
 INT8 DiT, CPU offload (unified memory: frees nothing).
 
+## vLLM-Omni v0.30.0
+
+The same package runs on vLLM-Omni v0.30.0 (vLLM 0.30.0, torch 2.13; the first release with the MiniMax-H3 long-video
+continuation). Measured on the pair with the FL2VA partition, 5 s 1344x768 20 steps: 645.0 s against 643.0 s on the
+pinned commit, peak 62.2 GB against 75.2 GB, 53 GB free on both hosts during the request, same quality by eye and by
+SSIM (`results/20261027-v030-fl2va/`). A second runtime directory selected with `scripts/select-stack.sh` keeps both
+stacks installed side by side. Ref2VA and the continuation mode on this stack: see the changelog for the current state.
+
 ## The model
 
 MiniMax H3-Base FL2VA: DiT 62 GB BF16 (31 GB after online FP8), Qwen3-VL text encoder with 50 retained layers

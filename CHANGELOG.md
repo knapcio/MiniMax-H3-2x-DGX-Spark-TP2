@@ -56,3 +56,6 @@
   the Sparks: the v0.30 venv and the Ref2VA partition are being installed.
 - 2026-10-27 11:55: first boot on v0.30.0 across the two Sparks succeeded (6 min); the first request failed because the
   engine's cancellation signal is a head-local shared-memory byte. The remote rank now defers to rank 0.
+- 2026-10-27 12:13: v0.30.0 renders on the pair: 5 s 1344x768 645.0 s (643.0 on e1aa6eae), peak 62.2 GB (75.2), 53 GB free
+  on both hosts, quality unchanged by eye (SSIM 0.906 against the e1aa6eae two-Spark clip, same class as two-Spark
+  against one-Spark). Ref2VA partition and continuation next.

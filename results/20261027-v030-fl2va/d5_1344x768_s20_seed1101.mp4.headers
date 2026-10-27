@@ -1,0 +1,7 @@
+HTTP/1.1 500 Internal Server Error
+date: Tue, 27 Oct 2026 10:53:06 GMT
+server: uvicorn
+content-length: 156
+content-type: application/json
+vary: Origin
+
