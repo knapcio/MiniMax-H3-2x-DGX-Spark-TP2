@@ -17,7 +17,8 @@ if [ -n "$ew" ]; then
 fi
 if [ -n "$edur" ]; then
   d=$(grep -o 'duration=[0-9.]*' <<< "$probe" | head -1 | cut -d= -f2)
-  awk -v d="$d" -v e="$edur" 'BEGIN{ if (d+0 < e-0.6 || d+0 > e+0.6) exit 1 }' || { echo "duration: FAIL ($d s, want $edur s)"; rc=1; }
+  # the frame count is aligned to the model's 17n+5 grid (+0.7 s at most) and the container adds a little
+  awk -v d="$d" -v e="$edur" 'BEGIN{ if (d+0 < e-0.6 || d+0 > e+1.0) exit 1 }' || { echo "duration: FAIL ($d s, want $edur s)"; rc=1; }
 fi
 ffmpeg -v error -xerror -i "$f" -f null - && echo "decode: OK" || { echo "decode: FAIL"; rc=1; }
 vol=$(ffmpeg -hide_banner -i "$f" -map 0:a:0 -af volumedetect -f null - 2>&1 | grep -E 'mean_volume|max_volume' | sed 's/.*\] //' | tr '\n' ' ')
