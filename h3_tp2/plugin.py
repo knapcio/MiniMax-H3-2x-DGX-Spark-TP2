@@ -176,6 +176,13 @@ def _apply(role: str) -> None:
 
         a2a_timing.install()
 
+    # 6c) opt-in: overlap the Ulysses all-to-alls with attention compute (bit-identical by construction, measured)
+    ov = os.environ.get("H3_TP2_A2A_OVERLAP", "").strip()
+    if ov and int(ov) > 1:
+        from h3_tp2 import ulysses_overlap
+
+        ulysses_overlap.install(int(ov))
+
     # 7) experimental, off by default: lift the pipeline's 15 s duration cap.  The model is specified for 4-15 s;
     #    longer clips extrapolate the temporal RoPE beyond training.  Memory and time are the operator's problem.
     cap = os.environ.get("H3_TP2_MAX_OUTPUT_SECONDS", "").strip()
