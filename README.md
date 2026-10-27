@@ -134,8 +134,9 @@ request is bounded by `H3_TP2_REQUEST_TIMEOUT_S` (4 h) and the API by `VLLM_OMNI
 - Ulysses sequence parallel issues three all-to-alls per attention layer (q, k, v) with a permute copy each; one fused
   all-to-all without the copies is bit-identical and worth ~1-2 s per step. The fabric itself is not the bottleneck
   (≈ 53 GB per step per direction at 19.5 GB/s is 3-6 % of a step).
-- Phase timers (`h3_tp2 phase encode_prompt / diffuse / decode` in the rank logs) attribute the fixed part of a
-  render, which is 13-26 % at 5-10 s; VAE decode is the suspect and now runs on both GPUs.
+- Phase timers (`h3_tp2 phase encode_prompt / diffuse / decode` in the head journal) for the 5 s 1344x768 20-step
+  render: prompt encoding 0.2 s, denoising 598.9 s (30 s per step), VAE decode 42.1 s with the decoder split over both
+  GPUs; the rest (audio decode, uint8 conversion, muxing) is about 2 s. Denoising is the whole game above 5 s.
 - Regional `torch.compile` of the eager modulation and elementwise work (drop `--enforce-eager`) is 5-10 % of the
   non-attention time but changes floating-point association, so it stays out of a lossless recipe.
 - `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` to shrink the reserved-but-unused pool: numerics-neutral, GB10
