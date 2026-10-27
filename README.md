@@ -142,9 +142,10 @@ request is bounded by `H3_TP2_REQUEST_TIMEOUT_S` (4 h) and the API by `VLLM_OMNI
   kernels installed here cuDNN is already the fastest: vLLM's FlashAttention-2 is 3 % slower and torch's flash SDPA
   4-7 % slower on the per-rank shapes (`scripts/attn-bench.py`, `results/20261027-attn-bench/`).
 - Ulysses sequence parallel issues three all-to-alls per attention layer (q, k, v) and one back, and the GPU idles
-  during them. `H3_TP2_A2A_TIMING=1` measures that idle share; `H3_TP2_A2A_OVERLAP=<groups>` (off by default, see
-  `docs/ARCHITECTURE.md`) hides it behind the attention kernel by splitting the local heads into groups on two
-  streams. Both are in the tree; the measurement and the frame-digest check are pending.
+  during them: 2.9 % of a denoising step at 20 s (`H3_TP2_A2A_TIMING=1`). Hiding them behind the attention kernel on a
+  second stream (`H3_TP2_A2A_OVERLAP=<groups>`, off, kept for reference) gives identical frames but is 4.5 % slower:
+  NCCL kernels queue behind the attention kernel on this GPU instead of running beside it
+  (`results/20261027-a2a-overlap/`). Closed.
 - Phase timers (`h3_tp2 phase encode_prompt / diffuse / decode` in the head journal) for the 5 s 1344x768 20-step
   render: prompt encoding 0.2 s, denoising 598.9 s (30 s per step), VAE decode 42.1 s with the decoder split over both
   GPUs; the rest (audio decode, uint8 conversion, muxing) is about 2 s. Denoising is the whole game above 5 s.

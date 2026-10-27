@@ -42,3 +42,6 @@
 - 2026-10-27 10:14: 20 s 1344x768 (out of spec, `H3_TP2_MAX_OUTPUT_SECONDS=20`) renders in 6740.1 s, peak 92.7 GB,
   min free 20.6/22.4 GB, coherent output on the bench prompt. All-to-all timing: 2.9 % of the denoising phase
   (`results/20261027-20s-out-of-spec/`).
+- 2026-10-27 10:47: all-to-all overlap measured: framemd5 identical to stock, 674.8 s vs 643.0 s (+4.9 %), rejected and
+  left off; the record_stream version of the patch had tripped the head memory guard within 10 s (fixed before the
+  measurement by allocating cross-stream buffers on the compute stream).
