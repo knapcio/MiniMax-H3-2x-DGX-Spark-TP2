@@ -243,6 +243,44 @@ def _apply(role: str) -> None:
                 pass
             logger.info("h3_tp2: remote rank defers request cancellation to rank 0")
 
+    # 9) experiments for the continuation mode (vLLM-Omni >= 0.30), both off by default and NOT output-preserving:
+    #    H3_TP2_WINDOW_SEED_STEP=<n>: window k of a continuation request samples with seed + k*n instead of the same
+    #    seed in every window (upstream re-creates the generators from the request seed per window, so equal-shaped
+    #    windows restart identical noise streams).  H3_TP2_REF_SHORT_EDGE=<px>: reference images are resized to this
+    #    short edge instead of upstream's 2048 (7296 VAE tokens for a 16:9 image join the sequence at every step).
+    step = os.environ.get("H3_TP2_WINDOW_SEED_STEP", "").strip()
+    if step and int(step) != 0:
+        from vllm_omni.diffusion.models.minimax_h3 import continuation as _cont
+        from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _pp
+
+        _orig_dc = _cont.diffuse_continuation
+        _step = int(step)
+
+        def _dc(diffuse, kwargs, **kw):  # noqa: ANN001
+            counter = {"i": 0}
+
+            def _diffuse(**a):  # noqa: ANN001
+                i = counter["i"]
+                counter["i"] += 1
+                if i and a.get("seed") is not None:
+                    a = {**a, "seed": int(a["seed"]) + i * _step}
+                    logger.info("h3_tp2: continuation window %d uses seed %d", i + 1, a["seed"])
+                return diffuse(**a)
+
+            return _orig_dc(_diffuse, kwargs, **kw)
+
+        _cont.diffuse_continuation = _dc
+        if getattr(_pp, "diffuse_continuation", None) is _orig_dc:
+            _pp.diffuse_continuation = _dc
+        logger.warning("h3_tp2: EXPERIMENT window seed step %d (changes outputs)", _step)
+
+    edge = os.environ.get("H3_TP2_REF_SHORT_EDGE", "").strip()
+    if edge:
+        from vllm_omni.model_executor.models.minimax_h3 import preprocessing as _pre
+
+        _pre.MINIMAX_H3_REFERENCE_IMAGE_SHORT_EDGE = int(edge)
+        logger.warning("h3_tp2: EXPERIMENT reference image short edge %s px instead of 2048 (changes conditioning)", edge)
+
     # 7) experimental, off by default: lift the pipeline's 15 s duration cap.  The model is specified for 4-15 s;
     #    longer clips extrapolate the temporal RoPE beyond training.  Memory and time are the operator's problem.
     cap = os.environ.get("H3_TP2_MAX_OUTPUT_SECONDS", "").strip()

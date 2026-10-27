@@ -24,8 +24,9 @@ trap 'on_signal TERM' TERM
 fail=0
 for spec in $1; do
   IFS=: read -r dur w h steps seed <<< "$spec"
-  tag="d${dur}_${w}x${h}_s${steps}_seed${seed}${img:+_fl2va}"
-  n=0; while [ -e "$OUT/$tag.mp4" ]; do n=$((n+1)); tag="d${dur}_${w}x${h}_s${steps}_seed${seed}${img:+_fl2va}_r$n"; done   # never overwrite
+  suffix=""; [ -n "$img" ] && suffix="_${TASK:-fl2va}"
+  tag="d${dur}_${w}x${h}_s${steps}_seed${seed}${suffix}"
+  n=0; while [ -e "$OUT/$tag.mp4" ]; do n=$((n+1)); tag="d${dur}_${w}x${h}_s${steps}_seed${seed}${suffix}_r$n"; done   # never overwrite
   cur_tag=$tag
   echo "=== $tag  $(date +%H:%M:%S)"
   bash "$S/memwatch.sh" start "$OUT/$tag.mem-head.csv"

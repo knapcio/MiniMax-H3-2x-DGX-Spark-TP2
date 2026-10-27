@@ -29,6 +29,7 @@ Seams at 277 / 532 / 787 / 1042 / 1297: inter-frame difference 4.44 / 5.57 / 3.4
 3.03 / 1.90 / 0.87 just before them, i.e. a small motion bump at each hand-over, no cut. Picture stays sharp and
 consistent in colour to the end (frames at 0 / 11 / 22 / 33 / 43 / 54 / 60 s inspected).
 
-Conclusion: plain continuation with a fixed prompt loses motion and audio energy window by window (audio down 18 dB
-over 60 s, motion down 7x) and inserts shot changes it was not asked for. The remedies upstream provides are
+Conclusion: plain continuation with a fixed prompt loses motion and audio energy window by window (audio mean level
+down 18 dB over 60 s, i.e. about 63x less power; the inter-frame luma change, a proxy for apparent motion, 7x smaller)
+and inserts shot changes it was not asked for. The remedies upstream provides are
 per-window prompts (`continuation_prompts`) and a driving soundtrack (`audio_mode=lock_source`); both are next.

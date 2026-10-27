@@ -25,9 +25,17 @@ args=(-F "prompt=$prompt" -F "width=$w" -F "height=$h" -F "aspect_ratio=16:9" -F
 # AUDIO_URL: a driving soundtrack for Ref2VA (audio_mode=lock_source in EXTRA_JSON); http(s) or data: URL per upstream docs
 [ -n "${AUDIO_URL:-}" ] && args+=(-F "audio_reference={\"audio_url\": \"$AUDIO_URL\"}")
 t0=$(date +%s.%N)
-code=$(curl -sS --max-time 14400 -X POST "http://$H3_API_HOST:$H3_API_PORT/v1/videos/sync" "${args[@]}" -D "$out.headers" -o "$out" -w "%{http_code}"); crc=$?
+code=$(curl -sS --max-time "${H3_RENDER_TIMEOUT_S:-14400}" -X POST "http://$H3_API_HOST:$H3_API_PORT/v1/videos/sync" "${args[@]}" -D "$out.headers" -o "$out" -w "%{http_code}"); crc=$?
 t1=$(date +%s.%N)
 el=$(python3 -c "print(round($t1-$t0,1))")
-printf '{"out":"%s","http":"%s","curl_rc":%s,"elapsed_s":%s,"duration":%s,"size":"%sx%s","steps":%s,"seed":%s,"image":"%s","frame_indices":"%s"}\n' "$out" "$code" "$crc" "$el" "$dur" "$w" "$h" "$steps" "$seed" "$img" "$where" | tee "$out.timing.json"
+python3 - "$out" "$code" "$crc" "$el" "$dur" "$w" "$h" "$steps" "$seed" "$img" "$where" "$extra" "$prompt" "${AUDIO_URL:-}" <<'PY' | tee "$out.timing.json"
+import json, sys
+o, code, crc, el, dur, w, h, steps, seed, img, where, extra, prompt, audio = sys.argv[1:]
+e = json.loads(extra)
+print(json.dumps({"out": o, "http": code, "curl_rc": int(crc), "elapsed_s": float(el), "duration": int(dur), "size": f"{w}x{h}",
+                  "steps": int(steps), "seed": int(seed), "task": e.get("task"), "image": img,
+                  "frame_indices": where if (img and e.get("task") == "fl2va") else None, "extra_params": e,
+                  "audio_reference": audio or None, "prompt": prompt}))
+PY
 grep -i -E "x-stage-durations|x-peak-memory" "$out.headers" || true
 [ "$crc" = 0 ] && [ "$code" = "200" ]   # a 200 with a broken body transfer is a failure too
