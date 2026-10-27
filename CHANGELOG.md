@@ -69,3 +69,6 @@
 - 2026-10-27 16:00: 60 s continuation clip: 7985.6 s, peak 69.4 GB, deterministic (windows 1-2 identical to the 30 s
   clip); plain mode drifts: motion -7x and audio -18 dB over six windows, unrequested shot changes. Remedies
   (per-window prompts, driving audio, longer overlap) under test.
+- 2026-10-27 21:15: 30 s continuation at 1344x768: 10113.9 s, peak 78.8 GB, min free 26 GB; first seam a hard cut
+  (one sample), audio -29 -> -41 dB. Experiment switches added for the night queue: per-window seed step, local-time
+  windows (temporal offset), reference short edge.
