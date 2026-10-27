@@ -193,6 +193,56 @@ def _apply(role: str) -> None:
 
         ulysses_overlap.install(int(ov))
 
+    # 8) worker (vLLM-Omni >= 0.30): request cancellation signals are POSIX shared-memory bytes created by the engine
+    #    on the head; a rank on another host cannot open them.  Unreadable names become a stand-in that always votes
+    #    "cancelled" in the MIN all-reduce of ``check_request_cancellation``, so the pair follows rank 0's real flag.
+    if role == "worker":
+        try:
+            from vllm_omni.diffusion import cancellation as _canc
+        except ImportError:
+            _canc = None
+        if _canc is not None and hasattr(_canc, "request_cancellation_scope"):
+            from contextlib import contextmanager
+            from multiprocessing.shared_memory import SharedMemory
+
+            class _DeferToRank0:
+                buf = bytearray(b"\x01")
+
+                def close(self) -> None:
+                    pass
+
+            @contextmanager
+            def _remote_scope(signal_names, *, enabled=True):  # noqa: ANN001
+                signals = []
+                try:
+                    for name in signal_names if enabled else ():
+                        if name is None:
+                            signals.append(None)
+                            continue
+                        try:
+                            signals.append(SharedMemory(name=name))
+                        except FileNotFoundError:
+                            signals.append(_DeferToRank0())
+                    token = _canc._current_signals.set(tuple(signals) if enabled else None)
+                    try:
+                        yield
+                    finally:
+                        _canc._current_signals.reset(token)
+                finally:
+                    for sig in signals:
+                        if sig is not None:
+                            sig.close()
+
+            _canc.request_cancellation_scope = _remote_scope
+            try:
+                from vllm_omni.diffusion.worker import diffusion_model_runner as _dmr
+
+                if hasattr(_dmr, "request_cancellation_scope"):
+                    _dmr.request_cancellation_scope = _remote_scope
+            except ImportError:
+                pass
+            logger.info("h3_tp2: remote rank defers request cancellation to rank 0")
+
     # 7) experimental, off by default: lift the pipeline's 15 s duration cap.  The model is specified for 4-15 s;
     #    longer clips extrapolate the temporal RoPE beyond training.  Memory and time are the operator's problem.
     cap = os.environ.get("H3_TP2_MAX_OUTPUT_SECONDS", "").strip()
