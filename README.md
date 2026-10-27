@@ -4,7 +4,8 @@ MiniMax H3-Base (FL2VA: first/last frame + prompt -> video with audio) served by
 connected back to back over ConnectX-7. The text encoder is tensor-parallel over the two GPUs, the DiT runs Ulysses
 sequence parallel, so each Spark holds about two thirds of what a single Spark holds today and the diffusion steps are
 shared. Same maths as the single-Spark recipe (online FP8 DiT, BF16 encoder and VAEs, cuDNN attention): the point is
-longer clips (10 s at 1344x768, which one Spark cannot hold) and twice the speed, not a different model.
+longer clips (10 s and the model's maximum 15 s at 1344x768, which one Spark cannot hold) and twice the speed, not a
+different model.
 
 vLLM-Omni cannot launch diffusion workers on another host (`vllm serve` starts every rank locally and pins
 `MASTER_ADDR=localhost`). This recipe adds `h3_tp2`, a small package that keeps the stock executor and only moves rank 1
@@ -24,12 +25,14 @@ upper bound); "min free" is the lowest MemAvailable sampled every 2 s on that ho
 | 5 s 1344x768, 20 steps | 1399.0 s, peak 103.3 GB, min free 6.0 GB | 643.0 s, peak 75.2 GB, min free 38.8 GB / 39.3 GB |
 | 10 s 1344x768, 20 steps | does not fit: the host runs out of memory and livelocks | 2119.0 s, peak 91.0 GB, min free 10.2 GB / 22.9 GB (first boot: FP32 output path, VAE on one GPU) |
 | 10 s 1344x768 from a still (FL2VA), 20 steps | does not fit | 1940.3 s, peak 91.2 GB, min free 19.9 GB / 29.3 GB (uint8 output path, VAE on one GPU) |
-| 15 s 1344x768, 20 steps | does not fit | did not fit either: head out of host memory after 7796 s (stock FP32 output path, see Levers); <!-- TP2-15s --> |
+| 15 s 1344x768, 20 steps | does not fit | 3079.9 s, peak 85.6 GB, min free 25.8 GB / 27.2 GB (final configuration). With the stock FP32 output path and the VAE on one GPU the same render ran the head out of host memory after 7796 s |
 
 On one Spark the 5 s 960x576 render took 362.8 s when run right after the 1344x768 one (same frames, bit for bit): the
 allocator keeps the bigger pool and the host is under pressure, which is also why the single-Spark recipe is limited to
 5 s. The two-Spark numbers come from fresh boots with memory compacted first; the 5 s rows are the final configuration
-(uint8 output path, VAE split over both GPUs, cache freed before decode), the 10 s rows predate the last two levers.
+(uint8 output path, VAE split over both GPUs, cache freed before decode), as is the 15 s row; the 10 s rows predate the
+last two levers. Phases of the 15 s render: prompt encoding 0.2 s, denoising 2946.7 s (147 s per step), VAE decode
+125.8 s.
 
 ## Quality checks
 
@@ -127,8 +130,9 @@ request is bounded by `H3_TP2_REQUEST_TIMEOUT_S` (4 h) and the API by `VLLM_OMNI
 
 ## Next
 
-- 15 s at 1344x768: with the uint8 output path the head keeps ~10 GB more during a 10 s render; a guarded 15 s run is
-  in progress and its row above will say whether two Sparks reach the model's maximum length. <!-- 15S -->
+- Longer than 15 s is a model limit (duration range 4 to 15 s), not a memory one any more: the 15 s render leaves 25 GB
+  free on both hosts. The next memory-shaped question is 50 steps at 15 s (the 20-step clips here are the agent's
+  default), which only costs time.
 - Attention is 57 % of a denoising step at 10 s and 66 % at 15 s (fit of step time against sequence length:
   t ≈ 4.9e-4·S + 8.8e-9·S² s); an exact, faster attention kernel for SM121 is the only lever above 10 %.
 - Ulysses sequence parallel issues three all-to-alls per attention layer (q, k, v) with a permute copy each; one fused

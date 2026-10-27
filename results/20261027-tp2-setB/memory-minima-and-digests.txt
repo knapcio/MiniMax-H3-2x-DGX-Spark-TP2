@@ -5,3 +5,10 @@ tp2b/d5_960x576_s10_seed1101.mem-worker.csv samples=77 min_MemAvailable_MiB=3955
 22 [h3_output.py:124] h3_tp2 frames sha256 82626ae3da940337f59630c861c5322039bac81a7847003d84860b9ffc2e8751 shape=(124, 768, 1344, 3)
 57 [h3_output.py:124] h3_tp2 frames sha256 8cc94b2dcdef8a234c4ac9c4f3fed918234c966ecd9240d521f61ea9542f11fe shape=(124, 576, 960, 3)
 40 [h3_output.py:124] h3_tp2 frames sha256 6813faa5398fb295ef9c859dd644baba40482b6b532cfda88821bb1c4201f41c shape=(124, 768, 1344, 3)
+tp2b-15s/d15_1344x768_s20_seed1101.mem-head.csv samples=1537 min_MemAvailable_MiB=25801
+tp2b-15s/d15_1344x768_s20_seed1101.mem-worker.csv samples=1537 min_MemAvailable_MiB=27239
+_tp2 phase encode_prompt 0.2 s
+3_tp2 phase diffuse 2946.7 s
+_tp2 phase decode 125.8 s (+0.0 s uint8) frames=(1, 362, 768, 1344, 3)
+34 [h3_output.py:124] h3_tp2 frames sha256 726603e5773a794d0ac5d73a3d75816dbd11b155475a00004563b63b069b2fb2 shape=(362, 7
+set C launched 06:32:25
