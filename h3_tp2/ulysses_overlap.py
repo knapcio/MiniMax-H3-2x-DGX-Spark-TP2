@@ -22,24 +22,27 @@ logger = logging.getLogger("vllm_omni.h3_tp2.overlap")
 _comm_stream: torch.cuda.Stream | None = None
 
 
-def _a2a_seq_to_heads(x: torch.Tensor, ws: int, pg) -> torch.Tensor:
-    """(B, S/P, hg, D) view -> (B, S, hg/P, D), the same bytes all_to_all_4D(scatter 2, gather 1) moves."""
+def _a2a_seq_to_heads(x: torch.Tensor, ws: int, pg, recv: torch.Tensor, res: torch.Tensor) -> torch.Tensor:
+    """(B, S/P, hg, D) view -> (B, S, hg/P, D) into ``res``; the same bytes all_to_all_4D(scatter 2, gather 1) moves.
+
+    ``recv`` and ``res`` are allocated by the caller on the compute stream (see ``_forward_impl``); only the packed
+    send buffer lives in the comm stream's pool."""
     bs, s_loc, hg, d = x.shape
     x_t = x.reshape(bs, s_loc, ws, hg // ws, d).transpose(0, 2).contiguous()  # (P, S/P, B, hg/P, D)
-    out = torch.empty_like(x_t)
-    dist.all_to_all_single(out, x_t, group=pg)
-    return out.reshape(s_loc * ws, bs, hg // ws, d).transpose(0, 1).contiguous()
+    dist.all_to_all_single(recv, x_t, group=pg)
+    res.copy_(recv.reshape(s_loc * ws, bs, hg // ws, d).transpose(0, 1))
+    return res
 
 
-def _a2a_heads_to_seq(x: torch.Tensor, ws: int, pg) -> torch.Tensor:
-    """(B, S, hg/P, D) -> (B, S/P, hg, D), the same bytes all_to_all_4D(scatter 1, gather 2) moves."""
+def _a2a_heads_to_seq(x: torch.Tensor, ws: int, pg, recv: torch.Tensor, res: torch.Tensor) -> torch.Tensor:
+    """(B, S, hg/P, D) -> (B, S/P, hg, D) into ``res``; the same bytes all_to_all_4D(scatter 1, gather 2) moves."""
     bs, s, shard_hc, d = x.shape
     s_loc = s // ws
     x_t = x.reshape(bs, ws, s_loc, shard_hc, d).transpose(0, 3).transpose(0, 1).contiguous()
     x_t = x_t.reshape(ws, shard_hc, s_loc, bs, d)
-    out = torch.empty_like(x_t)
-    dist.all_to_all_single(out, x_t, group=pg)
-    return out.reshape(shard_hc * ws, s_loc, bs, d).transpose(0, 2).contiguous().reshape(bs, s_loc, shard_hc * ws, d)
+    dist.all_to_all_single(recv, x_t, group=pg)
+    res.copy_(recv.reshape(shard_hc * ws, s_loc, bs, d).transpose(0, 2))
+    return res
 
 
 def install(groups: int) -> None:
@@ -90,11 +93,12 @@ def install(groups: int) -> None:
         hg = heads // groups
         attn_metadata = self._with_kv_cache_dtype(attn_metadata)
 
-        # 1) forward all-to-alls, all groups, on the comm stream (group g+1 overlaps attention of group g).
-        #    The inputs are read on the comm stream: tell the allocator so their storage is not recycled early.
+        # Memory rule: every buffer that one stream writes and the other reads is allocated on the COMPUTE stream's
+        # pool and never record_stream'ed.  Reuse is then ordered by the compute stream, which waits for every comm
+        # event before this function returns (and the caller frees anything only after that).  record_stream would
+        # instead pin each block until the GPU passes the event while the CPU runs tens of layers ahead: the working
+        # set grew from one layer to dozens and ran the head out of memory (2026-10-27 10:24).
         comm.wait_stream(cur)
-        for t in (query, key, value):
-            t.record_stream(comm)
         try:
             return _grouped(self, query, key, value, attn_metadata, pg, ws, hg, cur, comm)
         except Exception:
@@ -102,36 +106,44 @@ def install(groups: int) -> None:
             raise
 
     def _grouped(self, query, key, value, attn_metadata, pg, ws, hg, cur, comm):  # noqa: ANN001
-        parts, ready = [], []
+        bs, s_loc, _, d = query.shape
+        s = s_loc * ws
+        hl = hg // ws  # local heads per group after the exchange
+        dt, dev = query.dtype, query.device
+        # buffers on the compute stream (current here)
+        recv_f = torch.empty((ws, s_loc, bs, hl, d), dtype=dt, device=dev)  # shared scratch for the forward receives
+        parts = [tuple(torch.empty((bs, s, hl, d), dtype=dt, device=dev) for _ in range(3)) for _ in range(groups)]
+        recv_b = [torch.empty((ws, hl, s_loc, bs, d), dtype=dt, device=dev) for _ in range(groups)]
+        backs = [torch.empty((bs, s_loc, hg, d), dtype=dt, device=dev) for _ in range(groups)]
+
+        # 1) forward all-to-alls, all groups, on the comm stream (group g+1 overlaps attention of group g)
+        ready = []
         with torch.cuda.stream(comm):
             for g in range(groups):
                 sl = slice(g * hg, (g + 1) * hg)
-                qg = _a2a_seq_to_heads(query[:, :, sl], ws, pg)
-                kg = _a2a_seq_to_heads(key[:, :, sl], ws, pg)
-                vg = _a2a_seq_to_heads(value[:, :, sl], ws, pg)
-                for t in (qg, kg, vg):
-                    t.record_stream(cur)
+                qg, kg, vg = parts[g]
+                _a2a_seq_to_heads(query[:, :, sl], ws, pg, recv_f, qg)
+                _a2a_seq_to_heads(key[:, :, sl], ws, pg, recv_f, kg)
+                _a2a_seq_to_heads(value[:, :, sl], ws, pg, recv_f, vg)
                 ev = torch.cuda.Event()
                 ev.record(comm)
-                parts.append((qg, kg, vg))
                 ready.append(ev)
 
         # 2) attention per group on the compute stream; its backward all-to-all goes to the comm stream right away
-        backs, back_ev = [], []
+        back_ev = []
+        outs = []
         for g in range(groups):
             cur.wait_event(ready[g])
             qg, kg, vg = parts[g]
             og = self._run_local_attention(qg, kg, vg, attn_metadata)
-            og.record_stream(comm)
+            outs.append(og)  # keep it alive until the comm stream is done with it (joined below)
             done = torch.cuda.Event()
             done.record(cur)
             with torch.cuda.stream(comm):
                 comm.wait_event(done)
-                bg = _a2a_heads_to_seq(og, ws, pg)
-                bg.record_stream(cur)
+                _a2a_heads_to_seq(og, ws, pg, recv_b[g], backs[g])
                 ev = torch.cuda.Event()
                 ev.record(comm)
-            backs.append(bg)
             back_ev.append(ev)
 
         for ev in back_ev:

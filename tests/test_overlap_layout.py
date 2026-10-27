@@ -41,7 +41,7 @@ def _stock_heads_to_seq(x, ws, emu_run):
     return [o.reshape(shard_hc * ws, shard_seqlen, bs, hs).transpose(0, 2).contiguous().reshape(bs, shard_seqlen, shard_hc * ws, hs) for o in outs]
 
 
-def _run_grouped(fn, per_rank, ws, emu):
+def _run_grouped(fn, per_rank, ws, emu, recv_shape, res_shape):
     """Call the module function for every rank with all_to_all_single replaced by the emulation (rank-synchronous)."""
     results = [None] * ws
     staged = {}
@@ -50,12 +50,12 @@ def _run_grouped(fn, per_rank, ws, emu):
         staged[len(staged)] = (out, inp)
 
     with mock.patch.object(ov.dist, "all_to_all_single", side_effect=fake_a2a), mock.patch.object(ov.dist, "get_world_size", return_value=ws):
-        # the function computes input layouts, "sends", then reads the output buffer; emulate by running it twice:
-        # first pass collects inputs, second pass is fed the real outputs
+        # the function packs its input, "sends", then unpacks the receive buffer; emulate by running it twice:
+        # first pass collects the packed inputs, second pass is fed the real receives
         inputs = []
         for r in range(ws):
             staged.clear()
-            fn(per_rank[r], ws, None)
+            fn(per_rank[r], ws, None, torch.empty(recv_shape), torch.empty(res_shape))
             inputs.append(staged[0][1].clone())
         outs = emu.run(inputs)
         for r in range(ws):
@@ -65,7 +65,7 @@ def _run_grouped(fn, per_rank, ws, emu):
                 out.copy_(_o)
 
             with mock.patch.object(ov.dist, "all_to_all_single", side_effect=fake_fill):
-                results[r] = fn(per_rank[r], ws, None)
+                results[r] = fn(per_rank[r], ws, None, torch.empty(recv_shape), torch.empty(res_shape))
     return results
 
 
@@ -89,7 +89,8 @@ class OverlapLayoutTest(unittest.TestCase):
         backs = [[] for _ in range(ws)]
         for g in range(groups):
             sl = slice(g * hg, (g + 1) * hg)
-            fwd = _run_grouped(ov._a2a_seq_to_heads, [t[:, :, sl] for t in q], ws, emu)
+            hl = hg // ws
+            fwd = _run_grouped(ov._a2a_seq_to_heads, [t[:, :, sl] for t in q], ws, emu, (ws, s_loc, bs, hl, d), (bs, ws * s_loc, hl, d))
             att = []
             for r in range(ws):
                 x = fwd[r].clone()
@@ -97,7 +98,7 @@ class OverlapLayoutTest(unittest.TestCase):
                     gh = g * hg + r * (hg // ws) + h  # global head this rank holds in group g
                     x[:, :, h] *= gh + 1
                 att.append(x)
-            back = _run_grouped(ov._a2a_heads_to_seq, att, ws, emu)
+            back = _run_grouped(ov._a2a_heads_to_seq, att, ws, emu, (ws, hl, s_loc, bs, d), (bs, s_loc, hg, d))
             for r in range(ws):
                 backs[r].append(back[r])
         for r in range(ws):
