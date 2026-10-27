@@ -86,8 +86,9 @@ image is subject/style conditioning, not a first frame.
 **Clips longer than 15 s with real continuity**: upstream's latent-tail continuation (Ref2VA only, `long_video=true`)
 renders the clip in windows of 277 frames with a 22-frame overlap, each window conditioned on the previous window's
 latent tail (video and audio). First measurement on the pair: 30 s 960x576 20 steps in 3615 s (3 windows, peak
-71.1 GB, 42 GB free on both hosts), no visible seam at either window boundary and no scene cut in the whole clip
-(`results/20261027-v030-continuation-30s/`). Request shape in `scripts/render.sh` (`TASK=ref2va`, `EXTRA_JSON`).
+71.1 GB, 42 GB free on both hosts), no scene cut in the whole clip; the picture is continuous across both seams but
+the camera changed speed and direction at the second one, which is visible when watched
+(`results/20261027-v030-continuation-30s/`; a longer overlap is being measured). Request shape in `scripts/render.sh` (`TASK=ref2va`, `EXTRA_JSON`).
 
 ## The model
 

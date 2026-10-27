@@ -12,9 +12,13 @@ overlap, so 736 frames (30.68 s) came out of three windows [0,277), [255,532), [
 | Min free, head / worker | 42.3 / 44.4 GB |
 | Output | 736 frames, 30.675 s, audio present; framemd5 61a879f4, frames sha256 2d3afc72… |
 
-Continuity: no scene cut anywhere (max ffmpeg scene score 0.06 over the whole clip); at the two window boundaries the
-inter-frame luma difference is 4.07 (neighbours 4.32 / 3.90) and 3.46 (3.77 / 3.54), i.e. the seams are invisible
-in the motion signal and in the frames (frames 253..256 and 508..511 inspected). The clip is one continuous camera
-flight over the landscape; motion slows from about 6 to 2 luma units per frame between the first and the last window.
+Continuity: no scene cut anywhere (max ffmpeg scene score 0.06 over the whole clip). The output seams are where the
+discarded overlap ends, frames 277 (11.5 s) and 532 (22.2 s), not at the window starts. Inter-frame luma difference
+around them: 3.71 4.76 [4.44] 3.94 3.72 at 277 (smooth) and 3.23 5.79 [6.33] 4.94 4.33 at 532: the picture stays
+continuous (frames 530..534 inspected, no cut) but the camera changes speed and direction at the second seam, which
+reads as a transition when watched (the owner spotted it at 23 s). The clip is one continuous camera flight over the
+landscape; motion slows from about 6 to 2 luma units per frame between the first and the last window. Follow-up:
+the same clip with `continuation_overlap_frames: 39` (1.6 s of tail instead of 0.9 s) to see whether the motion
+hand-over improves.
 Audio level drifts down over the windows: -29.3 / -25.8 / -30.4 / -30.5 / -33.8 / -34.2 dB mean per 5 s (the 5 s
 Ref2VA clip: -31.0 dB). One sample; the 60 s render that follows checks whether motion and audio keep decaying.
