@@ -146,6 +146,31 @@ request is bounded by `H3_TP2_REQUEST_TIMEOUT_S` (4 h) and the API by `VLLM_OMNI
 
 `python -m unittest discover -s tests` (any machine, no GPU) exercises the control channel and the agent's failure paths.
 
+### Second runtime: vLLM-Omni v0.30.0 (long clips)
+
+The same units can run the newer stack from a second directory; nothing in the first one is touched, and
+`scripts/select-stack.sh` switches per host.
+
+```bash
+# on each Spark (the weights of the Ref2VA partition are 134 GiB; the FL2VA ones can be a symlink to the existing copy)
+mkdir -p ~/h3-long && cd ~/h3-long
+python3.12 -m venv .venv && .venv/bin/pip install -q --upgrade pip uv
+.venv/bin/uv pip install --python .venv/bin/python "vllm==0.30.0" --extra-index-url https://download.pytorch.org/whl/cu130 --index-strategy unsafe-best-match
+git clone https://github.com/vllm-project/vllm-omni && (cd vllm-omni && git checkout v0.30.0) && .venv/bin/uv pip install --python .venv/bin/python -e vllm-omni
+.venv/bin/uv pip install --python .venv/bin/python --no-deps -e ~/h3-tp2
+mkdir -p runtime/cache/{triton,flashinfer} weights && ln -s ../.venv runtime/.venv && ln -s ../vllm-omni runtime/vllm-omni && ln -s ~/h3-base-20260916/runtime/debs runtime/debs
+ln -s ~/h3-base-20260916/weights/FL2VA weights/FL2VA
+HF_HUB_DISABLE_XET=1 .venv/bin/hf download MiniMaxAI/MiniMax-H3 --include "Ref2VA/*" --local-dir ~/h3-long/weights
+bash ~/h3-tp2/scripts/select-stack.sh long Ref2VA      # or: long FL2VA, or: base   (then restart the agent, then the head)
+```
+
+A 30 s clip with continuity:
+
+```bash
+TASK=ref2va EXTRA_JSON='{"long_video": true, "long_video_mode": "continuation"}' \
+  bash ~/h3-tp2/scripts/render.sh ~/long.mp4 30 960 576 20 1101 "<prompt>" ~/reference.jpg
+```
+
 ## Next
 
 - Longer than 15 s is a model limit (duration range 4 to 15 s), not a memory one: with the cap lifted
