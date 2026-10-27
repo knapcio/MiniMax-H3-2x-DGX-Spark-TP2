@@ -78,7 +78,16 @@ The same package runs on vLLM-Omni v0.30.0 (vLLM 0.30.0, torch 2.13; the first r
 continuation). Measured on the pair with the FL2VA partition, 5 s 1344x768 20 steps: 645.0 s against 643.0 s on the
 pinned commit, peak 62.2 GB against 75.2 GB, 53 GB free on both hosts during the request, same quality by eye and by
 SSIM (`results/20261027-v030-fl2va/`). A second runtime directory selected with `scripts/select-stack.sh` keeps both
-stacks installed side by side. Ref2VA and the continuation mode on this stack: see the changelog for the current state.
+stacks installed side by side.
+
+Ref2VA on the same stack: 5 s 1344x768 in 1248.6 s (1.94x FL2VA, as upstream documents), peak 65.6 GB. The reference
+image is subject/style conditioning, not a first frame.
+
+**Clips longer than 15 s with real continuity**: upstream's latent-tail continuation (Ref2VA only, `long_video=true`)
+renders the clip in windows of 277 frames with a 22-frame overlap, each window conditioned on the previous window's
+latent tail (video and audio). First measurement on the pair: 30 s 960x576 20 steps in 3615 s (3 windows, peak
+71.1 GB, 42 GB free on both hosts), no visible seam at either window boundary and no scene cut in the whole clip
+(`results/20261027-v030-continuation-30s/`). Request shape in `scripts/render.sh` (`TASK=ref2va`, `EXTRA_JSON`).
 
 ## The model
 
