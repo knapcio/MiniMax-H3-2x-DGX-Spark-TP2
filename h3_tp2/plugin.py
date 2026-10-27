@@ -170,6 +170,12 @@ def _apply(role: str) -> None:
         h3_output.install(_pp, _vau)
         logger.info("h3_tp2: uint8 output path installed (api_utils=%s)", _vau is not None)
 
+    # 6b) measurement only: time the Ulysses all-to-alls per diffuse phase
+    if os.environ.get("H3_TP2_A2A_TIMING", "0") == "1":
+        from h3_tp2 import a2a_timing
+
+        a2a_timing.install()
+
     # 7) experimental, off by default: lift the pipeline's 15 s duration cap.  The model is specified for 4-15 s;
     #    longer clips extrapolate the temporal RoPE beyond training.  Memory and time are the operator's problem.
     cap = os.environ.get("H3_TP2_MAX_OUTPUT_SECONDS", "").strip()

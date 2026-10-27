@@ -104,6 +104,12 @@ def install(pipeline_module, api_utils_module) -> None:
                 return orig_diffuse(self, *a, **kw)
             finally:
                 logger.info("h3_tp2 phase diffuse %.1f s", time.monotonic() - t0)
+                try:
+                    from h3_tp2 import a2a_timing
+
+                    a2a_timing.report("diffuse")
+                except Exception:  # measurement only; never fail a render over it
+                    logger.exception("h3_tp2 a2a report failed")
 
         cls.decode = decode
         cls.encode_prompt = encode_prompt
