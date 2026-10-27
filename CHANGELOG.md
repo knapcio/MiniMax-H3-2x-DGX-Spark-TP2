@@ -45,3 +45,6 @@
 - 2026-10-27 10:47: all-to-all overlap measured: framemd5 identical to stock, 674.8 s vs 643.0 s (+4.9 %), rejected and
   left off; the record_stream version of the patch had tripped the head memory guard within 10 s (fixed before the
   measurement by allocating cross-stream buffers on the compute stream).
+- 2026-10-27 11:06: expandable_segments measured: identical frames, 1 GB less peak, 664.0 s vs 643.0 s; rejected. The
+  serving configuration is final: defaults (uint8 output, VAE on both GPUs, cache freed before decode) plus the
+  experimental 20 s cap on the owner's decision.

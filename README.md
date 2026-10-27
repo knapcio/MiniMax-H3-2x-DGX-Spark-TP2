@@ -151,8 +151,8 @@ request is bounded by `H3_TP2_REQUEST_TIMEOUT_S` (4 h) and the API by `VLLM_OMNI
   GPUs; the rest (audio decode, uint8 conversion, muxing) is about 2 s. Denoising is the whole game above 5 s.
 - Regional `torch.compile` of the eager modulation and elementwise work (drop `--enforce-eager`) is 5-10 % of the
   non-attention time but changes floating-point association, so it stays out of a lossless recipe.
-- `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` to shrink the reserved-but-unused pool: numerics-neutral, GB10
-  driver support untested.
+- `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`: identical frames, peak 75.2 -> 74.1 GB, but 3.3 % slower
+  (VAE decode 42 -> 50 s). Off (`results/20261027-expandable-segments/`). Closed.
 
 ## Licences
 
