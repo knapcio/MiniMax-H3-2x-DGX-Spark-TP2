@@ -74,3 +74,5 @@
   windows (temporal offset), reference short edge.
 - 2026-10-27 22:35: driving soundtrack (`lock_source`) on the 30 s clip: no audio fade, no motion decay, no shot changes,
   seams smooth; 4858 s (+34 %, partly sustained-load drift to be re-measured).
+- 2026-10-27 23:40: per-window prompts: no cuts, smooth seams, motion kept, same time as the plain run; the generated
+  audio still fades (8 dB over 30 s).
