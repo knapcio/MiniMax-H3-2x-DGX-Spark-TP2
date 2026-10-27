@@ -118,4 +118,6 @@ continuation mode). Continuation is Ref2VA-only: windows of 107..345 frames (17n
 overlap, `diffuse` is called once per window and `decode` once for the whole clip. v0.30 also signals request cancellation
 to the workers through a one-byte POSIX shared-memory segment per request; the remote rank cannot open it, so on the
 worker the plugin substitutes a stand-in that always votes "cancelled" in the MIN all-reduce of
-`check_request_cancellation`, which makes the pair follow rank 0's real flag.
+`check_request_cancellation`, which makes the pair follow rank 0's real flag (cost: rank 1 drains its device at every denoise-step checkpoint,
+which the pair's collectives align anyway). With `preencode_mp4=true` the worker muxes the MP4 itself and the HTTP
+frame path, and with it the frame digest, is bypassed: that mode has no identity evidence beyond the file itself.

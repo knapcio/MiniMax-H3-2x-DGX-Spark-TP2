@@ -17,7 +17,8 @@ else
   extra="{\"task\": \"t2va\", \"duration\": $dur, \"audio_flow_shift\": 3.0}"
 fi
 if [ -n "${EXTRA_JSON:-}" ]; then
-  extra=$(python3 -c 'import json,sys; a=json.loads(sys.argv[1]); a.update(json.loads(sys.argv[2])); print(json.dumps(a))' "$extra" "$EXTRA_JSON")
+  extra=$(python3 -c 'import json,sys; a=json.loads(sys.argv[1]); b=json.loads(sys.argv[2]); assert isinstance(b, dict), "EXTRA_JSON must be a JSON object"; a.update(b); print(json.dumps(a))' "$extra" "$EXTRA_JSON") \
+    || { echo "render.sh: invalid EXTRA_JSON, nothing submitted" >&2; exit 2; }
 fi
 args=(-F "prompt=$prompt" -F "width=$w" -F "height=$h" -F "aspect_ratio=16:9" -F "fps=24" -F "num_inference_steps=$steps" -F "flow_shift=12" -F "seed=$seed" -F "extra_params=$extra")
 [ -n "$img" ] && args+=(-F "input_reference=@$img")

@@ -59,3 +59,8 @@
 - 2026-10-27 12:13: v0.30.0 renders on the pair: 5 s 1344x768 645.0 s (643.0 on e1aa6eae), peak 62.2 GB (75.2), 53 GB free
   on both hosts, quality unchanged by eye (SSIM 0.906 against the e1aa6eae two-Spark clip, same class as two-Spark
   against one-Spark). Ref2VA partition and continuation next.
+- 2026-10-27 12:55: review round 4 (port): broadcast-queue writes serialized against shutdown (bounded wait, then
+  terminate), `render.sh` refuses an invalid `EXTRA_JSON`, `select-stack.sh` validates first and replaces the env file
+  atomically, docs on the cancellation stand-in cost and the missing digest with `preencode_mp4`. Ref2VA on v0.30:
+  5 s 1344x768 1248.6 s (1.94x FL2VA), peak 65.6 GB; the reference image is style/subject conditioning, not a first
+  frame.

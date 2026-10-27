@@ -86,6 +86,7 @@ class RemoteReaderExecutor(MultiprocDiffusionExecutor):
         # First hook upstream calls: make shutdown() safe at every later point of _init_executor.
         self._lifecycle_lock = threading.Lock()
         self._sock_lock = threading.Lock()
+        self._broadcast_lock = threading.RLock()  # one writer on the broadcast queue: RPC enqueue vs SHUTDOWN
         self._stopping = False
         self._agent_sock = None
         self._local_procs: list[mp.Process] = []
@@ -401,7 +402,8 @@ class RemoteReaderExecutor(MultiprocDiffusionExecutor):
         with self._futures_lock:
             self._sync_inflight[key] = time.monotonic()
         try:
-            return super().collective_rpc(*args, **kwargs)
+            with self._broadcast_lock:
+                return super().collective_rpc(*args, **kwargs)
         finally:
             with self._futures_lock:
                 self._sync_inflight.pop(key, None)
@@ -409,8 +411,17 @@ class RemoteReaderExecutor(MultiprocDiffusionExecutor):
     def shutdown(self) -> None:
         with self._lifecycle_lock:
             self._stopping = True
+        # The stock cleanup enqueues SHUTDOWN on the broadcast queue, whose writer side is single-threaded; wait
+        # (bounded) for an RPC in flight to leave it instead of interleaving with it.
+        got = self._broadcast_lock.acquire(timeout=float(os.environ.get("H3_TP2_SHUTDOWN_LOCK_S", "30")))
+        if not got:
+            logger.warning("h3_tp2: broadcast queue busy for 30 s at shutdown; terminating workers without a graceful SHUTDOWN")
+            self._kill_local()
+            self._close_agent(send_shutdown=True)
         try:
             super().shutdown()  # stock SHUTDOWN through the broadcast queue (rank 1 is a reader), local join
         finally:
+            if got:
+                self._broadcast_lock.release()
             self._kill_local()
             self._close_agent(send_shutdown=True)
