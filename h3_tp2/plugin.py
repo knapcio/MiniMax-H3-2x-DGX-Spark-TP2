@@ -170,4 +170,13 @@ def _apply(role: str) -> None:
         h3_output.install(_pp, _vau)
         logger.info("h3_tp2: uint8 output path installed (api_utils=%s)", _vau is not None)
 
+    # 7) experimental, off by default: lift the pipeline's 15 s duration cap.  The model is specified for 4-15 s;
+    #    longer clips extrapolate the temporal RoPE beyond training.  Memory and time are the operator's problem.
+    cap = os.environ.get("H3_TP2_MAX_OUTPUT_SECONDS", "").strip()
+    if cap:
+        from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _pp
+
+        _pp.MINIMAX_H3_MAX_OUTPUT_SECONDS = float(cap)
+        logger.warning("h3_tp2: EXPERIMENTAL duration cap raised to %s s (model spec is 15 s)", cap)
+
     logger.info("h3_tp2 plugin active: role=%s world=%s", role, world)

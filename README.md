@@ -23,16 +23,17 @@ upper bound); "min free" is the lowest MemAvailable sampled every 2 s on that ho
 |---|---|---|
 | 5 s 960x576, 10 steps | 290.9 s, peak 97.2 GB, min free 15.7 GB | 153.8 s, peak 75.2 GB, min free 38.8 GB (head) / 39.6 GB (worker) |
 | 5 s 1344x768, 20 steps | 1399.0 s, peak 103.3 GB, min free 6.0 GB | 643.0 s, peak 75.2 GB, min free 38.8 GB / 39.3 GB |
-| 10 s 1344x768, 20 steps | does not fit: the host runs out of memory and livelocks | 2119.0 s, peak 91.0 GB, min free 10.2 GB / 22.9 GB (first boot: FP32 output path, VAE on one GPU) |
+| 10 s 1344x768, 20 steps | does not fit: the host runs out of memory and livelocks | 1690.5 s, peak 84.2 GB, min free 26.1 GB / 29.6 GB (first boot with the stock FP32 output path and the VAE on one GPU: 2119.0 s, min free 10.2 GB) |
 | 10 s 1344x768 from a still (FL2VA), 20 steps | does not fit | 1940.3 s, peak 91.2 GB, min free 19.9 GB / 29.3 GB (uint8 output path, VAE on one GPU) |
+| 15 s 1344x768 from a still (FL2VA), 20 steps | does not fit | 3166.3 s, peak 84.4 GB, min free 24.1 GB / 26.5 GB |
 | 15 s 1344x768, 20 steps | does not fit | 3079.9 s, peak 85.6 GB, min free 25.8 GB / 27.2 GB (final configuration). With the stock FP32 output path and the VAE on one GPU the same render ran the head out of host memory after 7796 s |
 
 On one Spark the 5 s 960x576 render took 362.8 s when run right after the 1344x768 one (same frames, bit for bit): the
 allocator keeps the bigger pool and the host is under pressure, which is also why the single-Spark recipe is limited to
-5 s. The two-Spark numbers come from fresh boots with memory compacted first; the 5 s rows are the final configuration
-(uint8 output path, VAE split over both GPUs, cache freed before decode), as is the 15 s row; the 10 s rows predate the
-last two levers. Phases of the 15 s render: prompt encoding 0.2 s, denoising 2946.7 s (147 s per step), VAE decode
-125.8 s.
+5 s. The two-Spark numbers come from fresh boots with memory compacted first; all rows except the 10 s FL2VA one are
+the final configuration (uint8 output path, VAE split over both GPUs, cache freed before decode). Phases: 10 s T2VA
+prompt encoding 0.2 s, denoising 1602.6 s (80 s per step), VAE decode 84.2 s; 15 s T2VA 0.2 / 2946.7 (147 s per step)
+/ 125.8 s; 15 s FL2VA 0.9 / 3030.9 / 125.9 s.
 
 ## Quality checks
 

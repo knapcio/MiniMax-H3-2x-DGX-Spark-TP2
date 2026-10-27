@@ -28,3 +28,6 @@
   `vllm_omni`).
 - 2026-10-27 06:31: 15 s 1344x768 20 steps renders on two Sparks in 3079.9 s (peak 85.6 GB, min free 25.8/27.2 GB)
   with the final configuration; the same clip had killed the head on the FP32 output path.
+- 2026-10-27 07:55: final-configuration numbers for 10 s T2VA (1690.5 s, was 2119.0 s on the first boot; min free 26.1/29.6 GB)
+  and 15 s FL2VA from a still (3166.3 s, min free 24.1/26.5 GB). `H3_TP2_MAX_OUTPUT_SECONDS` (off by default,
+  experimental) lifts the pipeline's 15 s cap for out-of-spec tests.
