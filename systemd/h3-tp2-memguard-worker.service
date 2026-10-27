@@ -1,0 +1,12 @@
+[Unit]
+Description=H3 TP2 unified-memory guard (worker)
+
+[Service]
+Type=simple
+Environment=MEMGUARD_ROLE=worker
+ExecStart=/bin/bash %h/h3-tp2/scripts/memguard.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

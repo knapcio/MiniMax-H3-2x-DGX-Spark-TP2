@@ -1,0 +1,17 @@
+framemd5 a: b58a46126d74eedce31f8adf6cfb63fa
+framemd5 b: c36d17dc923bb1d4532740c6d464b2be
+framemd5: differ
+video SSIM All:0.926599  PSNR average:29.512369
+audio d5_960x576_s10_seed1101.mp4: mean_volume: -27.7 dB max_volume: -15.3 dB 
+audio d5_960x576_s10_seed1101.mp4: mean_volume: -31.2 dB max_volume: -18.7 dB 
+=== compare 1344x768 single vs TP2
+framemd5 a: 55e6a0eb51717e5969d8be044564b898
+framemd5 b: 8b3e06a836e4b08137237fcd0e556368
+framemd5: differ
+video SSIM All:0.959098  PSNR average:37.192022
+audio d5_1344x768_s20_seed1101.mp4: mean_volume: -46.4 dB max_volume: -30.7 dB 
+audio d5_1344x768_s20_seed1101.mp4: mean_volume: -46.9 dB max_volume: -31.2 dB 
+=== compare TP2 960 prev boot (fp32 path) vs set A (u8 path)
+framemd5 a: c36d17dc923bb1d4532740c6d464b2be
+framemd5 b: c36d17dc923bb1d4532740c6d464b2be
+framemd5: identical

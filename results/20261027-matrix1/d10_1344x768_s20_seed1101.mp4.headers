@@ -1,0 +1,11 @@
+HTTP/1.1 200 OK
+date: Mon, 26 Oct 2026 23:45:41 GMT
+server: uvicorn
+x-request-id: video_sync-93d13fc2b670ffbf
+x-model: /home/knapcio/h3-base-20260916/weights/FL2VA
+x-inference-time-s: 2119.001
+x-stage-durations: {"queue_wait_ms":0.08895800056052394,"stage_0_gen_ms":2098057.970046997}
+x-peak-memory-mb: 91018.000
+content-length: 9804908
+content-type: video/mp4
+

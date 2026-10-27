@@ -1,0 +1,16 @@
+[Unit]
+Description=MiniMax H3 two-Spark worker agent (rank 1 launcher)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/h3-tp2
+ExecStart=/bin/bash %h/h3-tp2/scripts/start-agent.sh
+Restart=always
+RestartSec=5
+TimeoutStopSec=60
+KillMode=mixed
+
+[Install]
+WantedBy=default.target

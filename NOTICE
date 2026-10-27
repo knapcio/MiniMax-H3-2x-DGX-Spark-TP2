@@ -1,0 +1,7 @@
+MiniMax-H3-2x-DGX-Spark-TP2
+Copyright 2026 knapcio
+
+This recipe contains original code (h3_tp2/, scripts/) licensed under the MIT License (see LICENSE).
+It runs on top of vLLM-Omni (Apache-2.0) and vLLM (Apache-2.0), unmodified.
+scripts/verify-output.sh follows joeynyc/MiniMax-H3-2x-DGX-Spark (Apache-2.0).
+MiniMax H3 weights and generated media are governed by the MiniMax H3 Community License, not by this repository.

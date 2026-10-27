@@ -1,0 +1,6 @@
+tp2a/d5_1344x768_s20_seed1101.mem-head.csv samples=341 min_MemAvailable_MiB=35865
+tp2a/d5_1344x768_s20_seed1101.mem-worker.csv samples=341 min_MemAvailable_MiB=37824
+tp2a/d5_960x576_s10_seed1101.mem-head.csv samples=89 min_MemAvailable_MiB=34844
+tp2a/d5_960x576_s10_seed1101.mem-worker.csv samples=89 min_MemAvailable_MiB=37815
+tp2a-fl2va/d10_1344x768_s20_seed1101_fl2va.mem-head.csv samples=969 min_MemAvailable_MiB=19926
+tp2a-fl2va/d10_1344x768_s20_seed1101_fl2va.mem-worker.csv samples=968 min_MemAvailable_MiB=29263

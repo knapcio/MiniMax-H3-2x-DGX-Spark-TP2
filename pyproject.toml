@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "h3-tp2"
+version = "0.1.0"
+description = "MiniMax H3 on two NVIDIA DGX Sparks: cross-host diffusion executor for vLLM-Omni"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+
+[project.entry-points."vllm.general_plugins"]
+h3_tp2 = "h3_tp2.plugin:register"
+
+[tool.setuptools]
+packages = ["h3_tp2"]

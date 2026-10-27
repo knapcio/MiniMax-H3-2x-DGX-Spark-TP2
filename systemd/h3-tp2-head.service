@@ -1,0 +1,17 @@
+[Unit]
+Description=MiniMax H3 two-Spark head (rank 0, API on 127.0.0.1:18093)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/h3-tp2
+ExecStart=/bin/bash %h/h3-tp2/scripts/start-head.sh
+Restart=on-failure
+RestartSec=15
+TimeoutStartSec=0
+TimeoutStopSec=180
+KillMode=mixed
+
+[Install]
+WantedBy=default.target
