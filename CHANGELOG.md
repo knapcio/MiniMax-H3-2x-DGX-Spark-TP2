@@ -76,3 +76,5 @@
   seams smooth; 4858 s (+34 %, partly sustained-load drift to be re-measured).
 - 2026-10-27 23:40: per-window prompts: no cuts, smooth seams, motion kept, same time as the plain run; the generated
   audio still fades (8 dB over 30 s).
+- 2026-10-28 00:50: local-time windows (temporal offset 0) change nothing: same motion decay and audio fade. The
+  single-take prompt's +25 % was sustained-load drift (same prompt now 3664 s).
