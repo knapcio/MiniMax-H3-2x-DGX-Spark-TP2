@@ -39,6 +39,9 @@ import multiprocessing as mp
 import multiprocessing.connection
 import os
 import queue
+import weakref
+from collections import OrderedDict
+import queue
 import select
 import threading
 import time
@@ -95,7 +98,10 @@ class RemoteReaderExecutor(MultiprocDiffusionExecutor):
         self._result_pump_threads = []
         self._pump_running = False
         self._shutdown_cleaner = None
-        self._finalizer = lambda: None
+        self._finalizer = weakref.finalize(self, lambda: None)  # upstream >= 0.30 reads ``.alive`` in shutdown()
+        self._completed_outputs = {}
+        self._dropped_output_ids = OrderedDict()
+        self._sync_result_buffer = queue.Queue()
         ready_timeout = float(os.environ.get("H3_TP2_WORKER_READY_TIMEOUT", "3600"))
         self._startup_deadline = time.monotonic() + ready_timeout
 
@@ -181,6 +187,12 @@ class RemoteReaderExecutor(MultiprocDiffusionExecutor):
         num_gpus = cast(int, od_config.num_gpus)
         if num_gpus != 2:
             raise ValueError(f"h3_tp2 supports exactly two ranks, got num_gpus={num_gpus}")
+        try:  # vLLM-Omni >= 0.30: one Torch thread budget per worker instead of one per core each
+            from vllm.v1.executor.multiproc_executor import set_multiprocessing_worker_envs
+
+            set_multiprocessing_worker_envs()
+        except ImportError:
+            pass
         mp.set_start_method("spawn", force=True)
         worker_extension_cls = od_config.worker_extension_cls
         custom_pipeline_args = getattr(od_config, "custom_pipeline_args", None)

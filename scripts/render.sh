@@ -5,11 +5,19 @@
 set -uo pipefail
 source "$(dirname "$0")/env.sh"
 out=$1; dur=$2; w=$3; h=$4; steps=$5; seed=$6; prompt=$7; img=${8:-}; where=${9:-first}
-if [ -n "$img" ]; then
+# TASK=ref2va switches to the Ref2VA partition's request shape (reference image, no frame_indices); EXTRA_JSON merges
+# more extra_params, e.g. '{"long_video": true, "long_video_mode": "continuation"}' for the continuation mode.
+TASK=${TASK:-}
+if [ "$TASK" = ref2va ]; then
+  extra="{\"task\": \"ref2va\", \"duration\": $dur, \"audio_flow_shift\": 3.0}"
+elif [ -n "$img" ]; then
   case "$where" in first) fi='[0]';; last) fi='[-1]';; both) fi='[0, -1]';; esac
   extra="{\"task\": \"fl2va\", \"duration\": $dur, \"audio_flow_shift\": 3.0, \"frame_indices\": $fi}"
 else
   extra="{\"task\": \"t2va\", \"duration\": $dur, \"audio_flow_shift\": 3.0}"
+fi
+if [ -n "${EXTRA_JSON:-}" ]; then
+  extra=$(python3 -c 'import json,sys; a=json.loads(sys.argv[1]); a.update(json.loads(sys.argv[2])); print(json.dumps(a))' "$extra" "$EXTRA_JSON")
 fi
 args=(-F "prompt=$prompt" -F "width=$w" -F "height=$h" -F "aspect_ratio=16:9" -F "fps=24" -F "num_inference_steps=$steps" -F "flow_shift=12" -F "seed=$seed" -F "extra_params=$extra")
 [ -n "$img" ] && args+=(-F "input_reference=@$img")

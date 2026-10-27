@@ -76,8 +76,13 @@ def frames_digest(frames_u8: np.ndarray) -> str:
     return hashlib.sha256(np.ascontiguousarray(frames_u8).tobytes()).hexdigest()
 
 
-def install(pipeline_module, api_utils_module) -> None:
-    """Patch the pipeline module and the API encoder module (idempotent)."""
+def install(pipeline_module, api_utils_module, convert_u8: bool = True) -> None:
+    """Patch the pipeline module and the API encoder module (idempotent).
+
+    ``convert_u8=False`` keeps only the phase timers and the frame digest: vLLM-Omni >= 0.30 quantises the video to
+    uint8 on the GPU itself (``_prepare_minimax_h3_video_output``, the same clamp/scale/round arithmetic) and its
+    post-processing expects that layout, so the conversion and the post-process replacement must stay out of the way.
+    """
     global _AUDIO_SR, _FPS
     _AUDIO_SR = pipeline_module.MINIMAX_H3_AUDIO_SAMPLE_RATE
     _FPS = pipeline_module.MINIMAX_H3_FPS
@@ -90,14 +95,31 @@ def install(pipeline_module, api_utils_module) -> None:
 
         def decode(self, *a, **kw):  # noqa: ANN001
             t0 = time.monotonic()
-            video, audio = orig_decode(self, *a, **kw)
+            out = orig_decode(self, *a, **kw)
             _sync()
             t1 = time.monotonic()
+            if not convert_u8:
+                logger.info("h3_tp2 phase decode %.1f s", t1 - t0)
+                return out
+            video, audio = out
             u8 = to_uint8_frames(video)
             del video
             _sync()
             logger.info("h3_tp2 phase decode %.1f s (+%.1f s uint8) frames=%s", t1 - t0, time.monotonic() - t1, tuple(u8.shape))
             return u8, audio
+
+        if hasattr(cls, "decode_to_mp4"):  # v0.30 chunked decode + mux on the worker (preencode_mp4)
+            orig_decode_mp4 = cls.decode_to_mp4
+
+            def decode_to_mp4(self, *a, **kw):  # noqa: ANN001
+                t0 = time.monotonic()
+                try:
+                    return orig_decode_mp4(self, *a, **kw)
+                finally:
+                    _sync()
+                    logger.info("h3_tp2 phase decode_to_mp4 %.1f s", time.monotonic() - t0)
+
+            cls.decode_to_mp4 = decode_to_mp4
 
         def encode_prompt(self, *a, **kw):  # noqa: ANN001
             t0 = time.monotonic()
@@ -120,10 +142,29 @@ def install(pipeline_module, api_utils_module) -> None:
         cls.diffuse = diffuse
         cls._h3_tp2_output_patched = True
 
-    pipeline_module._minimax_h3_post_process = post_process
-    pipeline_module.get_minimax_h3_post_process_func = lambda od_config=None: post_process
+    if convert_u8:
+        pipeline_module._minimax_h3_post_process = post_process
+        pipeline_module.get_minimax_h3_post_process_func = lambda od_config=None: post_process
 
     if api_utils_module is not None and not getattr(api_utils_module, "_h3_tp2_output_patched", False):
+        if hasattr(api_utils_module, "_prepare_video_frames"):  # v0.30: the shared entry of both encoder paths
+            orig_prepare = api_utils_module._prepare_video_frames
+
+            def prepare(video):  # noqa: ANN001
+                frames, shape, dtype = orig_prepare(video)
+                try:
+                    if dtype == np.uint8:
+                        h = hashlib.sha256()
+                        for f in frames:
+                            h.update(np.ascontiguousarray(f).tobytes())
+                        logger.info("h3_tp2 frames sha256 %s shape=%s", h.hexdigest(), (len(frames),) + tuple(shape))
+                except Exception:
+                    logger.exception("h3_tp2 frame digest failed")
+                return frames, shape, dtype
+
+            api_utils_module._prepare_video_frames = prepare
+            api_utils_module._h3_tp2_output_patched = True
+            return
         orig_coerce = api_utils_module._coerce_video_to_uint8_frames
 
         def coerce(video):  # noqa: ANN001

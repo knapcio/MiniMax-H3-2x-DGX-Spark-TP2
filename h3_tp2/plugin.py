@@ -100,8 +100,13 @@ def _apply(role: str) -> None:
         _Worker = _dw.DiffusionWorker
         _orig_worker_init = _Worker.__init__
 
-        def _worker_init(self, local_rank, rank, od_config, *a, **kw):  # noqa: ANN001
-            return _orig_worker_init(self, 0, rank, od_config, *a, **kw)
+        def _worker_init(self, *a, **kw):  # noqa: ANN001
+            # e1aa6eae passes (local_rank, rank, od_config) positionally, v0.30 passes them as keywords
+            if "local_rank" in kw:
+                kw["local_rank"] = 0
+            elif a:
+                a = (0,) + tuple(a[1:])
+            return _orig_worker_init(self, *a, **kw)
 
         _Worker.__init__ = _worker_init
 
@@ -142,21 +147,25 @@ def _apply(role: str) -> None:
 
     # 5) optional: return the allocator's cached pages before VAE decode (after vllm-omni #7241).  No tensor
     #    arithmetic is touched; the same-seed framemd5 check in the README is the evidence that outputs are unchanged.
+    #    vLLM-Omni >= 0.30 does this itself (``_release_stage_cache`` inside decode), so the patch is skipped there.
     if os.environ.get("H3_TP2_EMPTY_CACHE_BEFORE_DECODE", "0") == "1":
         from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _pp
         import gc
         import torch
 
         _cls = _pp.MiniMaxH3Pipeline
-        _orig_decode = _cls.decode
+        if hasattr(_cls, "_release_stage_cache"):
+            logger.info("h3_tp2: upstream releases the stage cache before decode itself; empty_cache patch skipped")
+        else:
+            _orig_decode = _cls.decode
 
-        def _decode(self, *a, **kw):  # noqa: ANN001
-            gc.collect()
-            torch.cuda.empty_cache()
-            return _orig_decode(self, *a, **kw)
+            def _decode(self, *a, **kw):  # noqa: ANN001
+                gc.collect()
+                torch.cuda.empty_cache()
+                return _orig_decode(self, *a, **kw)
 
-        _cls.decode = _decode
-        logger.info("h3_tp2: empty_cache before decode enabled")
+            _cls.decode = _decode
+            logger.info("h3_tp2: empty_cache before decode enabled")
 
     # 6) uint8 output path + frame digest + phase timers (default on; H3_TP2_U8_OUTPUT=0 restores the stock FP32 path)
     if os.environ.get("H3_TP2_U8_OUTPUT", "1") == "1":
@@ -167,8 +176,9 @@ def _apply(role: str) -> None:
             from vllm_omni.entrypoints.openai import video_api_utils as _vau
         except Exception:  # not every process serves HTTP; the encoder patch is only needed where it does
             _vau = None
-        h3_output.install(_pp, _vau)
-        logger.info("h3_tp2: uint8 output path installed (api_utils=%s)", _vau is not None)
+        convert = not hasattr(_pp, "_prepare_minimax_h3_video_output")  # v0.30 quantises to uint8 on the GPU itself
+        h3_output.install(_pp, _vau, convert_u8=convert)
+        logger.info("h3_tp2: output path installed (uint8 conversion=%s, api_utils=%s)", convert, _vau is not None)
 
     # 6b) measurement only: time the Ulysses all-to-alls per diffuse phase
     if os.environ.get("H3_TP2_A2A_TIMING", "0") == "1":
@@ -189,7 +199,21 @@ def _apply(role: str) -> None:
     if cap:
         from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _pp
 
-        _pp.MINIMAX_H3_MAX_OUTPUT_SECONDS = float(cap)
+        _pp.MINIMAX_H3_MAX_OUTPUT_SECONDS = float(cap)  # e1aa6eae: both validation sites read this global
+        try:  # v0.30: the limit comes from long_video.max_output_seconds (15 s unless long_video=true)
+            from vllm_omni.model_executor.models.minimax_h3 import long_video as _lv
+            from vllm_omni.model_executor.models.minimax_h3 import encoder_processing as _ep
+
+            _orig_max = _lv.max_output_seconds
+
+            def _max_output_seconds(extra, task):  # noqa: ANN001
+                return max(_orig_max(extra, task), float(cap)) if not extra.get("long_video", False) else _orig_max(extra, task)
+
+            _lv.max_output_seconds = _max_output_seconds
+            if getattr(_ep, "max_output_seconds", None) is _orig_max:
+                _ep.max_output_seconds = _max_output_seconds
+        except ImportError:
+            pass
         logger.warning("h3_tp2: EXPERIMENTAL duration cap raised to %s s (model spec is 15 s)", cap)
 
     logger.info("h3_tp2 plugin active: role=%s world=%s", role, world)
