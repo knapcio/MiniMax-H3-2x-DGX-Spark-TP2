@@ -87,5 +87,21 @@ the fabric.
 
 `python -m unittest discover -s tests` runs CPU-only tests of the control channel (frame HMAC, agent session state
 machine: ready delivery, heartbeats, death before/after ready, head loss, lease expiry, SIGKILL path, consecutive
-sessions) with a fake worker; no GPU and no vLLM needed. The fabric itself is tested by `scripts/preflight.sh` and the
-NCCL pair test in the README.
+sessions) with a fake worker, of the uint8 output conversion against the stock numpy arithmetic (all batch elements,
+exact rounding ties and their float neighbours, infinities; NaN is undefined on both paths) and of the grouped
+all-to-all layout used by the overlap patch against the stock permutation; no GPU and no vLLM needed. The fabric
+itself is tested by `scripts/preflight.sh` and the NCCL pair test in the README. GPU identity of any lever is the
+same-seed frame digest (`h3_tp2 frames sha256` in the head journal, framemd5 in `results/`).
+
+## Opt-in measurement and experiment switches
+
+- `H3_TP2_A2A_TIMING=1`: CUDA-event totals of the Ulysses all-to-alls (`all_to_all_4D` calls and the collectives
+  inside them) logged at the end of every denoising phase, per rank. Measurement only.
+- `H3_TP2_A2A_OVERLAP=<groups>`: `h3_tp2.ulysses_overlap` replaces the attention layer's forward for the strict
+  Ulysses path (no joint tensors, no masks, no Ring): local heads are split into `groups` head groups, the forward
+  all-to-alls of all groups go to a second CUDA stream, the attention kernel runs per group on the compute stream and
+  each group's backward all-to-all is issued as soon as its attention is done. Every NCCL call is issued from the comm
+  stream, so both ranks keep the same collective order. The arithmetic per head is unchanged; whether the kernel picks
+  the same plan for fewer heads is verified only by the frame digest for the configurations listed in the README.
+- `H3_TP2_MAX_OUTPUT_SECONDS=<s>`: lifts the pipeline's 15 s cap (model specification is 4-15 s; above it the DiT
+  extrapolates its temporal RoPE and the VAE runs lengths it was not validated on). Experiment only.

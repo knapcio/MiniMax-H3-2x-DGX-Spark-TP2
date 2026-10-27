@@ -32,6 +32,12 @@ _AUDIO_SR = None
 _FPS = None
 
 
+def _sync() -> None:
+    """Phase timers are host wall clock; synchronising at the boundary charges queued GPU work to its own phase."""
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+
+
 def to_uint8_frames(video: torch.Tensor) -> torch.Tensor:
     """(B, C, F, H, W) float -> (B, F, H, W, C) uint8, same arithmetic as the stock numpy path."""
     out = []
@@ -85,9 +91,11 @@ def install(pipeline_module, api_utils_module) -> None:
         def decode(self, *a, **kw):  # noqa: ANN001
             t0 = time.monotonic()
             video, audio = orig_decode(self, *a, **kw)
+            _sync()
             t1 = time.monotonic()
             u8 = to_uint8_frames(video)
             del video
+            _sync()
             logger.info("h3_tp2 phase decode %.1f s (+%.1f s uint8) frames=%s", t1 - t0, time.monotonic() - t1, tuple(u8.shape))
             return u8, audio
 
@@ -96,6 +104,7 @@ def install(pipeline_module, api_utils_module) -> None:
             try:
                 return orig_encode(self, *a, **kw)
             finally:
+                _sync()
                 logger.info("h3_tp2 phase encode_prompt %.1f s", time.monotonic() - t0)
 
         def diffuse(self, *a, **kw):  # noqa: ANN001
@@ -103,13 +112,8 @@ def install(pipeline_module, api_utils_module) -> None:
             try:
                 return orig_diffuse(self, *a, **kw)
             finally:
+                _sync()
                 logger.info("h3_tp2 phase diffuse %.1f s", time.monotonic() - t0)
-                try:
-                    from h3_tp2 import a2a_timing
-
-                    a2a_timing.report("diffuse")
-                except Exception:  # measurement only; never fail a render over it
-                    logger.exception("h3_tp2 a2a report failed")
 
         cls.decode = decode
         cls.encode_prompt = encode_prompt

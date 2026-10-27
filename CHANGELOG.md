@@ -34,3 +34,8 @@
 - 2026-10-27 08:10: `H3_TP2_A2A_TIMING=1` (off by default) logs CUDA-event totals of the Ulysses all-to-alls per
   diffuse phase. `scripts/attn-bench.py`: cuDNN SDPA is the fastest exact attention kernel on the GB10 for the
   per-rank shapes (FlashAttention-2 +3 %, torch flash SDPA +4-7 %).
+- 2026-10-27 08:40: review round 3 (overlap, timing, uint8 test): timing reports on its own diffuse hook and clears in
+  `finally`; overlap records the inputs on the comm stream, joins outstanding communication on an exception, falls back
+  for any mask or joint tensor and for non-default scatter/gather axes, and no longer claims identity "by
+  construction"; phase timers synchronise the device at each boundary; uint8 test covers all batch elements, exact
+  ties and infinities. `H3_TP2_A2A_OVERLAP=<groups>` (off by default) added; GPU measurement pending.

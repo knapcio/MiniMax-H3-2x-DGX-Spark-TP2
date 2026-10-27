@@ -50,16 +50,31 @@ def install() -> None:
     comm.all_to_all_4D = timed_outer
     comm.dist.all_to_all_single = timed_inner  # comm looks the name up on its ``dist`` module at call time
     _installed = True
+
+    # report at the end of every diffuse phase, independently of the uint8 output path's own timers
+    from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _pp
+
+    cls = _pp.MiniMaxH3Pipeline
+    orig_diffuse = cls.diffuse
+
+    def diffuse(self, *a, **kw):  # noqa: ANN001
+        try:
+            return orig_diffuse(self, *a, **kw)
+        finally:
+            try:
+                report("diffuse")
+            except Exception:
+                logger.exception("h3_tp2 a2a report failed")
+
+    cls.diffuse = diffuse
     logger.info("h3_tp2: all-to-all timing installed")
 
 
 def report(phase: str = "diffuse") -> None:
     """Sum the recorded events (synchronising the device first) and log them; clears the record."""
-    if not _installed or not _outer:
+    if not _installed or not (_outer or _inner):
         return
     import torch
-
-    torch.cuda.synchronize()
 
     def _sum(rec):
         ms = 0.0
@@ -69,11 +84,14 @@ def report(phase: str = "diffuse") -> None:
             nbytes += b
         return ms / 1000.0, nbytes
 
-    o_s, o_b = _sum(_outer)
-    i_s, i_b = _sum(_inner)
-    logger.info(
-        "h3_tp2 a2a %s: calls=%d all_to_all_4D=%.1f s (%.1f GB in) collective=%.1f s (%.1f GB in)",
-        phase, len(_outer), o_s, o_b / 1e9, i_s, i_b / 1e9,
-    )
-    _outer.clear()
-    _inner.clear()
+    try:
+        torch.cuda.synchronize()
+        o_s, o_b = _sum(_outer)
+        i_s, i_b = _sum(_inner)
+        logger.info(
+            "h3_tp2 a2a %s: all_to_all_4D calls=%d %.1f s (%.1f GB in); collective calls=%d %.1f s (%.1f GB in)",
+            phase, len(_outer), o_s, o_b / 1e9, len(_inner), i_s, i_b / 1e9,
+        )
+    finally:
+        _outer.clear()
+        _inner.clear()
