@@ -54,3 +54,5 @@
   detected (our conversion and cache patches step aside), frame digest hooked on the shared encoder entry, duration
   cap routed through `long_video.max_output_seconds`. `render.sh` takes `TASK=ref2va` and `EXTRA_JSON`. Not yet run on
   the Sparks: the v0.30 venv and the Ref2VA partition are being installed.
+- 2026-10-27 11:55: first boot on v0.30.0 across the two Sparks succeeded (6 min); the first request failed because the
+  engine's cancellation signal is a head-local shared-memory byte. The remote rank now defers to rank 0.

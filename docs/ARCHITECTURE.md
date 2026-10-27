@@ -115,4 +115,7 @@ upstream v0.30 quantises the video to uint8 on the GPU itself and releases the s
 executor's newer shutdown reads a few more attributes, which `_init_broadcast_queue` pre-creates; the duration limit
 moved to `model_executor.models.minimax_h3.long_video` (15 s, or 30 s / 300 s with `long_video=true` in full /
 continuation mode). Continuation is Ref2VA-only: windows of 107..345 frames (17n+5) with a 22-frame latent-tail
-overlap, `diffuse` is called once per window and `decode` once for the whole clip.
+overlap, `diffuse` is called once per window and `decode` once for the whole clip. v0.30 also signals request cancellation
+to the workers through a one-byte POSIX shared-memory segment per request; the remote rank cannot open it, so on the
+worker the plugin substitutes a stand-in that always votes "cancelled" in the MIN all-reduce of
+`check_request_cancellation`, which makes the pair follow rank 0's real flag.
