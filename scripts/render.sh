@@ -16,6 +16,24 @@ elif [ -n "$img" ]; then
 else
   extra="{\"task\": \"t2va\", \"duration\": $dur, \"audio_flow_shift\": 3.0}"
 fi
+# CONT_PROMPTS=auto: for a continuation request, build one prompt per window from "$prompt" (window plan as upstream:
+# frames aligned to 17n+5, windows of continuation_window_frames (277) with continuation_overlap_frames (22) overlap),
+# restating that the same shot continues.  Measured 2026-10-27: keeps motion and continuity at no extra cost.
+if [ "${CONT_PROMPTS:-}" = auto ] && [ -n "${EXTRA_JSON:-}" ]; then
+  EXTRA_JSON=$(python3 - "$EXTRA_JSON" "$dur" "$prompt" <<'PY'
+import json, math, sys
+e, dur, base = json.loads(sys.argv[1]), float(sys.argv[2]), sys.argv[3]
+if e.get("long_video") and e.get("long_video_mode", "continuation") == "continuation":
+    frames = int(round(dur * 24)); frames = ((frames - 5 + 16) // 17) * 17 + 5
+    win, ov = int(e.get("continuation_window_frames", 277)), int(e.get("continuation_overlap_frames", 22))
+    n = 1 if frames <= win else 1 + math.ceil((frames - win) / (win - ov))
+    first = base.rstrip(". ") + ". One single continuous take from a steady camera, no cuts, no transitions."
+    rest = "The same continuous shot goes on without any cut or transition, the camera keeps moving the same way: " + base
+    e["continuation_prompts"] = [first] + [rest] * (n - 1)
+print(json.dumps(e))
+PY
+) || { echo "render.sh: CONT_PROMPTS=auto failed" >&2; exit 2; }
+fi
 if [ -n "${EXTRA_JSON:-}" ]; then
   extra=$(python3 -c 'import json,sys; a=json.loads(sys.argv[1]); b=json.loads(sys.argv[2]); assert isinstance(b, dict), "EXTRA_JSON must be a JSON object"; a.update(b); print(json.dumps(a))' "$extra" "$EXTRA_JSON") \
     || { echo "render.sh: invalid EXTRA_JSON, nothing submitted" >&2; exit 2; }
