@@ -22,6 +22,8 @@ if [ -n "${EXTRA_JSON:-}" ]; then
 fi
 args=(-F "prompt=$prompt" -F "width=$w" -F "height=$h" -F "aspect_ratio=16:9" -F "fps=24" -F "num_inference_steps=$steps" -F "flow_shift=12" -F "seed=$seed" -F "extra_params=$extra")
 [ -n "$img" ] && args+=(-F "input_reference=@$img")
+# AUDIO_URL: a driving soundtrack for Ref2VA (audio_mode=lock_source in EXTRA_JSON); http(s) or data: URL per upstream docs
+[ -n "${AUDIO_URL:-}" ] && args+=(-F "audio_reference={\"audio_url\": \"$AUDIO_URL\"}")
 t0=$(date +%s.%N)
 code=$(curl -sS --max-time 14400 -X POST "http://$H3_API_HOST:$H3_API_PORT/v1/videos/sync" "${args[@]}" -D "$out.headers" -o "$out" -w "%{http_code}"); crc=$?
 t1=$(date +%s.%N)
