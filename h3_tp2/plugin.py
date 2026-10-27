@@ -248,13 +248,19 @@ def _apply(role: str) -> None:
     #    seed in every window (upstream re-creates the generators from the request seed per window, so equal-shaped
     #    windows restart identical noise streams).  H3_TP2_REF_SHORT_EDGE=<px>: reference images are resized to this
     #    short edge instead of upstream's 2048 (7296 VAE tokens for a 16:9 image join the sequence at every step).
+    #    H3_TP2_WINDOW_TEMPORAL_OFFSET=<float|cap:<float>>: upstream shifts every media row of window k by
+    #    start_frame*40/24 RoPE units while text and the reference image stay put (window 6 of a 60 s clip sits at
+    #    +2125 units; a 15 s training clip spans 600).  "0" keeps every window on local time, "cap:425" clamps.
     step = os.environ.get("H3_TP2_WINDOW_SEED_STEP", "").strip()
-    if step and int(step) != 0:
+    toff = os.environ.get("H3_TP2_WINDOW_TEMPORAL_OFFSET", "").strip()
+    if (step and int(step) != 0) or toff:
         from vllm_omni.diffusion.models.minimax_h3 import continuation as _cont
         from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _pp
 
         _orig_dc = _cont.diffuse_continuation
-        _step = int(step)
+        _step = int(step) if step else 0
+        _cap = float(toff[4:]) if toff.startswith("cap:") else None
+        _fixed = None if (not toff or toff.startswith("cap:")) else float(toff)
 
         def _dc(diffuse, kwargs, **kw):  # noqa: ANN001
             counter = {"i": 0}
@@ -262,9 +268,14 @@ def _apply(role: str) -> None:
             def _diffuse(**a):  # noqa: ANN001
                 i = counter["i"]
                 counter["i"] += 1
-                if i and a.get("seed") is not None:
-                    a = {**a, "seed": int(a["seed"]) + i * _step}
-                    logger.info("h3_tp2: continuation window %d uses seed %d", i + 1, a["seed"])
+                a = dict(a)
+                if _step and i and a.get("seed") is not None:
+                    a["seed"] = int(a["seed"]) + i * _step
+                if _fixed is not None and "temporal_offset" in a:
+                    a["temporal_offset"] = _fixed
+                elif _cap is not None and "temporal_offset" in a:
+                    a["temporal_offset"] = min(float(a["temporal_offset"]), _cap)
+                logger.info("h3_tp2: continuation window %d seed=%s temporal_offset=%s", i + 1, a.get("seed"), a.get("temporal_offset"))
                 return diffuse(**a)
 
             return _orig_dc(_diffuse, kwargs, **kw)
@@ -272,7 +283,7 @@ def _apply(role: str) -> None:
         _cont.diffuse_continuation = _dc
         if getattr(_pp, "diffuse_continuation", None) is _orig_dc:
             _pp.diffuse_continuation = _dc
-        logger.warning("h3_tp2: EXPERIMENT window seed step %d (changes outputs)", _step)
+        logger.warning("h3_tp2: EXPERIMENT continuation seed step=%s temporal offset=%s (changes outputs)", _step, toff or "upstream")
 
     edge = os.environ.get("H3_TP2_REF_SHORT_EDGE", "").strip()
     if edge:
