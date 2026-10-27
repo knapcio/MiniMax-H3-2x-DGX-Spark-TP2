@@ -91,8 +91,10 @@ the camera changed speed and direction at the second one, which is visible when 
 (`results/20261027-v030-continuation-30s/`). A 60 s clip (6 windows, 7986 s, peak 69.4 GB) shows the limit of
 the plain mode: with one fixed prompt the motion dies down window by window (7x less by 53 s), the audio fades by
 18 dB and the model inserts shot changes it was not asked for; the picture itself stays sharp and consistent
-(`results/20261027-v030-continuation-60s/`). Per-window prompts and a driving soundtrack are the upstream remedies
-and are being measured. Request shape in `scripts/render.sh` (`TASK=ref2va`, `EXTRA_JSON`).
+(`results/20261027-v030-continuation-60s/`). Asking for "one single continuous take, no cuts, no transitions" in the
+prompt removes the shot changes and the hand-over bumps at the seams (`results/20261027-v030-continuation-prompt/`,
++25 % time for the longer prompt); the motion and audio decay remain and per-window prompts and a driving soundtrack
+(`audio_mode=lock_source`) are being measured against them. Request shape in `scripts/render.sh` (`TASK=ref2va`, `EXTRA_JSON`).
 
 ## The model
 
