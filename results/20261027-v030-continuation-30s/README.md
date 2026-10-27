@@ -16,7 +16,11 @@ Continuity: no scene cut anywhere (max ffmpeg scene score 0.06 over the whole cl
 discarded overlap ends, frames 277 (11.5 s) and 532 (22.2 s), not at the window starts. Inter-frame luma difference
 around them: 3.71 4.76 [4.44] 3.94 3.72 at 277 (smooth) and 3.23 5.79 [6.33] 4.94 4.33 at 532: the picture stays
 continuous (frames 530..534 inspected, no cut) but the camera changes speed and direction at the second seam, which
-reads as a transition when watched (the owner spotted it at 23 s). The clip is one continuous camera flight over the
+reads as a transition when watched. What the owner actually spotted at 23 s is a second thing: between frames 552 and
+588 (23.0 to 24.5 s, inside window 3, 20 frames after the seam) the model generated a dissolve from the low flight over
+the grass to a wide shot with fog and sun. Scene detection does not flag it (max score 0.013 there) because it is a
+crossfade, not a cut. The prompt said nothing about a single take; upstream warns that continuation "does not
+guarantee seamless cuts". Follow-ups queued: 39-frame overlap, a prompt that asks for one continuous take, 1344x768. The clip is one continuous camera flight over the
 landscape; motion slows from about 6 to 2 luma units per frame between the first and the last window. Follow-up:
 the same clip with `continuation_overlap_frames: 39` (1.6 s of tail instead of 0.9 s) to see whether the motion
 hand-over improves.
