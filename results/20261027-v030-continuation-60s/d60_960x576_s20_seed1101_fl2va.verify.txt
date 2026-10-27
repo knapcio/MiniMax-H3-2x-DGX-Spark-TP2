@@ -1,0 +1,6 @@
+codec_name=h264|codec_type=video|width=960|height=576|r_frame_rate=24/1|nb_frames=1450 codec_name=aac|codec_type=audio|r_frame_rate=0/0|nb_frames=1890 duration=60.425000 
+decode: OK
+mean_volume: -32.3 dB max_volume: -12.8 dB 
+audio: OK (mean -32.3 dB)
+framemd5: d6126a2c75ce262f8fb3804cc62ca28f
+verify: OK

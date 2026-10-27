@@ -88,7 +88,11 @@ renders the clip in windows of 277 frames with a 22-frame overlap, each window c
 latent tail (video and audio). First measurement on the pair: 30 s 960x576 20 steps in 3615 s (3 windows, peak
 71.1 GB, 42 GB free on both hosts), no scene cut in the whole clip; the picture is continuous across both seams but
 the camera changed speed and direction at the second one, which is visible when watched
-(`results/20261027-v030-continuation-30s/`; a longer overlap is being measured). Request shape in `scripts/render.sh` (`TASK=ref2va`, `EXTRA_JSON`).
+(`results/20261027-v030-continuation-30s/`). A 60 s clip (6 windows, 7986 s, peak 69.4 GB) shows the limit of
+the plain mode: with one fixed prompt the motion dies down window by window (7x less by 53 s), the audio fades by
+18 dB and the model inserts shot changes it was not asked for; the picture itself stays sharp and consistent
+(`results/20261027-v030-continuation-60s/`). Per-window prompts and a driving soundtrack are the upstream remedies
+and are being measured. Request shape in `scripts/render.sh` (`TASK=ref2va`, `EXTRA_JSON`).
 
 ## The model
 

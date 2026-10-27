@@ -66,3 +66,6 @@
   frame.
 - 2026-10-27 13:42: first continuation clip on the pair: 30 s 960x576 (Ref2VA, 3 windows) in 3615 s, peak 71.1 GB,
   seams invisible, no scene cut; audio level drifts down across windows (one sample). 60 s render started.
+- 2026-10-27 16:00: 60 s continuation clip: 7985.6 s, peak 69.4 GB, deterministic (windows 1-2 identical to the 30 s
+  clip); plain mode drifts: motion -7x and audio -18 dB over six windows, unrequested shot changes. Remedies
+  (per-window prompts, driving audio, longer overlap) under test.
