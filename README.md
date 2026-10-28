@@ -102,6 +102,11 @@ shot continuous at no extra cost but the generated audio still fades about 8 dB 
 (`results/20261027-v030-continuation-winprompts/`). Local-time windows and a different seed per window were tested and
 change nothing (`results/20261028-v030-continuation-toff0/`, `results/20261028-v030-continuation-seedstep/`). Request shape in `scripts/render.sh` (`TASK=ref2va`, `EXTRA_JSON`).
 
+**Ref2VA cost**: the 1.94x comes from the reference rows (upstream resizes the reference image to a 2048 short edge:
+~7300 VAE rows plus the vision tokens in every DiT step). `H3_TP2_REF_SHORT_EDGE=1024` cuts the 5 s Ref2VA render
+from 1248.6 s to 752.9 s (-40 %) with the same quality by eye (`results/20261028-v030-ref2va-edge1024/`); it changes
+the conditioning input, not the model, and is the recommended setting for continuation.
+
 ## The model
 
 MiniMax H3-Base FL2VA: DiT 62 GB BF16 (31 GB after online FP8), Qwen3-VL text encoder with 50 retained layers

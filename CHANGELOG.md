@@ -80,3 +80,5 @@
   single-take prompt's +25 % was sustained-load drift (same prompt now 3664 s).
 - 2026-10-28 01:55: a different seed per window changes nothing either (same decay). Mechanism narrowed to the
   latent-tail conditioning itself; remedies stay: driving soundtrack, per-window prompts.
+- 2026-10-28 02:20: reference short edge 1024 instead of 2048: Ref2VA 5 s 1344x768 752.9 s vs 1248.6 s (-40 %), same
+  quality by eye; recommended for continuation.
