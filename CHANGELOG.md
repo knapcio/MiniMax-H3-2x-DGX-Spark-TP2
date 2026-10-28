@@ -82,3 +82,5 @@
   latent-tail conditioning itself; remedies stay: driving soundtrack, per-window prompts.
 - 2026-10-28 02:20: reference short edge 1024 instead of 2048: Ref2VA 5 s 1344x768 752.9 s vs 1248.6 s (-40 %), same
   quality by eye; recommended for continuation.
+- 2026-10-28 04:25: 60 s with single-take prompt + driving soundtrack: no cuts, all five seams smooth, flat audio, no
+  motion decay, 7313 s. First clean 60 s clip.
