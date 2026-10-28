@@ -26,3 +26,23 @@ a full launch queue, which is not GPU work). What this says:
   excluded the kernel-side SendRecv time).
 
 Files: `~/h3-tp2-logs/profile-head-3891913.txt` on spark-06 and `profile-worker-3633819.txt` on spark-05.
+
+## A continuation window step (277 frames, 960x576, Ref2VA, reference at 2048 px), rank 0, step 5 of window 1
+
+| Kernel family | Self CUDA | Share | vs the 124-frame step |
+|---|---|---|---|
+| Attention (cuDNN) | 42.64 s | 61.5 % | 4.1x |
+| FP8 GEMMs | 21.11 s | 30.4 % | 1.7x |
+| Ulysses all-to-all | 2.16 s | 3.1 % | 1.3x |
+| Copies | 1.12 s | 1.6 % | |
+| FP8 activation quant | 0.68 s | 1.0 % | |
+| `silu_and_mul` | 0.56 s | 0.8 % | |
+
+About 69 s of kernel time per step per rank (window 1 of the 15 s run took 1356 s for 20 steps). With 2.2x the frames
+the attention time grows 4.1x and dominates the step, so for long windows the two-pass GEMM saves roughly 20 % of a
+step rather than 25-30 %, and the attention kernel, already at the GB10's flash ceiling, is the wall. Per frame, a
+window of W frames costs about a*W + b in the denoising loop: smaller windows are cheaper per frame (192 instead of 277
+would be roughly a quarter cheaper) at the price of more hand-overs, which is where the quality problems are. The
+window-2 profile (the +41 % of guide windows) is queued separately.
+
+Files: `~/h3-tp2-logs/profile-head-4088226.txt` on spark-06.
