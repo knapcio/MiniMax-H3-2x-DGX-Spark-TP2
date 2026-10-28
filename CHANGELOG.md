@@ -132,3 +132,7 @@
   ceiling (188 TFLOPS) and the attention ceiling (92.5 TFLOPS, which our profiled step already reaches); their
   lossless fusions are mostly in vLLM-Omni already; VAE tile batching (1.47x on decode, near-exact) is the one exact
   lever to port. Notes in results/20261028-nvlabs-sol-engine-gb10/.
+- 2026-10-28 19:15: opening-frames anchor rejected: three hard cuts inside windows (the model cuts back to the
+  reference), +25 % time; motion, audio and texture held. Window-1 step profile at 277 frames: attention 61 %, GEMM 30 %.
+- 2026-10-28 19:15: opening-frames anchor rejected: three hard cuts inside windows (the model cuts back to the
+  reference), +25 % time; motion, audio and texture held. Window-1 step profile at 277 frames: attention 61 %, GEMM 30 %.
