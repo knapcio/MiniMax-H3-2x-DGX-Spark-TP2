@@ -14,7 +14,7 @@ import logging
 
 import torch
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("vllm_omni.h3_tp2.fp8_gemm")   # under vllm_omni so the serving process shows it
 
 try:
     import triton
