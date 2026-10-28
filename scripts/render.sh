@@ -16,15 +16,21 @@ elif [ -n "$img" ]; then
 else
   extra="{\"task\": \"t2va\", \"duration\": $dur, \"audio_flow_shift\": 3.0}"
 fi
+if [ -n "${EXTRA_JSON:-}" ]; then
+  extra=$(python3 -c 'import json,sys; a=json.loads(sys.argv[1]); b=json.loads(sys.argv[2]); assert isinstance(b, dict), "EXTRA_JSON must be a JSON object"; a.update(b); print(json.dumps(a))' "$extra" "$EXTRA_JSON") \
+    || { echo "render.sh: invalid EXTRA_JSON, nothing submitted" >&2; exit 2; }
+fi
 # CONT_PROMPTS=auto: for a continuation request, build one prompt per window from "$prompt" (window plan as upstream:
 # frames aligned to 17n+5, windows of continuation_window_frames (277) with continuation_overlap_frames (22) overlap),
-# restating that the same shot continues.  Measured 2026-10-27: keeps motion and continuity at no extra cost.
-if [ "${CONT_PROMPTS:-}" = auto ] && [ -n "${EXTRA_JSON:-}" ]; then
-  EXTRA_JSON=$(python3 - "$EXTRA_JSON" "$dur" "$prompt" <<'PY'
+# restating that the same shot continues.  Runs after the EXTRA_JSON merge and uses the effective duration (upstream
+# precedence: duration_seconds, target.duration_seconds, duration); supplied continuation_prompts are kept as they are.
+if [ "${CONT_PROMPTS:-}" = auto ]; then
+  extra=$(python3 - "$extra" "$prompt" <<'PY'
 import json, math, sys
-e, dur, base = json.loads(sys.argv[1]), float(sys.argv[2]), sys.argv[3]
-if e.get("long_video") and e.get("long_video_mode", "continuation") == "continuation":
-    frames = int(round(dur * 24)); frames = ((frames - 5 + 16) // 17) * 17 + 5
+e, base = json.loads(sys.argv[1]), sys.argv[2]
+if e.get("long_video") and e.get("long_video_mode", "continuation") == "continuation" and not e.get("continuation_prompts"):
+    dur = e.get("duration_seconds", (e.get("target") or {}).get("duration_seconds", e.get("duration")))
+    frames = int(round(float(dur) * 24)); frames = ((frames - 5 + 16) // 17) * 17 + 5
     win, ov = int(e.get("continuation_window_frames", 277)), int(e.get("continuation_overlap_frames", 22))
     n = 1 if frames <= win else 1 + math.ceil((frames - win) / (win - ov))
     first = base.rstrip(". ") + ". One single continuous take from a steady camera, no cuts, no transitions."
@@ -34,26 +40,24 @@ print(json.dumps(e))
 PY
 ) || { echo "render.sh: CONT_PROMPTS=auto failed" >&2; exit 2; }
 fi
-if [ -n "${EXTRA_JSON:-}" ]; then
-  extra=$(python3 -c 'import json,sys; a=json.loads(sys.argv[1]); b=json.loads(sys.argv[2]); assert isinstance(b, dict), "EXTRA_JSON must be a JSON object"; a.update(b); print(json.dumps(a))' "$extra" "$EXTRA_JSON") \
-    || { echo "render.sh: invalid EXTRA_JSON, nothing submitted" >&2; exit 2; }
-fi
 args=(-F "prompt=$prompt" -F "width=$w" -F "height=$h" -F "aspect_ratio=16:9" -F "fps=24" -F "num_inference_steps=$steps" -F "flow_shift=12" -F "seed=$seed" -F "extra_params=$extra")
 [ -n "$img" ] && args+=(-F "input_reference=@$img")
 # AUDIO_URL: a driving soundtrack for Ref2VA (audio_mode=lock_source in EXTRA_JSON); http(s) or data: URL per upstream docs
-[ -n "${AUDIO_URL:-}" ] && args+=(-F "audio_reference={\"audio_url\": \"$AUDIO_URL\"}")
+[ -n "${AUDIO_URL:-}" ] && args+=(--form-string "audio_reference=$(python3 -c 'import json,sys; print(json.dumps({"audio_url": sys.argv[1]}))' "$AUDIO_URL")")
 t0=$(date +%s.%N)
 code=$(curl -sS --max-time "${H3_RENDER_TIMEOUT_S:-14400}" -X POST "http://$H3_API_HOST:$H3_API_PORT/v1/videos/sync" "${args[@]}" -D "$out.headers" -o "$out" -w "%{http_code}"); crc=$?
 t1=$(date +%s.%N)
 el=$(python3 -c "print(round($t1-$t0,1))")
-python3 - "$out" "$code" "$crc" "$el" "$dur" "$w" "$h" "$steps" "$seed" "$img" "$where" "$extra" "$prompt" "${AUDIO_URL:-}" <<'PY' | tee "$out.timing.json"
+python3 - "$out" "$code" "$crc" "$el" "$dur" "$w" "$h" "$steps" "$seed" "$img" "$where" "$extra" "$prompt" "${AUDIO_URL:-}" <<'PY' > "$out.timing.json" || { echo "render.sh: timing.json failed" >&2; exit 3; }
 import json, sys
 o, code, crc, el, dur, w, h, steps, seed, img, where, extra, prompt, audio = sys.argv[1:]
 e = json.loads(extra)
-print(json.dumps({"out": o, "http": code, "curl_rc": int(crc), "elapsed_s": float(el), "duration": int(dur), "size": f"{w}x{h}",
-                  "steps": int(steps), "seed": int(seed), "task": e.get("task"), "image": img,
-                  "frame_indices": where if (img and e.get("task") == "fl2va") else None, "extra_params": e,
-                  "audio_reference": audio or None, "prompt": prompt}))
+eff = e.get("duration_seconds", (e.get("target") or {}).get("duration_seconds", e.get("duration", dur)))
+print(json.dumps({"out": o, "http": code, "curl_rc": int(crc), "elapsed_s": float(el), "duration": float(dur),
+                  "effective_duration": float(eff), "size": f"{w}x{h}", "steps": int(steps), "seed": int(seed),
+                  "task": e.get("task"), "image": img, "frame_indices": where if (img and e.get("task") == "fl2va") else None,
+                  "extra_params": e, "audio_reference": audio or None, "prompt": prompt}))
 PY
+cat "$out.timing.json"
 grep -i -E "x-stage-durations|x-peak-memory" "$out.headers" || true
 [ "$crc" = 0 ] && [ "$code" = "200" ]   # a 200 with a broken body transfer is a failure too
