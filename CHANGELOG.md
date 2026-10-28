@@ -84,3 +84,6 @@
   quality by eye; recommended for continuation.
 - 2026-10-28 04:25: 60 s with single-take prompt + driving soundtrack: no cuts, all five seams smooth, flat audio, no
   motion decay, 7313 s. First clean 60 s clip.
+- 2026-10-28 06:50: repeats after 16 h: bit-identical, -0.7 % time (no load drift); the first Ref2VA request after a boot
+  is 22 % slower than a warm one, so the reference-1024 gain is -27 %. Window 345: smooth seams, audio fade 1.7 dB
+  instead of 7 dB over 30 s, +8 % time (one sample).

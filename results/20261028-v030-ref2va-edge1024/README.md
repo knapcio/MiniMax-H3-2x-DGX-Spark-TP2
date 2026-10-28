@@ -7,7 +7,7 @@ rows drop to a quarter.
 
 | | short edge 2048 (upstream) | short edge 1024 |
 |---|---|---|
-| Wall clock | 1248.6 s | 752.9 s (-40 %) |
+| Wall clock | 1248.6 s (first request after boot; a warm repeat took 1026.7 s) | 752.9 s (-27 % against the warm repeat) |
 | Denoising / decode | 1182.1 / 43.5 s | ~690 / 47 s |
 | Peak / min free head | 65.6 / 49.5 GB | 63.2 / 51.7 GB |
 | framemd5 | 80e963c8 | 7b9e4c16 |
