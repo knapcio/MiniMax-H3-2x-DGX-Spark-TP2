@@ -43,3 +43,20 @@ What it means for this recipe:
   1344x768 would be about 29 s/step (40.1 / 1.387); our pair's stock 5 s 1344x768 render is 645 s / 20 steps = 32 s per
   step with a 2048-px Ref2VA reference in the sequence, and the two-pass GEMM takes about a quarter off. A same-cell
   run of their `gb10_kernel` config on one Spark would settle it; queued after the current tests.
+
+## The other Spark entries in the same branch (read later the same day)
+
+- **`models/minimax_h3/Sol-H3-Spark/`**: a two-stage pipeline on one Spark: a 672x384, 124-frame H3 draft in 4 updates
+  (FastH3 VSA LoRA, 90 % sparse attention, W8A8 FP8 DiT, NVFP4 Qwen), a learned x2 latent upscaler, an H3-to-LTX
+  latent adapter, then 3 updates of the LTX-2.5 refiner (distilled LoRA, Sol-Attn) and LTX's decoder, with the H3
+  audio kept. Output 1344x768, 121 frames. Their ComfyUI table: **64.3 s per clip on a DGX Spark** (Qwen encoding and
+  MP4 included, model loading excluded) against 989 s for the original 50-step H3 on an RTX 5090. The pixels come from
+  LTX-2.5, conditioned on the H3 draft: "not a guarantee of unchanged identity", first/last frames are "conditioning
+  tokens, not hard pixel replacement". Three separate runtimes (FastVideo + FA4, LTX source, ComfyUI in a container),
+  LTX-2.5 weights gated under the LTX Community License, "a clean-environment installation has not yet been validated".
+- **`Sol-H3/`**: Ulysses sequence parallelism up to 8 GPUs, 5/10/15 s at 1344x768, SOL/BSA sparse attention (B300
+  numbers). **`HyperFlow/`**: the 8-step distilled adapter. **`super_acceleration/`**: H3 stage 1 + LTX-2.5 stage 2 on two
+  GB200. All lossy by construction relative to the released H3.
+
+For this recipe (lossless H3 on the pair) none of it applies directly; for a speed-first product on one Spark the
+two-stage entry is the reference point: ~1 min per 5 s clip at 1344x768 with a different final model.
