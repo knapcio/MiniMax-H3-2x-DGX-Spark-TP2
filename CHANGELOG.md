@@ -146,3 +146,5 @@
 - 2026-10-28 22:15: reference 1024 alone on the plain 30 s clip: -24 % time, no cuts, smoother seams, the same audio
   fade and end-of-clip detail as with 2048: a speed lever only; the recipe's texture-holding came from the soundtrack
   and per-window prompts (or the sample), not the reference size.
+- 2026-10-28 23:30: tail-anchor control: one cut on the same frame as the opening anchor (423), +10 % time: any extra
+  video-reference block in a continuation window makes the model cut; both anchor variants closed.

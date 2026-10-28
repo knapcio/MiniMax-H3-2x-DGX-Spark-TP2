@@ -20,3 +20,18 @@ With the opening frames in the condition set the model treats them as a referenc
 new shot three times. Motion and audio level hold better than in the plain clip and the texture does not blur, but
 the cuts make it unusable, and the extra rows cost a quarter of the time. Rejected; the same-shaped tail-anchor
 control (`H3_TP2_ANCHOR_SOURCE=tail`) stays queued only as a control. Clip in `~/Downloads/h3-30s-anchor/`.
+
+## The same-shaped control: the previous window's tail as the extra reference (`H3_TP2_ANCHOR_SOURCE=tail`)
+
+| | plain | anchor 22 (opening frames) | anchor 22 (previous tail) |
+|---|---|---|---|
+| Wall clock | 3615 / 3591 s | 4501 s | 3950 s (+10 %; windows 1173 / 1424 / 1177 s) |
+| Cuts (scene > 0.1) | none | 12.5 s, 17.6 s, 20.5 s | **17.6 s (0.35)**: the same frame 423 as the opening anchor's second cut |
+| Light | slow swing | dip to 58 at 18 s | dip to 67 at 18 s |
+| Detail at the end | 19-37 | 62-221 | 82-203 (over-sharpened) |
+| Audio at 20-30 s | -34.0 dB | -29.6 dB | -30.0 dB |
+
+The control cuts too, on one of the same frames, although its extra reference carries nothing the latent guide does
+not already carry. So the cuts come from the presence of an extra video-reference block in the sequence (its rows and
+their RoPE positions), not from the opening frames' content, and the detail and audio changes come with it. Both anchor
+variants are closed: an extra video reference in a continuation window makes the model cut.

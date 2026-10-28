@@ -18,6 +18,8 @@ luma change between consecutive frames). Windows: 1 = 0-11.5 s, 2 = 11.5-22.2 s,
 | recipe 30 s (ref 1024 + prompts + soundtrack) | 960x576 | 4.1-5.7 / 4.6-6 / 6.6-9.4 | 26-45 / 22-49 / 44-79 | none |
 | window 345 + per-window prompts 60 s | 960x576 | 1.3-1.7 / 1.0-2.3 / 1.8-3.8 / 2.6-3.3 / 3.1-4.3 (five windows) | 78-155 / 60-151 / 115-189 / 157-205 / 162-242 (over-sharpened at the end) | 32.0 s (0.22), 44.3 s (0.23); dissolve at 21 s, fog at 7 s |
 | ref 1024 only 30 s | 960x576 | 3-8 / 3-5.5 / 2.1-3.4 | 18-50 / 19-49 / 23-33 | none |
+| opening anchor 30 s | 960x576 | 3-7 / 4-7.6 / 2.4-5 | 46-65 / 33-80 / 62-221 | 12.5 s, 17.6 s, 20.5 s |
+| tail anchor (control) 30 s | 960x576 | 3-7 / 2-4.6 / 2-6.9 | 46-65 / 32-55 / 41-203 | 17.6 s |
 | recipe 30 s | 1344x768 | 2.3-2.9 / 2.6-4.8 / 4-5.5 | 46-93 / 58-120 / 89-161 (streaky) | 14.0 s (0.26) |
 
 What this says, with one clip per row:
