@@ -24,17 +24,19 @@ fi
 # frames aligned to 17n+5, windows of continuation_window_frames (277) with continuation_overlap_frames (22) overlap),
 # restating that the same shot continues.  Runs after the EXTRA_JSON merge and uses the effective duration (upstream
 # precedence: duration_seconds, target.duration_seconds, duration); supplied continuation_prompts are kept as they are.
+# CONT_PROMPTS_EXTRA="<sentence>" is appended to every generated window prompt (experiments on wording).
 if [ "${CONT_PROMPTS:-}" = auto ]; then
   extra=$(python3 - "$extra" "$prompt" <<'PY'
-import json, math, sys
+import json, math, os, sys
 e, base = json.loads(sys.argv[1]), sys.argv[2]
 if e.get("long_video") and e.get("long_video_mode", "continuation") == "continuation" and not e.get("continuation_prompts"):
     dur = e.get("duration_seconds", (e.get("target") or {}).get("duration_seconds", e.get("duration")))
     frames = int(round(float(dur) * 24)); frames = ((frames - 5 + 16) // 17) * 17 + 5
     win, ov = int(e.get("continuation_window_frames", 277)), int(e.get("continuation_overlap_frames", 22))
     n = 1 if frames <= win else 1 + math.ceil((frames - win) / (win - ov))
-    first = base.rstrip(". ") + ". One single continuous take from a steady camera, no cuts, no transitions."
-    rest = "The same continuous shot goes on without any cut or transition, the camera keeps moving the same way: " + base
+    extra = os.environ.get("CONT_PROMPTS_EXTRA", "").strip()   # e.g. "The light and the sky stay exactly as they are."
+    first = base.rstrip(". ") + ". One single continuous take from a steady camera, no cuts, no transitions." + (" " + extra if extra else "")
+    rest = "The same continuous shot goes on without any cut or transition, the camera keeps moving the same way: " + base + (" " + extra if extra else "")
     e["continuation_prompts"] = [first] + [rest] * (n - 1)
 print(json.dumps(e))
 PY
