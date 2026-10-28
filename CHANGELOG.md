@@ -118,3 +118,5 @@
 - 2026-10-28 15:25: the per-row-scale epilogue is the FP8 GEMM bottleneck on the GB10: scalar-scale GEMM 189 TFLOPS vs
   59 for the fused per-row epilogue; scalar GEMM with fp32 output + separate exact scaling is 29 % faster already
   (3.8e-6 from CUTLASS, rounding order only). One-step profile: GEMM 47 %, attention 39 % (sm80 flash kernel), a2a 6 %.
+- 2026-10-28 15:55: cuDNN 9.27 A/B (5 s 1344x768, ref 1024): 718.7 s vs 752.9 s (-4.5 %), frames differ (SSIM 0.848);
+  candidate only, pinned 9.20 kept. Two-pass FP8 GEMM A/B renders running next.
