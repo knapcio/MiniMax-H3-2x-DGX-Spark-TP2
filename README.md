@@ -113,6 +113,10 @@ from 1026.7 s (warm repeat; the first request after the boot took 1248.6 s) to 7
 by eye in one sample (`results/20261028-v030-ref2va-edge1024/`);
 it changes the conditioning input, not the model; continuation runs with it are being measured.
 
+**The long-clip recipe so far** (one sample each, 30 s 960x576): `H3_TP2_REF_SHORT_EDGE=1024` + `CONT_PROMPTS=auto`
++ a driving soundtrack renders in 2725 s against 3591 s for the plain mode, with no cut, smooth seams, flat audio and
+lively motion to the end (`results/20261028-v030-recipe-30s-960/`); the 1344x768 run of the same recipe follows.
+
 ## The model
 
 MiniMax H3-Base FL2VA: DiT 62 GB BF16 (31 GB after online FP8), Qwen3-VL text encoder with 50 retained layers

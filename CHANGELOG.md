@@ -87,3 +87,5 @@
 - 2026-10-28 06:50: repeats after 16 h: bit-identical, -0.7 % time (no load drift); the first Ref2VA request after a boot
   is 22 % slower than a warm one, so the reference-1024 gain is -27 %. Window 345: smooth seams, audio fade 1.7 dB
   instead of 7 dB over 30 s, +8 % time (one sample).
+- 2026-10-28 07:45: recipe (ref 1024 + auto per-window prompts + driving soundtrack) at 30 s 960x576: 2725 s (-24 % vs
+  plain), no cuts, smooth seams, flat audio, lively motion; peak 64 GB.
