@@ -89,3 +89,6 @@
   instead of 7 dB over 30 s, +8 % time (one sample).
 - 2026-10-28 07:45: recipe (ref 1024 + auto per-window prompts + driving soundtrack) at 30 s 960x576: 2725 s (-24 % vs
   plain), no cuts, smooth seams, flat audio, lively motion; peak 64 GB.
+- 2026-10-28 10:35: the same recipe at 30 s 1344x768: 9805 s (-3 % vs plain, the reference rows are a smaller share at
+  this size), seams smooth, motion kept, audio flat, but one unrequested cut inside window 2 (13.9 s); peak 73 GB, 39 GB
+  free on the head (one sample).

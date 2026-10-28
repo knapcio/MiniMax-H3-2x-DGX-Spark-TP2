@@ -115,7 +115,9 @@ it changes the conditioning input, not the model; continuation runs with it are 
 
 **The long-clip recipe so far** (one sample each, 30 s 960x576): `H3_TP2_REF_SHORT_EDGE=1024` + `CONT_PROMPTS=auto`
 + a driving soundtrack renders in 2725 s against 3591 s for the plain mode, with no cut, smooth seams, flat audio and
-lively motion to the end (`results/20261028-v030-recipe-30s-960/`); the 1344x768 run of the same recipe follows.
+lively motion to the end (`results/20261028-v030-recipe-30s-960/`). At 1344x768 the same recipe takes 9805 s against
+10114 s (the reference rows are a smaller share of the sequence there), keeps the seams smooth and the motion alive, but
+the model still cut once on its own inside a window (`results/20261028-v030-recipe-30s-1344/`, one sample).
 
 ## The model
 
