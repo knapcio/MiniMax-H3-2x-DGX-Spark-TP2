@@ -340,6 +340,24 @@ def _apply(role: str) -> None:
 
         _fp8.install()
 
+    # 9c) H3_TP2_VAE_STACK_TILES=1: the checkpoint's own batched tile path for the video VAE (``stack_tiling``, off by
+    #     default and not exposed by vLLM-Omni): each rank decodes its tiles as one batch instead of one call per tile.
+    #     Same arithmetic per tile; batching can change cuDNN/cuBLAS algorithm choice, so the frame digest is checked.
+    #     (Pointed at by NVlabs' sol-engine GB10 port, which measures 1.47x on the decode with the same change.)
+    if os.environ.get("H3_TP2_VAE_STACK_TILES", "0") == "1":
+        from vllm_omni.diffusion.models.minimax_h3 import vae as _vae
+
+        _orig_vae_init = _vae.MiniMaxH3VideoVAE.__init__
+
+        def _vae_init(self, *a, **kw):  # noqa: ANN001
+            _orig_vae_init(self, *a, **kw)
+            model = getattr(self, "model", None)
+            if model is not None and hasattr(model, "stack_tiling"):
+                model.stack_tiling = True
+                logger.warning("h3_tp2: video VAE stack_tiling ON (batched tile decode; frame digest to be checked)")
+
+        _vae.MiniMaxH3VideoVAE.__init__ = _vae_init
+
     edge = os.environ.get("H3_TP2_REF_SHORT_EDGE", "").strip()
     if edge:
         from vllm_omni.model_executor.models.minimax_h3 import preprocessing as _pre
