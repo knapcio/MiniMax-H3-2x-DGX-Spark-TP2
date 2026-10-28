@@ -16,11 +16,11 @@ bias and the rounding (`h3_tp2/fp8_gemm.py`; micro-bench in `20261028-fp8-gemm-b
 | SSIM / PSNR vs stock | | 0.809 / 24.8 dB |
 
 Frames 30 and 90 side by side: the same scene, light, grass detail and sharpness; the composition differs (sun
-position, tree placement) as it does between the pair and one Spark (SSIM 0.906) or between two seeds (0.776). The
-arithmetic is the fused epilogue's (fp32 accumulation, fp32 scales and bias, one rounding); only the accumulation
-order inside the GEMM differs (3.8e-6 on one GEMM, the same as cuBLASLt rowwise against CUTLASS), and twenty diffusion
-steps amplify that into a different sample of the same distribution. Not bit-identical to the stock output, same
-quality by eye; deterministic (the two two-pass renders match bit for bit).
+position, tree placement) as it does between the pair and one Spark (SSIM 0.906) or between two seeds (0.776). The two
+paths use the same operations (fp32 accumulation, fp32 scales and bias, one rounding) in different kernels, so one GEMM
+differs by its reduction order (3.8e-6 on the DiT shapes) and twenty diffusion steps amplify that into a visibly
+different clip of the same scene. Measured: SSIM 0.81 against stock, two inspected frames of the same look and detail;
+nothing more general than that is established. Not bit-identical to the stock output; deterministic (the two two-pass renders match bit for bit).
 
 The honest headline is the warm pair: -24 % wall clock, -25 % denoising. The first-request pair shows -43 % because the
 stock kernel path pays a 30 % warm-up on its first request after a boot (723 vs 550 s) that the two-pass path does not

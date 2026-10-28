@@ -122,5 +122,9 @@
   candidate only, pinned 9.20 kept.
 - 2026-10-28 16:50: two-pass FP8 GEMM render A/B (5 s 960x576): first request after boot 437.8 s vs 771.1 s stock
   (-43 %), warm repeat 451.6 s vs 592.3 s (-24 %, denoising -25 %); frames differ (SSIM 0.809, same quality by eye),
-  deterministic, peak +1.8 GB. Review round 8 (astra) and the owner's call on the non-identical output before it
-  becomes the default.
+  deterministic, peak +1.8 GB. The owner's call on the non-identical output before it becomes the default.
+- 2026-10-28 17:10: review round 8 (astra) on the two-pass GEMM: block-scaled and mismatched scale shapes now stay on
+  the stock kernel (guards on scale counts, dtypes, 2-D operands), the Triton pass follows vLLM's epilogue order
+  (scale_b first, bias as one fma), 64-bit row offsets, install-time probe instead of a per-call fallback, dispatch
+  counters in the log; bench wording corrected (PyTorch's rowwise `_scaled_mm` is a CUTLASS kernel on sm121, the fc1
+  fp32 temporary is 4.2 GB).

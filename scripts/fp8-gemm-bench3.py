@@ -9,11 +9,12 @@ dev = "cuda"
 
 @triton.jit
 def _scale_cast(x_ptr, sa_ptr, sb_ptr, y_ptr, N, BLOCK: tl.constexpr):
-    row = tl.program_id(0); col0 = tl.program_id(1) * BLOCK
+    row = tl.program_id(0).to(tl.int64); col0 = tl.program_id(1) * BLOCK
     cols = col0 + tl.arange(0, BLOCK); m = cols < N
-    x = tl.load(x_ptr + row * N + cols, mask=m, other=0.0)
-    y = x * tl.load(sa_ptr + row) * tl.load(sb_ptr + cols, mask=m, other=0.0)
-    tl.store(y_ptr + row * N + cols, y.to(tl.bfloat16), mask=m)
+    off = row * N + cols
+    x = tl.load(x_ptr + off, mask=m, other=0.0)
+    y = (tl.load(sb_ptr + cols, mask=m, other=0.0) * x) * tl.load(sa_ptr + row)
+    tl.store(y_ptr + off, y.to(tl.bfloat16), mask=m)
 
 def scale_cast(x, sa, sb):
     y = torch.empty(x.shape, device=x.device, dtype=torch.bfloat16); N = x.shape[1]; B = 2048

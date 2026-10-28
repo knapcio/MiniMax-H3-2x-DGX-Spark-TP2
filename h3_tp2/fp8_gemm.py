@@ -2,11 +2,12 @@
 
 vLLM's FP8 linear path on the GB10 runs ``cutlass_scaled_mm`` with per-token activation scales (M, 1) and per-channel
 weight scales (N,) applied in the kernel epilogue; on sm121 that kernel reaches ~59 TFLOPS while the same GEMM with
-scalar scales reaches ~189 TFLOPS (results/20261028-fp8-gemm-bench/).  This module keeps the arithmetic of the fused
-epilogue (fp32 accumulation, scales applied in fp32, bias in fp32, one rounding to the output dtype) but splits it:
-a scalar-scale ``torch._scaled_mm`` with fp32 output, then one Triton pass that applies the scales (and the bias) and
-rounds.  The only difference from the fused kernel is the accumulation order inside the GEMM (max abs diff 3.8e-6 on
-the DiT shapes, the same as cuBLASLt rowwise vs CUTLASS).  Not bit-identical to the stock output.
+scalar scales reaches ~189 TFLOPS (results/20261028-fp8-gemm-bench/).  This module uses the same operations as vLLM's
+fused epilogue (fp32 accumulation, scale_b then scale_a in fp32, bias folded with an fma, one rounding to the output
+dtype) but splits them: a scalar-scale ``torch._scaled_mm`` with fp32 output (cuBLASLt, fp32 compute), then one Triton
+pass for the scales, the bias and the rounding.  The GEMM's reduction order differs from the CUTLASS kernel's (max abs
+diff 3.8e-6 on the DiT shapes), so the output is not bit-identical to stock; over a 20-step render the frames differ
+(SSIM ~0.81 against stock, same look).  The fp32 temporary is M x N x 4 bytes (4.2 GB for fc1 at M = 36864).
 """
 from __future__ import annotations
 
@@ -27,9 +28,13 @@ try:
         m = cols < N
         off = row * N + cols
         x = tl.load(x_ptr + off, mask=m, other=0.0)
-        y = x * tl.load(sa_ptr + row) * tl.load(sb_ptr + cols, mask=m, other=0.0)
+        # vLLM's CUTLASS epilogue order: t = scale_b * acc, then scale_a * t, bias folded as fma(scale_a, t, bias)
+        t = tl.load(sb_ptr + cols, mask=m, other=0.0) * x
+        sa = tl.load(sa_ptr + row)
         if HAS_BIAS:
-            y = y + tl.load(bias_ptr + cols, mask=m, other=0.0).to(tl.float32)
+            y = tl.math.fma(sa, t, tl.load(bias_ptr + cols, mask=m, other=0.0).to(tl.float32))
+        else:
+            y = sa * t
         if OUT_BF16:
             tl.store(y_ptr + off, y.to(tl.bfloat16), mask=m)
         else:
@@ -42,8 +47,9 @@ _state = {"triton": _HAVE_TRITON}
 
 
 def scale_bias_cast_torch(x32: torch.Tensor, sa: torch.Tensor, sb: torch.Tensor, bias: torch.Tensor | None, out_dtype: torch.dtype) -> torch.Tensor:
-    """Reference for the Triton pass: fp32 scale, fp32 bias, one rounding."""
-    y = x32 * sa.view(-1, 1).float() * sb.view(1, -1).float()
+    """Eager reference for the Triton pass in the same order (scale_b first, then scale_a, then the bias) with one
+    rounding to ``out_dtype``; the bias add is a separate fp32 rounding here (the kernel uses one fma)."""
+    y = (sb.view(1, -1).float() * x32) * sa.view(-1, 1).float()
     if bias is not None:
         y = y + bias.view(1, -1).float()
     return y.to(out_dtype)
@@ -63,15 +69,33 @@ def scaled_mm_tensor32(a: torch.Tensor, b: torch.Tensor, scale_a: torch.Tensor, 
     if not _state["triton"] or out_dtype not in (torch.bfloat16, torch.float16):
         return scale_bias_cast_torch(x32, sa, sb, bias, out_dtype)
     y = torch.empty((M, N), device=a.device, dtype=out_dtype)
+    _launch(x32, sa, sb, bias, y, N)
+    return y
+
+
+def _launch(x32, sa, sb, bias, y, N):  # noqa: ANN001
     block = 2048
     bias_t = bias if bias is not None else y  # unused when HAS_BIAS is False
+    _scale_bias_cast[(x32.shape[0], triton.cdiv(N, block))](x32, sa.contiguous(), sb.contiguous(), bias_t, y, N,
+                                                              HAS_BIAS=bias is not None, OUT_BF16=y.dtype is torch.bfloat16, BLOCK=block)
+
+
+def probe_triton(device) -> bool:  # noqa: ANN001
+    """Compile and run the scale pass once on a tiny input at install time; on failure (e.g. Triton cannot build its
+    runtime helpers because the Python headers are missing) the module keeps the eager torch pass for the process."""
+    if not _state["triton"]:
+        return False
     try:
-        _scale_bias_cast[(M, triton.cdiv(N, block))](x32, sa, sb, bias_t, y, N, HAS_BIAS=bias is not None, OUT_BF16=out_dtype is torch.bfloat16, BLOCK=block)
-    except Exception as exc:  # e.g. Triton cannot build its runtime helpers (no Python headers): keep the torch pass
-        _state["triton"] = False
-        logger.warning("h3_tp2: Triton scale pass unavailable (%s); using the torch pass (same values, ~3 passes)", exc)
-        return scale_bias_cast_torch(x32, sa, sb, bias, out_dtype)
-    return y
+        x = torch.randn(4, 32, device=device); sa = torch.rand(4, device=device); sb = torch.rand(32, device=device)
+        y = torch.empty((4, 32), device=device, dtype=torch.bfloat16)
+        _launch(x, sa, sb, None, y, 32)
+        torch.cuda.synchronize(device)
+        ok = torch.equal(y, scale_bias_cast_torch(x, sa, sb, None, torch.bfloat16))
+    except Exception as exc:
+        logger.warning("h3_tp2: Triton scale pass unavailable (%s); using the eager torch pass", exc)
+        ok = False
+    _state["triton"] = ok
+    return ok
 
 
 def install() -> None:
@@ -85,14 +109,26 @@ def install() -> None:
     stats = {"two_pass": 0, "stock": 0}
 
     def _mm(a, b, scale_a, scale_b, out_dtype, bias=None):  # noqa: ANN001
-        if (scale_a.numel() == 1 and scale_b.numel() == 1) or a.dtype != torch.float8_e4m3fn or b.dtype != torch.float8_e4m3fn \
-                or not a.is_contiguous() or not b.t().is_contiguous() or a.shape[1] % 16 or b.shape[1] % 16:
+        M, N = a.shape[0], b.shape[-1]
+        if (a.dim() != 2 or b.dim() != 2 or a.shape[1] != b.shape[0]
+                or (scale_a.numel() == 1 and scale_b.numel() == 1)          # per-tensor: stock is already fast
+                or scale_a.numel() not in (1, M) or scale_b.numel() not in (1, N)   # block-scaled schemes: stock
+                or scale_a.dtype != torch.float32 or scale_b.dtype != torch.float32
+                or a.dtype != torch.float8_e4m3fn or b.dtype != torch.float8_e4m3fn
+                or a.device != b.device or out_dtype not in (torch.bfloat16, torch.float16)
+                or (bias is not None and (bias.dim() != 1 or bias.numel() != N))
+                or not a.is_contiguous() or not b.t().is_contiguous() or a.shape[1] % 16 or N % 16):
             stats["stock"] += 1
             return orig(a, b, scale_a, scale_b, out_dtype, bias)
         stats["two_pass"] += 1
+        n = stats["two_pass"] + stats["stock"]
+        if n == 2000 or n % 20000 == 0:
+            logger.info("h3_tp2: FP8 GEMM dispatch so far: two-pass %d, stock %d", stats["two_pass"], stats["stock"])
         return scaled_mm_tensor32(a, b, scale_a, scale_b, out_dtype, bias)
 
     _mm._h3_tp2_tensor32 = True
     _mm.stats = stats
     ops.cutlass_scaled_mm = _mm
-    logger.warning("h3_tp2: FP8 GEMM two-pass (scalar-scale GEMM + exact scale epilogue) ON; not bit-identical to the stock kernel")
+    triton_ok = probe_triton("cuda") if torch.cuda.is_available() else False
+    logger.warning("h3_tp2: FP8 GEMM two-pass (scalar-scale GEMM + scale epilogue, %s) ON; not bit-identical to the stock kernel",
+                   "Triton pass" if triton_ok else "eager torch pass")
