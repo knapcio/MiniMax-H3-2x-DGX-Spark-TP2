@@ -102,3 +102,6 @@
   fails on extraction errors and adds gradient-orientation coherence (the 60 s clip's coherence rises 0.10 -> 0.45 as its
   detail falls: streaking plus blur), results wording softened (recipe timing and the seam are combined-change,
   single-sample observations). Queued: plain 30 s with only the reference at 1024, and the tail-anchor control.
+- 2026-10-28 11:50: `audio_flow_shift` 1 (review round 6 idea) with per-window prompts: the generated audio fades 11 dB
+  over 30 s instead of 8 dB, rejected; the knob stays at 3.0. Light swings by a third across the windows, motion and
+  detail hold (one sample).
