@@ -22,17 +22,18 @@ try:
 
     @triton.jit
     def _scale_bias_cast(x_ptr, sa_ptr, sb_ptr, bias_ptr, y_ptr, N, HAS_BIAS: tl.constexpr, OUT_BF16: tl.constexpr, BLOCK: tl.constexpr):
-        row = tl.program_id(0)
+        row = tl.program_id(0).to(tl.int64)          # M*N exceeds 2^31 on 1344x768 and continuation windows
         cols = tl.program_id(1) * BLOCK + tl.arange(0, BLOCK)
         m = cols < N
-        x = tl.load(x_ptr + row * N + cols, mask=m, other=0.0)
+        off = row * N + cols
+        x = tl.load(x_ptr + off, mask=m, other=0.0)
         y = x * tl.load(sa_ptr + row) * tl.load(sb_ptr + cols, mask=m, other=0.0)
         if HAS_BIAS:
             y = y + tl.load(bias_ptr + cols, mask=m, other=0.0).to(tl.float32)
         if OUT_BF16:
-            tl.store(y_ptr + row * N + cols, y.to(tl.bfloat16), mask=m)
+            tl.store(y_ptr + off, y.to(tl.bfloat16), mask=m)
         else:
-            tl.store(y_ptr + row * N + cols, y.to(tl.float16), mask=m)
+            tl.store(y_ptr + off, y.to(tl.float16), mask=m)
 
     _HAVE_TRITON = True
 except Exception:  # pragma: no cover - CPU-only environments
