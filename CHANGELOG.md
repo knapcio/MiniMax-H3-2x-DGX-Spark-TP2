@@ -136,3 +136,7 @@
   reference), +25 % time; motion, audio and texture held. Window-1 step profile at 277 frames: attention 61 %, GEMM 30 %.
 - 2026-10-28 21:30: `H3_TP2_FP8_FUSE_SWIGLU=1`: fused FP8 epilogue + SwiGLU for the MLP (fc1's fp32 product read once,
   no bf16 intermediate), bit-identical to two-pass + `silu_and_mul` in the unit test; render A/B queued.
+- 2026-10-28 21:25: light-lock wording (60 s, window 345): the same two cuts on the same frames as without it; cuts
+  are sampling events tied to the per-window seed, not prompt reactions. All 60 s clips with a driving soundtrack are
+  cut-free, all with generated audio cut twice. Fused SwiGLU: review round 9 applied (memory lifetime, exception
+  cleanup, NaN-safe rounding, width guard, signed-zero parity with vLLM's kernel).
