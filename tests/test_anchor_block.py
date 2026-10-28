@@ -5,8 +5,9 @@ torch = pytest.importorskip("torch")
 from h3_tp2.plugin import insert_anchor_block  # noqa: E402
 
 
-def _args(gh=8, gw=12, gt=7, image_rows=100):
+def _args(gh=8, gw=12, gt=7):
     fr = (gh // 2) * (gw // 2)
+    image_rows = (16 // 2) * (24 // 2)  # one image reference of latent 16x24 = 96 rows, as upstream packs it
     rows = torch.cat((torch.full((image_rows, 96), 1.0), torch.full((gt * fr, 96), 3.0)))
     return {"visual_condition": rows, "visual_condition_shapes": [(1, 16, 24), (gt, gh, gw)],
             "ref_blocks": [{"kind": "image", "latent_h": 16, "latent_w": 24}, {"kind": "audio", "ref_audio_t": 9},
@@ -19,8 +20,8 @@ def test_anchor_goes_before_the_guide():
     anchor = torch.full((7 * fr, 96), 2.0)
     out = insert_anchor_block(a, anchor, 7)
     rows = out["visual_condition"]
-    assert rows.shape[0] == 100 + 7 * fr + 7 * fr
-    assert (rows[:100] == 1).all() and (rows[100:100 + 7 * fr] == 2).all() and (rows[100 + 7 * fr:] == 3).all()
+    assert rows.shape[0] == 96 + 7 * fr + 7 * fr
+    assert (rows[:96] == 1).all() and (rows[96:96 + 7 * fr] == 2).all() and (rows[96 + 7 * fr:] == 3).all()
     assert out["visual_condition_shapes"] == [(1, 16, 24), (7, 8, 12), (7, 8, 12)]
     kinds = [b["kind"] for b in out["ref_blocks"]]
     assert kinds == ["image", "audio", "video", "latent_guide"]

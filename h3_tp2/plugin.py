@@ -276,6 +276,8 @@ def _apply(role: str) -> None:
     #    H3_TP2_ANCHOR_FRAMES=<frames on the 17n+5 grid, e.g. 22>: every window after the first also gets the first
     #    window's opening frames as a Ref2VA video reference (kind "video", no audio rows, placed before the latent
     #    guide), so the detail level of the clip's start conditions every hand-over, not only the previous tail.
+    #    H3_TP2_ANCHOR_SOURCE=tail is the same-shaped control: the previous window's last frames instead (what the
+    #    guide already carries), to separate "extra reference rows + RoPE shift" from "opening texture".
     step = os.environ.get("H3_TP2_WINDOW_SEED_STEP", "").strip()
     toff = os.environ.get("H3_TP2_WINDOW_TEMPORAL_OFFSET", "").strip()
     anchor = os.environ.get("H3_TP2_ANCHOR_FRAMES", "").strip()
@@ -291,9 +293,16 @@ def _apply(role: str) -> None:
         _anchor_v = _cont._video_t(int(anchor)) if anchor else 0
         if anchor and (int(anchor) < 5 or int(anchor) % 17 != 5):
             raise RuntimeError("H3_TP2_ANCHOR_FRAMES must be on the 17n+5 frame grid")
+        _anchor_src = os.environ.get("H3_TP2_ANCHOR_SOURCE", "first").strip().lower()
+        if _anchor_src not in ("first", "tail"):
+            raise RuntimeError("H3_TP2_ANCHOR_SOURCE must be first (opening frames of window 1) or tail (last frames of the previous window)")
 
         def _dc(diffuse, kwargs, **kw):  # noqa: ANN001
             counter = {"i": 0, "anchor": None}
+            if _anchor_v:
+                first = min(int(kwargs["num_frames"]), int(kw.get("window_frames", 277)))
+                if _anchor_v > _cont._video_t(first):
+                    raise RuntimeError(f"H3_TP2_ANCHOR_FRAMES={anchor} exceeds the first window ({first} frames)")
 
             def _diffuse(**a):  # noqa: ANN001
                 i = counter["i"]
@@ -310,8 +319,9 @@ def _apply(role: str) -> None:
                 logger.info("h3_tp2: continuation window %d seed=%s temporal_offset=%s anchor_rows=%s", i + 1, a.get("seed"),
                             a.get("temporal_offset"), 0 if not (_anchor_v and i) else int(counter["anchor"].shape[0]))
                 video, audio = diffuse(**a)
-                if _anchor_v and i == 0:
-                    counter["anchor"] = _cont.minimax_h3_patchify_video_latent(video[:, :, :_anchor_v], patch_size=(1, 2, 2))
+                if _anchor_v and (i == 0 if _anchor_src == "first" else True):
+                    src = video[:, :, :_anchor_v] if _anchor_src == "first" else video[:, :, -_anchor_v:]
+                    counter["anchor"] = _cont.minimax_h3_patchify_video_latent(src, patch_size=(1, 2, 2))
                 return video, audio
 
             return _orig_dc(_diffuse, kwargs, **kw)
@@ -319,8 +329,8 @@ def _apply(role: str) -> None:
         _cont.diffuse_continuation = _dc
         if getattr(_pp, "diffuse_continuation", None) is _orig_dc:
             _pp.diffuse_continuation = _dc
-        logger.warning("h3_tp2: EXPERIMENT continuation seed step=%s temporal offset=%s anchor frames=%s (changes outputs)",
-                       _step, toff or "upstream", anchor or "none")
+        logger.warning("h3_tp2: EXPERIMENT continuation seed step=%s temporal offset=%s anchor frames=%s source=%s (changes outputs)",
+                       _step, toff or "upstream", anchor or "none", _anchor_src)
 
     edge = os.environ.get("H3_TP2_REF_SHORT_EDGE", "").strip()
     if edge:

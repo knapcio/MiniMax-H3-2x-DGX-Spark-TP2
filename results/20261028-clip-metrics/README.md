@@ -20,12 +20,15 @@ luma change between consecutive frames). Windows: 1 = 0-11.5 s, 2 = 11.5-22.2 s,
 
 What this says, with one clip per row:
 
-- Detail falls across windows in the plain, single-take and per-window-prompt clips and in the 60 s prompt + soundtrack
+- Detail falls across windows in the plain 960x576, single-take and per-window-prompt clips and in the 60 s prompt + soundtrack
   clip, whose grass is a blurred surface in the last 12 s (6-11 against 49-83 in the first window, confirmed by eye).
-  Motion falls with it in the plain and prompt-only clips; the soundtrack keeps the motion but not the detail.
+  Motion falls with it in the plain and prompt-only clips; the soundtrack keeps the motion but not the detail. The
+  plain 1344x768 clip does not fall within 30 s (52-124).
 - The two clips with the reference at 1024 px (the recipe rows) and the window-345 clip do not lose detail within 30 s;
   the 1344x768 recipe clip overshoots instead (streaky grass in window 3, visible by eye). Whether the 1024 reference
-  is the reason or the sample is, a 60 s recipe clip will tell (queued: 60 s, window 345, per-window prompts).
+  is the reason or the sample is stays open: the queued 60 s runs test whether the recipe keeps its texture for 60 s
+  (window 345 + prompts; ref 1024 + prompts + H3 audio), and a plain 30 s run with only the reference at 1024 is queued
+  to isolate the reference size.
 - The 1344x768 size cut once in both of its clips (seam 1 without the recipe, 14.0 s inside window 2 with it); the
   960x576 clips never cut at a seam.
 

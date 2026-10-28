@@ -97,3 +97,8 @@
 - 2026-10-28 11:00: `scripts/clip-metrics.sh` (motion, detail, audio, seams, cuts per clip) and the metrics of every
   continuation clip so far in results/. Anchor experiment added (`H3_TP2_ANCHOR_FRAMES`, unit-tested): the first
   window's opening frames as a video reference for every later window; A/B against the plain 30 s clip queued.
+- 2026-10-28 11:00: review round 7 (astra): anchor length validated against the first window before rendering,
+  `H3_TP2_ANCHOR_SOURCE=tail` as the same-shaped control, test fixture rows derived from the shape, `clip-metrics.sh`
+  fails on extraction errors and adds gradient-orientation coherence (the 60 s clip's coherence rises 0.10 -> 0.45 as its
+  detail falls: streaking plus blur), results wording softened (recipe timing and the seam are combined-change,
+  single-sample observations). Queued: plain 30 s with only the reference at 1024, and the tail-anchor control.

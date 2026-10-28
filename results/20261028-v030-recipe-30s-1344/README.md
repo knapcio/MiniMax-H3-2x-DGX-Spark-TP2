@@ -18,12 +18,13 @@ plain counterpart (`20261027-v030-continuation-30s-1344/`) are one sample each.
 Frames 334 -> 335: the view jumps from "sun on the left, forest on the right" to "sun in the centre", an unrequested
 hard cut 58 frames after the first hand-over. Both hand-overs themselves are smooth, and the last five seconds are a
 continuous pan to the right towards the forest and a path (no cut, scene score <= 0.034 elsewhere). So at this
-resolution the recipe removed the seam cut of the plain run but the model still cut once on its own; at 960x576 the same
+resolution the recipe clip has no cut at a seam (the plain run had one) but the model still cut once on its own; at 960x576 the same
 recipe produced no cut (one sample each; the 960x576 plain run also stayed cut-free at the seams while the 1344x768
 plain run did not). Motion did not decay and the audio is the given track.
 
-Time: at 1344x768 the reference rows are a smaller share of the sequence (video tokens grow with the frame area, the
-reference stays ~1024 px), so the reference-1024 saving is -3 % here against -24 % at 960x576. Window 2 is the
+Time: the whole recipe (three changes at once, one sample) is -3 % here against -24 % at 960x576. A plausible reason,
+not isolated: at 1344x768 the reference rows are a smaller share of the sequence (video tokens grow with the frame
+area, the reference stays ~1024 px). Window 2 is the
 slowest window in both 1344x768 runs (+48 % and +17 % against window 1 with the same frame count); not explained.
 Peak 73 GB with 39 GB free on the head: 1344x768 continuation fits with headroom.
 
