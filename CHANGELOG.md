@@ -134,5 +134,3 @@
   lever to port. Notes in results/20261028-nvlabs-sol-engine-gb10/.
 - 2026-10-28 19:15: opening-frames anchor rejected: three hard cuts inside windows (the model cuts back to the
   reference), +25 % time; motion, audio and texture held. Window-1 step profile at 277 frames: attention 61 %, GEMM 30 %.
-- 2026-10-28 19:15: opening-frames anchor rejected: three hard cuts inside windows (the model cuts back to the
-  reference), +25 % time; motion, audio and texture held. Window-1 step profile at 277 frames: attention 61 %, GEMM 30 %.
