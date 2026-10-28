@@ -105,8 +105,10 @@
 - 2026-10-28 11:50: `audio_flow_shift` 1 (review round 6 idea) with per-window prompts: the generated audio fades 11 dB
   over 30 s instead of 8 dB, rejected; the knob stays at 3.0. Light swings by a third across the windows, motion and
   detail hold (one sample).
-- 2026-10-28 14:20: 60 s with window 345 + per-window prompts and generated audio: audio flat (-25.6 .. -22.4 dB), detail
-  sharp to the end (78-242), light steady, seams smooth; two hard cuts inside windows (32.0 s, 44.3 s). Windows with a
+- 2026-10-28 14:20: 60 s with window 345 + per-window prompts and generated audio: audio flat (-25.6 .. -22.4 dB), no blur,
+  light steady, seams smooth; but fog at 7 s, a dissolve at 21 s, hard cuts at 32.0 s and 44.3 s (all inside windows)
+  and an over-contrasty, streaky sky in the last 10 s (owner's viewing, confirmed frame by frame). `clip-metrics.sh`
+  gained a one-second-change line that shows dissolves. Windows with a
   guide cost +41 % against the first window (no throttling; profile queued). 8776 s, peak 72.3 GB (one sample).
 - 2026-10-28 14:45: reference short edge 768: 687 s against 753 s at 1024 and 1027 s at 2048 (5 s 1344x768), same look;
   diminishing, 1024 stays the recommendation.

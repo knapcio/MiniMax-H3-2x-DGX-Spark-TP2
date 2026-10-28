@@ -120,8 +120,8 @@ lively motion to the end (`results/20261028-v030-recipe-30s-960/`). At 1344x768 
 the model still cut once on its own inside a window (`results/20261028-v030-recipe-30s-1344/`, one sample). Open:
 fine detail decays across windows (the 60 s clip's grass is a blurred surface by the end, Laplacian variance 83 -> 6),
 so the recipe is clean at 30 s 960x576 and not yet at 60 s or at 1344x768. With upstream's largest window (345
-frames) and per-window prompts, a 60 s clip with generated audio kept its audio level and its detail to the end but
-cut twice inside windows (`results/20261028-v030-continuation-60s-win345-prompts/`, one sample).
+frames) and per-window prompts, a 60 s clip with generated audio kept its audio level and did not blur, but the model changed
+the weather on its own four times (fog, sun in and out: a dissolve and two cuts) and over-sharpened the sky at the end (`results/20261028-v030-continuation-60s-win345-prompts/`, one sample).
 
 ## The model
 

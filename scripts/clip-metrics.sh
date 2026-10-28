@@ -7,7 +7,9 @@
 #             detail flags directional streaking (idea: astra review round 7)
 #   light   = mean luma of one frame per second (0-255; a slow rise or fall is light drift)
 #   audio   = mean volume per 10 s (dB)
-#   cuts    = frames with an ffmpeg scene score > 0.1 (hard cuts; dissolves are missed, look at the frames)
+#   cuts    = frames with an ffmpeg scene score > 0.1 (hard cuts only)
+#   1s-change = mean absolute luma change between frame n and frame n+24, per second: a dissolve or a fast state
+#             change (fog rolling in, sun going behind a cloud) shows here as a spike without a single-frame cut
 #   seams   = luma change at every window hand-over (k*(window-overlap) + overlap) against the 27 frames before it
 # Usage: clip-metrics.sh <clip.mp4> [window_frames=277] [overlap_frames=22]   (needs ffmpeg + the H3 venv's numpy/PIL)
 set -euo pipefail
@@ -38,6 +40,8 @@ fr = [np.asarray(Image.open(f), dtype=np.float32) for f in sorted(glob.glob(t + 
 d = [np.abs(fr[i] - fr[i-1]).mean() for i in range(1, len(fr))]
 sec = [np.mean(d[s*24:(s+1)*24]) for s in range(len(d) // 24 + (1 if len(d) % 24 else 0))]
 print("motion per second: " + " ".join(f"{v:.1f}" for v in sec))
+d24 = [np.abs(fr[i + 24] - fr[i]).mean() for i in range(0, len(fr) - 24, 24)]
+print("1s-change per second: " + " ".join(f"{v:.0f}" for v in d24))
 print("light per second: " + " ".join(f"{float(v):.0f}" for v in re.findall(r"YAVG=([\d.]+)", open(t + "/yavg.txt").read())))
 print("detail per second: " + " ".join(f"{v:.0f}" for v in det))
 print("coherence per second: " + " ".join(f"{v:.2f}" for v in coh))
