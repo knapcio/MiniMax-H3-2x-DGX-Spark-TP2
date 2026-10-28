@@ -143,3 +143,6 @@
 - 2026-10-28 21:45: `H3_TP2_FP8_FUSE_SWIGLU=2`: the SwiGLU output is quantised per token inside the fused kernel and
   fed to fc2's scaled-mm kernel directly; a Triton per-token FP8 quant reproduces vLLM's compiled native quant bit for
   bit (fp8 values and scales, tested). Render A/B for both levels queued (queue7, queue8).
+- 2026-10-28 22:15: reference 1024 alone on the plain 30 s clip: -24 % time, no cuts, smoother seams, the same audio
+  fade and end-of-clip detail as with 2048: a speed lever only; the recipe's texture-holding came from the soundtrack
+  and per-window prompts (or the sample), not the reference size.
