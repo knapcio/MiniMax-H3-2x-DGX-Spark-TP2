@@ -121,5 +121,6 @@
 - 2026-10-28 15:55: cuDNN 9.27 A/B (5 s 1344x768, ref 1024): 718.7 s vs 752.9 s (-4.5 %), frames differ (SSIM 0.848);
   candidate only, pinned 9.20 kept.
 - 2026-10-28 16:50: two-pass FP8 GEMM render A/B (5 s 960x576): first request after boot 437.8 s vs 771.1 s stock
-  (-43 %), denoising 392.8 vs 723.3 s; frames differ (SSIM 0.809, same quality by eye), peak +1.8 GB. Warm repeat and
-  the review follow before it becomes the default.
+  (-43 %), warm repeat 451.6 s vs 592.3 s (-24 %, denoising -25 %); frames differ (SSIM 0.809, same quality by eye),
+  deterministic, peak +1.8 GB. Review round 8 (astra) and the owner's call on the non-identical output before it
+  becomes the default.

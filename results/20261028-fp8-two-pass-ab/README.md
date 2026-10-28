@@ -9,9 +9,10 @@ bias and the rounding (`h3_tp2/fp8_gemm.py`; micro-bench in `20261028-fp8-gemm-b
 |---|---|---|
 | Wall clock, first request after boot | 771.1 s | 437.8 s (-43 %) |
 | Denoising, first request | 723.3 s | 392.8 s |
-| Wall clock, warm repeat | 592.3 s | see below |
+| Wall clock, warm repeat | 592.3 s | 451.6 s (-24 %) |
+| Denoising, warm repeat | 550.2 s | 413.2 s (-25 %) |
 | Peak (X-Peak-Memory-MB) | 62.9 GB | 64.7 GB (+1.8 GB: the fp32 GEMM output) |
-| framemd5 | 85437ffa (both stock runs identical) | 8e58f759 |
+| framemd5 | 85437ffa (both stock runs identical) | 8e58f759 (both two-pass runs identical) |
 | SSIM / PSNR vs stock | | 0.809 / 24.8 dB |
 
 Frames 30 and 90 side by side: the same scene, light, grass detail and sharpness; the composition differs (sun
@@ -19,4 +20,9 @@ position, tree placement) as it does between the pair and one Spark (SSIM 0.906)
 arithmetic is the fused epilogue's (fp32 accumulation, fp32 scales and bias, one rounding); only the accumulation
 order inside the GEMM differs (3.8e-6 on one GEMM, the same as cuBLASLt rowwise against CUTLASS), and twenty diffusion
 steps amplify that into a different sample of the same distribution. Not bit-identical to the stock output, same
-quality by eye.
+quality by eye; deterministic (the two two-pass renders match bit for bit).
+
+The honest headline is the warm pair: -24 % wall clock, -25 % denoising. The first-request pair shows -43 % because the
+stock kernel path pays a 30 % warm-up on its first request after a boot (723 vs 550 s) that the two-pass path does not
+(393 vs 413 s): the slow part of a cold first request appears to be in the CUTLASS FP8 path itself. GEMMs are 47 % of a
+step in the profile, so a 25 % step saving means the GEMM phase got about twice as fast, consistent with the micro-bench.
