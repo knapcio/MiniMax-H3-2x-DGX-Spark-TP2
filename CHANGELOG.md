@@ -134,3 +134,5 @@
   lever to port. Notes in results/20261028-nvlabs-sol-engine-gb10/.
 - 2026-10-28 19:15: opening-frames anchor rejected: three hard cuts inside windows (the model cuts back to the
   reference), +25 % time; motion, audio and texture held. Window-1 step profile at 277 frames: attention 61 %, GEMM 30 %.
+- 2026-10-28 21:30: `H3_TP2_FP8_FUSE_SWIGLU=1`: fused FP8 epilogue + SwiGLU for the MLP (fc1's fp32 product read once,
+  no bf16 intermediate), bit-identical to two-pass + `silu_and_mul` in the unit test; render A/B queued.

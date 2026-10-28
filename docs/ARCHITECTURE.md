@@ -110,6 +110,9 @@ same-seed frame digest (`h3_tp2 frames sha256` in the head journal, framemd5 in 
 - `H3_TP2_FP8_GEMM=tensor32`: the two-pass FP8 GEMM (`h3_tp2/fp8_gemm.py`): scalar-scale cuBLASLt GEMM with fp32 output
   plus one Triton pass for the per-token / per-channel scales, bias and rounding in vLLM's epilogue order. 3x faster
   GEMMs on the GB10, -24 % on a warm 5 s render; not bit-identical to the stock CUTLASS kernel (reduction order).
+- `H3_TP2_FP8_FUSE_SWIGLU=1` (with `tensor32`): the MLP's fc1 keeps its fp32 product and one Triton kernel applies the
+  epilogue and `silu_and_mul` (`h3_tp2/fp8_swiglu.py`), removing the bf16 [M, 2*ffn] intermediate (4.2 GB of traffic per
+  layer at M = 36864). Bit-identical to two-pass + `silu_and_mul` (tested: vLLM's silu rounds to bf16 before the product).
 - `H3_TP2_VAE_STACK_TILES=1`: turns on the H3 VAE's own batched tile decode (`stack_tiling`), one decoder call per rank
   instead of one per tile. Measured in results/ (decode time, frame digest).
 - Continuation experiments (vLLM-Omni >= 0.30, all change the output): `H3_TP2_WINDOW_SEED_STEP=<n>` (seed + k*n in

@@ -98,6 +98,15 @@ def probe_triton(device) -> bool:  # noqa: ANN001
     return ok
 
 
+_stash_hook = None
+
+
+def set_stash_hook(fn) -> None:  # noqa: ANN001
+    """fp8_swiglu registers a hook that may take over a two-pass call (fc1 of the MLP) and return a placeholder."""
+    global _stash_hook
+    _stash_hook = fn
+
+
 def install() -> None:
     """Route the row/column-scaled FP8 GEMMs of vLLM's linear path through the two-pass kernel; scalar-scaled calls and
     layouts ``torch._scaled_mm`` cannot take (non-row-major A, B whose transpose is not contiguous) keep the stock kernel."""
@@ -124,6 +133,10 @@ def install() -> None:
         n = stats["two_pass"] + stats["stock"]
         if n == 2000 or n % 20000 == 0:
             logger.info("h3_tp2: FP8 GEMM dispatch so far: two-pass %d, stock %d", stats["two_pass"], stats["stock"])
+        if _stash_hook is not None:
+            placeholder = _stash_hook(a, b, scale_a, scale_b, out_dtype, bias)
+            if placeholder is not None:
+                return placeholder
         return scaled_mm_tensor32(a, b, scale_a, scale_b, out_dtype, bias)
 
     _mm._h3_tp2_tensor32 = True

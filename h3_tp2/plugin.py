@@ -339,6 +339,12 @@ def _apply(role: str) -> None:
         from . import fp8_gemm as _fp8
 
         _fp8.install()
+        # 9b') H3_TP2_FP8_FUSE_SWIGLU=1: the MLP's fc1 keeps its fp32 product and one Triton kernel applies the
+        #      epilogue and silu_and_mul (no bf16 [M, 2*ffn] intermediate).  Same values as two-pass + silu_and_mul.
+        if os.environ.get("H3_TP2_FP8_FUSE_SWIGLU", "0") == "1":
+            from . import fp8_swiglu as _fsw
+
+            _fsw.install()
 
     # 9c) H3_TP2_VAE_STACK_TILES=1: the checkpoint's own batched tile path for the video VAE (``stack_tiling``, off by
     #     default and not exposed by vLLM-Omni): each rank decodes its tiles as one batch instead of one call per tile.
