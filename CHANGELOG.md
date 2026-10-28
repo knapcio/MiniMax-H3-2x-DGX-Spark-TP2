@@ -94,3 +94,6 @@
   free on the head (one sample). Detail decay found by the owner and measured (Laplacian variance of the grass per
   second): the 60 s clip with prompt + soundtrack loses most of its fine texture by the end (83 -> 6), the 1344x768
   recipe clip turns streaky in window 3; a third decay axis beside motion and audio, open.
+- 2026-10-28 11:00: `scripts/clip-metrics.sh` (motion, detail, audio, seams, cuts per clip) and the metrics of every
+  continuation clip so far in results/. Anchor experiment added (`H3_TP2_ANCHOR_FRAMES`, unit-tested): the first
+  window's opening frames as a video reference for every later window; A/B against the plain 30 s clip queued.

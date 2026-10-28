@@ -105,6 +105,14 @@ same-seed frame digest (`h3_tp2 frames sha256` in the head journal, framemd5 in 
   the same plan for fewer heads is verified only by the frame digest for the configurations listed in the README.
 - `H3_TP2_MAX_OUTPUT_SECONDS=<s>`: lifts the pipeline's 15 s cap (model specification is 4-15 s; above it the DiT
   extrapolates its temporal RoPE and the VAE runs lengths it was not validated on). Experiment only.
+- `H3_TP2_PROFILE_STEP=<n>`: torch.profiler around the n-th DiT forward of the process (one denoising step), table
+  in the log and in `~/h3-tp2-logs/profile-<role>-<pid>.txt`. Measurement only.
+- Continuation experiments (vLLM-Omni >= 0.30, all change the output): `H3_TP2_WINDOW_SEED_STEP=<n>` (seed + k*n in
+  window k), `H3_TP2_WINDOW_TEMPORAL_OFFSET=<x|cap:x>` (the per-window RoPE time origin), `H3_TP2_REF_SHORT_EDGE=<px>`
+  (reference image resized to this short edge instead of 2048), `H3_TP2_ANCHOR_FRAMES=<17n+5>` (the first window's
+  opening frames join every later window as a Ref2VA video reference, placed before the latent guide; see
+  `insert_anchor_block`). The seed step and the temporal offset were measured to change nothing (results/); the
+  reference edge is part of the long-clip recipe; the anchor is under test against the detail decay.
 
 ## vLLM-Omni versions
 

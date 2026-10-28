@@ -29,6 +29,28 @@ logger = logging.getLogger("vllm_omni.h3_tp2.plugin")
 _APPLIED = False
 
 
+
+def insert_anchor_block(args: dict, anchor_rows, anchor_v: int) -> dict:
+    """Put ``anchor_rows`` (packed [n, 96] video-latent rows of ``anchor_v`` latent frames) into a continuation
+    window's conditioning right before upstream's latent guide, which is always the last visual block: the rows, the
+    shape list and the ``ref_blocks`` entry (kind ``video``, no audio rows).  Mutates and returns ``args``."""
+    import torch
+
+    rows, shapes, blocks = args["visual_condition"], list(args["visual_condition_shapes"]), list(args["ref_blocks"])
+    if not blocks or blocks[-1].get("kind") != "latent_guide" or tuple(shapes[-1])[0] != blocks[-1]["latent_t"]:
+        raise RuntimeError("h3_tp2 anchor: expected upstream's latent guide as the last visual block")
+    gt, gh, gw = (int(v) for v in shapes[-1])
+    guide_rows = gt * (gh // 2) * (gw // 2)
+    if rows.shape[0] < guide_rows or anchor_rows.shape[0] != anchor_v * (gh // 2) * (gw // 2):
+        raise RuntimeError("h3_tp2 anchor: condition rows do not match the window canvas")
+    anc = anchor_rows.to(device=rows.device, dtype=rows.dtype)
+    cut = rows.shape[0] - guide_rows
+    args["visual_condition"] = torch.cat((rows[:cut], anc, rows[cut:]), dim=0)
+    shapes.insert(len(shapes) - 1, (anchor_v, gh, gw))
+    blocks.insert(len(blocks) - 1, {"kind": "video", "ref_audio_t": 0, "latent_t": anchor_v, "latent_h": gh, "latent_w": gw})
+    args["visual_condition_shapes"], args["ref_blocks"] = shapes, blocks
+    return args
+
 def register() -> None:
     """Entry point.  vLLM's plugin loader swallows exceptions, so a required patch that fails ends the process
     (exit 70) instead of leaving a half-patched rank that looks healthy.  ``H3_TP2_PLUGIN_SOFT_FAIL=1`` turns
@@ -251,9 +273,14 @@ def _apply(role: str) -> None:
     #    H3_TP2_WINDOW_TEMPORAL_OFFSET=<float|cap:<float>>: upstream shifts every media row of window k by
     #    start_frame*40/24 RoPE units while text and the reference image stay put (window 6 of a 60 s clip sits at
     #    +2125 units; a 15 s training clip spans 600).  "0" keeps every window on local time, "cap:425" clamps.
+    #    H3_TP2_ANCHOR_FRAMES=<frames on the 17n+5 grid, e.g. 22>: every window after the first also gets the first
+    #    window's opening frames as a Ref2VA video reference (kind "video", no audio rows, placed before the latent
+    #    guide), so the detail level of the clip's start conditions every hand-over, not only the previous tail.
     step = os.environ.get("H3_TP2_WINDOW_SEED_STEP", "").strip()
     toff = os.environ.get("H3_TP2_WINDOW_TEMPORAL_OFFSET", "").strip()
-    if (step and int(step) != 0) or toff:
+    anchor = os.environ.get("H3_TP2_ANCHOR_FRAMES", "").strip()
+    if (step and int(step) != 0) or toff or anchor:
+        import torch
         from vllm_omni.diffusion.models.minimax_h3 import continuation as _cont
         from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _pp
 
@@ -261,9 +288,12 @@ def _apply(role: str) -> None:
         _step = int(step) if step else 0
         _cap = float(toff[4:]) if toff.startswith("cap:") else None
         _fixed = None if (not toff or toff.startswith("cap:")) else float(toff)
+        _anchor_v = _cont._video_t(int(anchor)) if anchor else 0
+        if anchor and (int(anchor) < 5 or int(anchor) % 17 != 5):
+            raise RuntimeError("H3_TP2_ANCHOR_FRAMES must be on the 17n+5 frame grid")
 
         def _dc(diffuse, kwargs, **kw):  # noqa: ANN001
-            counter = {"i": 0}
+            counter = {"i": 0, "anchor": None}
 
             def _diffuse(**a):  # noqa: ANN001
                 i = counter["i"]
@@ -275,15 +305,22 @@ def _apply(role: str) -> None:
                     a["temporal_offset"] = _fixed
                 elif _cap is not None and "temporal_offset" in a:
                     a["temporal_offset"] = min(float(a["temporal_offset"]), _cap)
-                logger.info("h3_tp2: continuation window %d seed=%s temporal_offset=%s", i + 1, a.get("seed"), a.get("temporal_offset"))
-                return diffuse(**a)
+                if _anchor_v and i and counter["anchor"] is not None:
+                    insert_anchor_block(a, counter["anchor"], _anchor_v)
+                logger.info("h3_tp2: continuation window %d seed=%s temporal_offset=%s anchor_rows=%s", i + 1, a.get("seed"),
+                            a.get("temporal_offset"), 0 if not (_anchor_v and i) else int(counter["anchor"].shape[0]))
+                video, audio = diffuse(**a)
+                if _anchor_v and i == 0:
+                    counter["anchor"] = _cont.minimax_h3_patchify_video_latent(video[:, :, :_anchor_v], patch_size=(1, 2, 2))
+                return video, audio
 
             return _orig_dc(_diffuse, kwargs, **kw)
 
         _cont.diffuse_continuation = _dc
         if getattr(_pp, "diffuse_continuation", None) is _orig_dc:
             _pp.diffuse_continuation = _dc
-        logger.warning("h3_tp2: EXPERIMENT continuation seed step=%s temporal offset=%s (changes outputs)", _step, toff or "upstream")
+        logger.warning("h3_tp2: EXPERIMENT continuation seed step=%s temporal offset=%s anchor frames=%s (changes outputs)",
+                       _step, toff or "upstream", anchor or "none")
 
     edge = os.environ.get("H3_TP2_REF_SHORT_EDGE", "").strip()
     if edge:
