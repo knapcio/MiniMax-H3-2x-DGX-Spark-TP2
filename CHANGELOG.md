@@ -108,3 +108,5 @@
 - 2026-10-28 14:20: 60 s with window 345 + per-window prompts and generated audio: audio flat (-25.6 .. -22.4 dB), detail
   sharp to the end (78-242), light steady, seams smooth; two hard cuts inside windows (32.0 s, 44.3 s). Windows with a
   guide cost +41 % against the first window (no throttling; profile queued). 8776 s, peak 72.3 GB (one sample).
+- 2026-10-28 14:45: reference short edge 768: 687 s against 753 s at 1024 and 1027 s at 2048 (5 s 1344x768), same look;
+  diminishing, 1024 stays the recommendation.
