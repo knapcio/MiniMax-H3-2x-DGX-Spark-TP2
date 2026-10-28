@@ -332,6 +332,14 @@ def _apply(role: str) -> None:
         logger.warning("h3_tp2: EXPERIMENT continuation seed step=%s temporal offset=%s anchor frames=%s source=%s (changes outputs)",
                        _step, toff or "upstream", anchor or "none", _anchor_src)
 
+    # 9b) H3_TP2_FP8_GEMM=tensor32: scalar-scale FP8 GEMM with fp32 output + one exact Triton scale/bias/round pass
+    #     instead of the per-row-scale CUTLASS epilogue (3.2x slower GEMM on sm121).  Same arithmetic, accumulation
+    #     order differs (not bit-identical).  See h3_tp2/fp8_gemm.py and results/20261028-fp8-gemm-bench/.
+    if os.environ.get("H3_TP2_FP8_GEMM", "").strip().lower() == "tensor32":
+        from . import fp8_gemm as _fp8
+
+        _fp8.install()
+
     edge = os.environ.get("H3_TP2_REF_SHORT_EDGE", "").strip()
     if edge:
         from vllm_omni.model_executor.models.minimax_h3 import preprocessing as _pre
