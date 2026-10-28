@@ -119,4 +119,7 @@
   59 for the fused per-row epilogue; scalar GEMM with fp32 output + separate exact scaling is 29 % faster already
   (3.8e-6 from CUTLASS, rounding order only). One-step profile: GEMM 47 %, attention 39 % (sm80 flash kernel), a2a 6 %.
 - 2026-10-28 15:55: cuDNN 9.27 A/B (5 s 1344x768, ref 1024): 718.7 s vs 752.9 s (-4.5 %), frames differ (SSIM 0.848);
-  candidate only, pinned 9.20 kept. Two-pass FP8 GEMM A/B renders running next.
+  candidate only, pinned 9.20 kept.
+- 2026-10-28 16:50: two-pass FP8 GEMM render A/B (5 s 960x576): first request after boot 437.8 s vs 771.1 s stock
+  (-43 %), denoising 392.8 vs 723.3 s; frames differ (SSIM 0.809, same quality by eye), peak +1.8 GB. Warm repeat and
+  the review follow before it becomes the default.
