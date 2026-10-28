@@ -128,3 +128,7 @@
   (scale_b first, bias as one fma), 64-bit row offsets, install-time probe instead of a per-call fallback, dispatch
   counters in the log; bench wording corrected (PyTorch's rowwise `_scaled_mm` is a CUTLASS kernel on sm121, the fc1
   fp32 temporary is 4.2 GB).
+- 2026-10-28 17:30: NVlabs Sana `sol-engine` read (the owner's find): NVIDIA's single-GB10 H3 port confirms the FP8 GEMM
+  ceiling (188 TFLOPS) and the attention ceiling (92.5 TFLOPS, which our profiled step already reaches); their
+  lossless fusions are mostly in vLLM-Omni already; VAE tile batching (1.47x on decode, near-exact) is the one exact
+  lever to port. Notes in results/20261028-nvlabs-sol-engine-gb10/.
