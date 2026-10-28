@@ -78,3 +78,5 @@
   audio still fades (8 dB over 30 s).
 - 2026-10-28 00:50: local-time windows (temporal offset 0) change nothing: same motion decay and audio fade. The
   single-take prompt's +25 % was sustained-load drift (same prompt now 3664 s).
+- 2026-10-28 01:55: a different seed per window changes nothing either (same decay). Mechanism narrowed to the
+  latent-tail conditioning itself; remedies stay: driving soundtrack, per-window prompts.

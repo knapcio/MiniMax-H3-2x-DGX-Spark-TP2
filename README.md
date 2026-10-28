@@ -99,7 +99,8 @@ prompt removes the shot changes and the hand-over bumps at the seams (`results/2
 flat audio level, no motion decay, no shot changes over 30 s with the plain prompt
 (`results/20261027-v030-continuation-audiolock/`), at the price of not generating the audio. One prompt per window (`continuation_prompts`) keeps the motion and the
 shot continuous at no extra cost but the generated audio still fades about 8 dB over 30 s
-(`results/20261027-v030-continuation-winprompts/`). Request shape in `scripts/render.sh` (`TASK=ref2va`, `EXTRA_JSON`).
+(`results/20261027-v030-continuation-winprompts/`). Local-time windows and a different seed per window were tested and
+change nothing (`results/20261028-v030-continuation-toff0/`, `results/20261028-v030-continuation-seedstep/`). Request shape in `scripts/render.sh` (`TASK=ref2va`, `EXTRA_JSON`).
 
 ## The model
 

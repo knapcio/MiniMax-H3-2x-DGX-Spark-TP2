@@ -1,0 +1,14 @@
+HTTP/1.1 100 Continue
+
+HTTP/1.1 200 OK
+date: Tue, 27 Oct 2026 23:53:21 GMT
+server: uvicorn
+x-request-id: video_sync-9bfbd50ce4f3ba92
+x-model: /home/knapcio/h3-long/weights/Ref2VA
+x-inference-time-s: 3597.928
+x-stage-durations: {"queue_wait_ms":0.4149430023971945,"stage_0_gen_ms":3594795.130968094}
+x-peak-memory-mb: 71154.000
+content-length: 20299607
+content-type: video/mp4
+vary: Origin
+
