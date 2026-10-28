@@ -6,11 +6,11 @@ same request as `20261027-v030-continuation-prompt` otherwise.
 
 | | upstream offset (0 / 425 / 850) | offset 0 everywhere |
 |---|---|---|
-| Wall clock | 4519.7 s | 3663.6 s (the same prompt: the +25 % was sustained-load drift, not the prompt) |
+| Wall clock | 4519.7 s | 3663.6 s (same prompt as the 4519.7 s run; timing cause unresolved) |
 | Scene cuts | none | none (max 0.06) |
 | Seams 1 / 2 (mean before) | 4.87 (4.75) / 1.84 (1.45) | 4.51 (4.75) / 1.42 (1.61) |
 | Apparent motion, window 1 -> 3 | 6.1 -> 2.6 -> 1.3 | 6.1 -> 2.4 -> 1.x: the same decay |
 | Audio mean per 10 s | -21.2 / -27.9 / -35.3 dB | -21.2 / -28.3 / -37.3 dB: the same fade |
 
-Rejected: the positional shift is not what drives the decay. Window 1 is identical by construction; windows 2-3
+Rejected for now: offset zero did not eliminate the decay here. Window 1 is identical by construction; windows 2-3
 differ slightly but decay the same way. Switch stays off.

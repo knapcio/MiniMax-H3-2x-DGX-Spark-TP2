@@ -12,8 +12,9 @@ everything else as in `20261027-v030-continuation-30s`.
 | Apparent motion per window (luma change per frame) | 6.2 -> 3.6 -> 2.0 | 4.2-5.2 / 3.9-4.9 / 5.0-7.1: no decay |
 | Audio mean per 10 s | -27.2 / -30.5 / -34.0 dB | -42.3 / -40.8 / -42.2 dB (the source's level, flat by construction) |
 
-The driving soundtrack removes the audio fade by construction and, with it, the motion decay and the shot changes:
+The driving soundtrack removes the audio fade by construction; this sample also lacked the motion decay and the shot
+changes (causal mediation unproven):
 the clip is one continuous misty-meadow flight with lively grass to the last frame (frames at 0 / 8 / 17 / 21 / 25 /
-30 s inspected). This supports the hypothesis that the quiet generated audio tail was dragging the next window's
+30 s inspected). This is consistent with the hypothesis that the quiet generated audio tail drags the next window's
 motion down through the shared latent-tail conditioning. The price is that the audio is no longer generated to the
 picture; it is the given track.

@@ -13,7 +13,8 @@ Same request as `20261027-v030-continuation-30s` with a 1.6 s latent tail instea
 | Scene score max | 0.06 (plus a generated dissolve at 23 s) | 0.06, no dissolve in this run |
 | Audio mean per 10 s | -27.2 / -30.5 / -34.0 dB | -27.2 / -29.6 / -29.5 dB |
 
-Window 1 is identical to the overlap-22 run (same seed, same window), so the comparison is clean from the second
+Window 1 has the same motion signature as the overlap-22 run (same seed, same window; frames not compared), so the
+comparison is meaningful from the second
 window on. The longer tail does not remove the motion hand-over at the second seam (the camera still changes speed),
-smooths the first seam slightly and happened not to produce a dissolve this time. Not worth 9 % more time by itself;
+smooths the first seam slightly and happened not to produce a dissolve this time. The run was 9 % longer (timing penalty not established given the day's drift);
 the default stays 22. The prompt wording test follows.

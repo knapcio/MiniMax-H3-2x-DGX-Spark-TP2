@@ -11,6 +11,8 @@ the same noise tensor. Test: seed + k for window k (1101, 1102, 1103); otherwise
 | Apparent motion, window 1 -> 3 | 6.1 -> 2.4 -> 1.x | 6.1 -> 2.5 -> 1.x |
 | Audio mean per 10 s | -21.2 / -28.3 / -37.3 dB | -21.2 / -29.1 / -33.2 dB |
 
-Rejected: the noise reuse is not what drives the decay either. Together with the local-time test this leaves the
-latent-tail conditioning itself (a quiet, slow tail begets a quieter, slower window) as the mechanism, and the two
-measured remedies are a driving soundtrack (removes both decays) and per-window prompts (removes the motion decay).
+Rejected for now: seed stepping did not eliminate the decay (final audio 4 dB above the comparator, within the
+run-to-run spread). Together with the local-time test this keeps the
+latent-tail conditioning itself (a quiet, slow tail begets a quieter, slower window) as the working hypothesis; the
+two measured remedies are a driving soundtrack (no decays in its samples) and per-window prompts (motion kept in its
+sample).

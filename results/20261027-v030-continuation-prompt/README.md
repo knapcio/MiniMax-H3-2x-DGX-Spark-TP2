@@ -5,7 +5,7 @@ speed, no cuts, no transitions, no dissolves, the same shot from the first frame
 
 | | bench prompt | single-take prompt |
 |---|---|---|
-| Wall clock | 3615.0 s | 4519.7 s (+25 %: the longer prompt adds text tokens to every window) |
+| Wall clock | 3615.0 s | 4519.7 s (+25 %; re-measured later at 3664 s with the same prompt, cause unresolved, load drift suspected) |
 | Denoising per window | 1151 / 1272 / 1020 s | 1413 / 1574 / 1291 s |
 | Peak / min free head | 71.1 / 42.3 GB | 69.0 / 37.0 GB |
 | Scene cuts / dissolves | one dissolve at 23 s | none (max scene score 0.06) |
@@ -14,7 +14,7 @@ speed, no cuts, no transitions, no dissolves, the same shot from the first frame
 | Motion per frame, start -> 22 s | 6.2 -> 3.6 | 6.1 -> 1.3 |
 | Audio mean per 10 s | -27.2 / -30.5 / -34.0 dB | -21.2 / -27.9 / -35.3 dB |
 
-The wording removes the generated shot change and the motion jump at the seams: the clip is one continuous flight
+This sample had neither the generated shot change nor the motion jump at the seams: the clip is one continuous flight
 over the meadow toward the misty valley, consistent to the last frame (frames at 0 / 8 / 17 / 21 / 25 / 30 s
 inspected). It does not stop the decay: motion still dies down window by window and the audio fades 14 dB over 30 s.
 Those two are the targets of the next runs: per-window prompts that re-state the motion, and a driving soundtrack

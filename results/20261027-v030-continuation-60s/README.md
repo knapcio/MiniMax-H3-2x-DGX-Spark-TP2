@@ -11,8 +11,8 @@ Same request as the 30 s clip with `duration: 60`. Windows [0,277) [255,532) [51
 | Min free, head / worker | 40.4 / 45.0 GB (cumulative latents of 6 windows cost nothing visible) |
 | framemd5 | d6126a2c |
 
-Determinism: windows 1 and 2 are the same frames as in the 30 s clip (identical per-second motion signature up to
-22 s), so the continuation is deterministic for identical windows.
+Windows 1 and 2 have the same per-second motion signature as the 30 s clip (frame identity itself not verified) up to
+22 s, consistent with deterministic windows.
 
 Drift over the windows, the central finding:
 
@@ -29,7 +29,7 @@ Seams at 277 / 532 / 787 / 1042 / 1297: inter-frame difference 4.44 / 5.57 / 3.4
 3.03 / 1.90 / 0.87 just before them, i.e. a small motion bump at each hand-over, no cut. Picture stays sharp and
 consistent in colour to the end (frames at 0 / 11 / 22 / 33 / 43 / 54 / 60 s inspected).
 
-Conclusion: plain continuation with a fixed prompt loses motion and audio energy window by window (audio mean level
+Observation (one sample): this plain-continuation run lost apparent motion and audio level window by window (audio mean level
 down 18 dB over 60 s, i.e. about 63x less power; the inter-frame luma change, a proxy for apparent motion, 7x smaller)
 and inserts shot changes it was not asked for. The remedies upstream provides are
 per-window prompts (`continuation_prompts`) and a driving soundtrack (`audio_mode=lock_source`); both are next.

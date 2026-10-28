@@ -15,6 +15,7 @@ rows drop to a quarter.
 
 Frames at 2.5 s and 4.9 s side by side: the same scene type, lighting, sharpness and grass detail; the composition
 differs (hedge lines, tree placement) as it does between any two samples. The reference is subject/style
-conditioning in Ref2VA, and 1820x1024 is still above the 1344x768 output. This changes the conditioning input, not
-the model's arithmetic; it is the recommended setting for the continuation mode (every window pays the reference
-rows). For a reference whose fine detail must carry into the clip, keep 2048.
+conditioning in Ref2VA, and 1824x1024 is still above the 1344x768 output. This changes the conditioning input, not
+the model's arithmetic; it is a promising candidate for the continuation mode (every window pays the reference
+rows); validation on continuation and on reference fidelity is pending. For a reference whose fine detail must carry
+into the clip, keep 2048.

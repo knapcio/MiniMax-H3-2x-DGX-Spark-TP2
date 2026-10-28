@@ -95,8 +95,8 @@ by 53 s), the audio mean level fades by 18 dB and the model inserts shot changes
 hard cut in the one sample so far (`results/20261027-v030-continuation-30s-1344/`). Asking for "one single continuous
 take, no cuts, no transitions" in the
 prompt removes the shot changes and the hand-over bumps at the seams (`results/20261027-v030-continuation-prompt/`,
-+25 % time for the longer prompt); the motion and audio decay remain. A driving soundtrack (`audio_mode=lock_source`, `audio_reference`) removes both:
-flat audio level, no motion decay, no shot changes over 30 s with the plain prompt
++25 % time for the longer prompt); the motion and audio decay remain. A driving soundtrack (`audio_mode=lock_source`, `audio_reference`) removes the audio fade by construction, and its
+samples also showed no motion decay and no shot changes over 30 s with the plain prompt
 (`results/20261027-v030-continuation-audiolock/`), at the price of not generating the audio; the same two settings carried a 60 s clip through six windows with no cut,
 smooth seams, flat audio and no motion decay in 7313 s (`results/20261028-v030-continuation-60s-best/`). One prompt
 per window (`continuation_prompts`) keeps the motion and the
@@ -105,9 +105,9 @@ shot continuous at no extra cost but the generated audio still fades about 8 dB 
 change nothing (`results/20261028-v030-continuation-toff0/`, `results/20261028-v030-continuation-seedstep/`). Request shape in `scripts/render.sh` (`TASK=ref2va`, `EXTRA_JSON`).
 
 **Ref2VA cost**: the 1.94x comes from the reference rows (upstream resizes the reference image to a 2048 short edge:
-~7300 VAE rows plus the vision tokens in every DiT step). `H3_TP2_REF_SHORT_EDGE=1024` cuts the 5 s Ref2VA render
-from 1248.6 s to 752.9 s (-40 %) with the same quality by eye (`results/20261028-v030-ref2va-edge1024/`); it changes
-the conditioning input, not the model, and is the recommended setting for continuation.
+~7300 VAE rows plus the vision tokens in every DiT step). `H3_TP2_REF_SHORT_EDGE=1024` cut the 5 s Ref2VA render
+from 1248.6 s to 752.9 s (-40 %) with the same quality by eye in one sample (`results/20261028-v030-ref2va-edge1024/`);
+it changes the conditioning input, not the model; continuation runs with it are being measured.
 
 ## The model
 

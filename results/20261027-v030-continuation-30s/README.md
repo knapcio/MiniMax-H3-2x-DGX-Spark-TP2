@@ -20,8 +20,8 @@ reads as a transition when watched. What the owner actually spotted at 23 s is a
 588 (23.0 to 24.5 s, inside window 3, 20 frames after the seam) the model generated a dissolve from the low flight over
 the grass to a wide shot with fog and sun. Scene detection does not flag it (max score 0.013 there) because it is a
 crossfade, not a cut. The prompt said nothing about a single take; upstream warns that continuation "does not
-guarantee seamless cuts". Follow-ups queued: 39-frame overlap, a prompt that asks for one continuous take, 1344x768. The clip is one continuous camera flight over the
-landscape; motion slows from about 6 to 2 luma units per frame between the first and the last window. Follow-up:
+guarantee seamless cuts". Follow-ups queued: 39-frame overlap, a prompt that asks for one continuous take, 1344x768. Apart from that dissolve the clip reads as one camera
+flight over the landscape; the inter-frame luma change decreases from about 6 to 2 between the first and the last window. Follow-up:
 the same clip with `continuation_overlap_frames: 39` (1.6 s of tail instead of 0.9 s) to see whether the motion
 hand-over improves.
 Audio level drifts down over the windows: -29.3 / -25.8 / -30.4 / -30.5 / -33.8 / -34.2 dB mean per 5 s (the 5 s
