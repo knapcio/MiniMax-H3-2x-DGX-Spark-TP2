@@ -91,4 +91,6 @@
   plain), no cuts, smooth seams, flat audio, lively motion; peak 64 GB.
 - 2026-10-28 10:35: the same recipe at 30 s 1344x768: 9805 s (-3 % vs plain, the reference rows are a smaller share at
   this size), seams smooth, motion kept, audio flat, but one unrequested cut inside window 2 (13.9 s); peak 73 GB, 39 GB
-  free on the head (one sample).
+  free on the head (one sample). Detail decay found by the owner and measured (Laplacian variance of the grass per
+  second): the 60 s clip with prompt + soundtrack loses most of its fine texture by the end (83 -> 6), the 1344x768
+  recipe clip turns streaky in window 3; a third decay axis beside motion and audio, open.
