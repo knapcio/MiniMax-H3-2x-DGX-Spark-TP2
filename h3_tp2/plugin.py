@@ -292,6 +292,43 @@ def _apply(role: str) -> None:
         _pre.MINIMAX_H3_REFERENCE_IMAGE_SHORT_EDGE = int(edge)
         logger.warning("h3_tp2: EXPERIMENT reference image short edge %s px instead of 2048 (changes conditioning)", edge)
 
+    # 10) measurement only: H3_TP2_PROFILE_STEP=<n> profiles the n-th DiT forward of this process (one denoising step
+    #     on this rank) with torch.profiler and logs the top CUDA kernels; CUPTI on GB10 can be fragile, so off by default.
+    pstep = os.environ.get("H3_TP2_PROFILE_STEP", "").strip()
+    if pstep:
+        import torch
+        from vllm_omni.diffusion.models.minimax_h3 import minimax_h3_transformer as _tr
+
+        _cls = _tr.MiniMaxH3DiTModel
+        _orig_fwd = _cls.forward
+        _counter = {"n": 0, "done": False}
+        _target = int(pstep)
+
+        def _fwd(self, **kw):  # noqa: ANN001
+            _counter["n"] += 1
+            if _counter["done"] or _counter["n"] != _target:
+                return _orig_fwd(self, **kw)
+            _counter["done"] = True
+            from torch.profiler import ProfilerActivity, profile
+
+            torch.cuda.synchronize()
+            with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA]) as prof:
+                out = _orig_fwd(self, **kw)
+                torch.cuda.synchronize()
+            try:
+                table = prof.key_averages().table(sort_by="cuda_time_total", row_limit=45, max_name_column_width=70)
+                logger.info("h3_tp2 profile of DiT forward #%d (rank %s):\n%s", _target, os.environ.get("H3_TP2_ROLE"), table)
+                path = os.path.expanduser(f"~/h3-tp2-logs/profile-{os.environ.get('H3_TP2_ROLE','x')}-{os.getpid()}.txt")
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path, "w") as f:
+                    f.write(prof.key_averages().table(sort_by="cuda_time_total", row_limit=200, max_name_column_width=90))
+            except Exception:
+                logger.exception("h3_tp2 profile report failed")
+            return out
+
+        _cls.forward = _fwd
+        logger.warning("h3_tp2: PROFILING DiT forward #%d of this process (measurement only)", _target)
+
     # 7) experimental, off by default: lift the pipeline's 15 s duration cap.  The model is specified for 4-15 s;
     #    longer clips extrapolate the temporal RoPE beyond training.  Memory and time are the operator's problem.
     cap = os.environ.get("H3_TP2_MAX_OUTPUT_SECONDS", "").strip()
