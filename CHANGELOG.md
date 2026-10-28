@@ -140,3 +140,6 @@
   are sampling events tied to the per-window seed, not prompt reactions. All 60 s clips with a driving soundtrack are
   cut-free, all with generated audio cut twice. Fused SwiGLU: review round 9 applied (memory lifetime, exception
   cleanup, NaN-safe rounding, width guard, signed-zero parity with vLLM's kernel).
+- 2026-10-28 21:45: `H3_TP2_FP8_FUSE_SWIGLU=2`: the SwiGLU output is quantised per token inside the fused kernel and
+  fed to fc2's scaled-mm kernel directly; a Triton per-token FP8 quant reproduces vLLM's compiled native quant bit for
+  bit (fp8 values and scales, tested). Render A/B for both levels queued (queue7, queue8).

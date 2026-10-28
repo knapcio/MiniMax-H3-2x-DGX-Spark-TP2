@@ -86,3 +86,20 @@ def test_mlp_forward_clears_state_on_exception():
         fwd(MLP(), torch.zeros(1))
     assert getattr(fp8_swiglu._tls, "stash", None) is None
     assert fp8_swiglu._tls.stash_next is False and fp8_swiglu._tls.expect_n == 0
+
+
+@pytest.mark.parametrize("bias", [False, True])
+@pytest.mark.parametrize("M,width", [(64, 256), (120, 28672)])
+def test_fused_swiglu_quant_matches_vllm_quant(M, width, bias):
+    """fused SwiGLU + per-token FP8 quant == (two-pass + silu_and_mul) followed by vLLM's compiled quant, bit for bit."""
+    torch.manual_seed(1)
+    x32 = torch.randn(M, width, device="cuda") * 3000
+    sa = torch.rand(M, device="cuda") * 0.01 + 0.001
+    sb = torch.rand(width, device="cuda") * 0.01 + 0.001
+    bb = (torch.randn(width, device="cuda", dtype=torch.bfloat16) * 0.1) if bias else None
+    h = fp8_swiglu.scale_swiglu_reference(x32, sa, sb, bb)
+    q_ref, s_ref = fp8_swiglu.quant_reference(h)
+    q, s = fp8_swiglu.scale_swiglu_quant(x32, sa, sb, bb)
+    assert q.shape == q_ref.shape and q.dtype == q_ref.dtype and s.shape == s_ref.shape
+    assert torch.equal(q.view(torch.int8), q_ref.view(torch.int8))
+    assert torch.equal(s.view(-1), s_ref.view(-1))

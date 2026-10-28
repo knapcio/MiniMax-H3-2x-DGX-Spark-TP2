@@ -342,10 +342,13 @@ def _apply(role: str) -> None:
         # 9b') H3_TP2_FP8_FUSE_SWIGLU=1: the MLP's fc1 keeps its fp32 product and one Triton kernel applies the
         #      epilogue and silu_and_mul (the bf16 [M, 2*ffn] intermediate is neither written nor read; a placeholder of
         #      that size is still allocated).  Matches two-pass + silu_and_mul on the tested inputs and build.
-        if os.environ.get("H3_TP2_FP8_FUSE_SWIGLU", "0") == "1":
+        #      "2" additionally quantises the SwiGLU output per token inside the kernel for fc2 (vLLM's compiled quant
+        #      reproduced bit for bit), so the bf16 [M, ffn] activation is never written either.
+        _fuse = os.environ.get("H3_TP2_FP8_FUSE_SWIGLU", "0").strip()
+        if _fuse in ("1", "2"):
             from . import fp8_swiglu as _fsw
 
-            _fsw.install()
+            _fsw.install(level=int(_fuse))
 
     # 9c) H3_TP2_VAE_STACK_TILES=1: the checkpoint's own batched tile path for the video VAE (``stack_tiling``, off by
     #     default and not exposed by vLLM-Omni): each rank decodes its tiles as one batch instead of one call per tile.
