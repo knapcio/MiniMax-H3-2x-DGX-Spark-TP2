@@ -112,3 +112,6 @@
   guide cost +41 % against the first window (no throttling; profile queued). 8776 s, peak 72.3 GB (one sample).
 - 2026-10-28 14:45: reference short edge 768: 687 s against 753 s at 1024 and 1027 s at 2048 (5 s 1344x768), same look;
   diminishing, 1024 stays the recommendation.
+- 2026-10-28 15:05: FP8 GEMM kernel choice closed: CUTLASS (vLLM) and cuBLASLt rowwise within 1 % on all four DiT shapes,
+  54-61 TFLOPS, outputs not bit-identical. Queue reordered (speed profiles first, then anchor / light lock / ref-1024
+  isolation; the 1344x768 window-192 run dropped).
