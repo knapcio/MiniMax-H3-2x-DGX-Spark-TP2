@@ -5,6 +5,7 @@
 #             rises with streaks or noise, so read it with "coherence")
 #   coherence = gradient-orientation coherence of the same half (0 = isotropic texture, 1 = one direction): rising with
 #             detail flags directional streaking (idea: astra review round 7)
+#   light   = mean luma of one frame per second (0-255; a slow rise or fall is light drift)
 #   audio   = mean volume per 10 s (dB)
 #   cuts    = frames with an ffmpeg scene score > 0.1 (hard cuts; dissolves are missed, look at the frames)
 #   seams   = luma change at every window hand-over (k*(window-overlap) + overlap) against the 27 frames before it
@@ -15,6 +16,7 @@ PY=${PY:-$(dirname "$0")/../../.venv/bin/python}; command -v "$PY" >/dev/null 2>
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 ffmpeg -loglevel error -i "$F" -vf "fps=1,crop=iw:ih/2:0:ih/2,format=gray" "$T/d%03d.png"
 ffmpeg -loglevel error -i "$F" -vf "scale=iw/4:ih/4,format=gray" "$T/m%05d.png"
+ffmpeg -loglevel error -i "$F" -vf "fps=1,signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=$T/yavg.txt" -f null -
 ffmpeg -loglevel error -nostats -i "$F" -vf "select=gte(scene\,0),metadata=print:key=lavfi.scene_score:file=$T/scene.txt" -f null -
 n=$(ls "$T"/m*.png | wc -l); [ "$n" -gt 24 ] && [ -s "$T/scene.txt" ] && [ -s "$T/d001.png" ] || { echo "clip-metrics: frame extraction failed for $F" >&2; exit 1; }
 dur=$(( (n + 23) / 24 ))
@@ -36,6 +38,7 @@ fr = [np.asarray(Image.open(f), dtype=np.float32) for f in sorted(glob.glob(t + 
 d = [np.abs(fr[i] - fr[i-1]).mean() for i in range(1, len(fr))]
 sec = [np.mean(d[s*24:(s+1)*24]) for s in range(len(d) // 24 + (1 if len(d) % 24 else 0))]
 print("motion per second: " + " ".join(f"{v:.1f}" for v in sec))
+print("light per second: " + " ".join(f"{float(v):.0f}" for v in re.findall(r"YAVG=([\d.]+)", open(t + "/yavg.txt").read())))
 print("detail per second: " + " ".join(f"{v:.0f}" for v in det))
 print("coherence per second: " + " ".join(f"{v:.2f}" for v in coh))
 seam = W                      # output switches to window k at k*(W-O) + O: 277, 532, 787 ... for 277/22
