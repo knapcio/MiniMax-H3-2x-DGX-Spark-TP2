@@ -16,3 +16,20 @@ to ROCm) is closed: 0.3-1 % apart, within noise, and the outputs differ in round
 output-preserving either. Both run at 54-61 TFLOPS on these shapes; whether that is the GB10's FP8 ceiling at 2200 MHz
 or a tiling limit is a separate question (the one-step profile in `20261028-dit-step-profile/` says how much of a step
 the GEMMs are).
+
+## Scaling variants on the out-projection shape (`scripts/fp8-gemm-bench2.py`, idle GPU, 15:19)
+
+| Variant | Time | TFLOPS | max abs diff vs CUTLASS |
+|---|---|---|---|
+| CUTLASS per-row / per-column scales, fused epilogue (the recipe) | 48.15 ms | 59.0 | 0 |
+| cuBLASLt rowwise, same scales | 47.10 ms | 60.3 | 3.8e-6 |
+| cuBLASLt with scalar scales, bf16 out (a different contract, speed reference only) | 14.99 ms | 189.5 | n/a |
+| cuBLASLt scalar scales, fp32 out, then the per-row / per-column scales applied in fp32 and cast to bf16 | 34.35 ms | 82.7 | 3.8e-6 |
+
+The per-row-scale epilogue is what makes the FP8 GEMMs slow on the GB10: the same GEMM with scalar scales runs 3.2x
+faster (189 TFLOPS). Applying the per-token and per-channel scales after an fp32-output GEMM is the same arithmetic
+as the fused epilogue (accumulate in fp32, scale in fp32, round once to bf16) and differs from CUTLASS only in the
+accumulation order (3.8e-6, the same as cuBLASLt rowwise); with torch's separate multiply-and-cast pass it is already
+29 % faster than the recipe's kernel. A one-pass Triton epilogue (fp32 in, scaled bf16 out) and the other three shapes
+are measured in `fp8-gemm-bench3.py` (next idle gap). GEMMs are 47 % of a DiT step, so this is the largest lossless
+speed lever found since the pair itself; the plugin switch and the frame-level check follow.
