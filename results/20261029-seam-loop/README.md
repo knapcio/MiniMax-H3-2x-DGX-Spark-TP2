@@ -46,3 +46,14 @@ kept (`=2` drops it). 16 s, seed 1101, the later-window prompt without the subje
 The cleanest hand-over of the day by every number; frames 254/266/278/290 in `x4-frames-254-266-278-290.png`.
 **Owner (21:20): no jump noticed, "it was nice"**: the first seam that passed the eye. X5 (guide block dropped), a 30 s and
 a 60 s clip follow for the morning.
+
+## X5: the same without upstream's guide block (`H3_TP2_CONT_EDIT=2`)
+
+| | luma step (-3..+3) | inter-frame change at the seam vs neighbours | light per second around the seam | window 2 denoising |
+|---|---|---|---|---|
+| X4 edit=1 (guide kept) | +0.3 | 3.99 vs 4.07 / 4.20 | 51 55 / 56 55 55 | 312 s |
+| X5 edit=2 (guide dropped) | +0.2 | 4.13 vs 3.93 / 4.27 | 51 54 / 56 55 55 | 255 s (-18 %: 3780 fewer rows in the sequence) |
+
+With the tail pinned as target rows the guide block adds nothing measurable; dropping it makes every window after the
+first cheaper. The 30 s and 60 s clips of the night run with edit=1 first (queue25/26) and edit=2 after the
+calibration (queue27) for the morning comparison.
