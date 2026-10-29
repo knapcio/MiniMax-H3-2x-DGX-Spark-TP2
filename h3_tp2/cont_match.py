@@ -66,3 +66,15 @@ def wrap_diffuse(diffuse, *, apply: bool):  # noqa: ANN001
         return video, audio
 
     return _diffuse
+
+
+def crossfade_tail(video: torch.Tensor, new_window: torch.Tensor, overlap_v: int) -> torch.Tensor:
+    """Replace the cumulative video's last ``overlap_v`` latent frames by a linear crossfade from them to the new
+    window's regenerated overlap, then append the new window's free frames.  Upstream keeps the previous window's
+    frames up to the hand-over and switches to the new window there, so any difference in fine texture between the
+    two renderings of the same frames shows as a jump; the ramp spreads it over the overlap (0.9 s at 22 frames)."""
+    prev_tail = video[:, :, -overlap_v:]
+    regen = new_window[:, :, :overlap_v]
+    w = torch.linspace(0.0, 1.0, steps=overlap_v + 2, device=video.device, dtype=torch.float32)[1:-1].view(1, 1, -1, 1, 1)
+    blended = (prev_tail.float() * (1 - w) + regen.float() * w).to(video.dtype)
+    return torch.cat((video[:, :, :-overlap_v], blended, new_window[:, :, overlap_v:]), dim=2)

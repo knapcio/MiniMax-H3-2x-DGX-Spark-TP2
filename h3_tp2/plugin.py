@@ -440,19 +440,69 @@ def _apply(role: str) -> None:
     #     affine match of each new window's video latents to the previous window's tail over the hidden overlap
     #     (experiment against the exposure/texture step at the seams; audio untouched).
     try:
+        import torch
+
         from h3_tp2 import cont_match as _cm
         from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _pp9e
 
         if not getattr(_pp9e, "_h3_tp2_cont_match_patched", False):
             _orig_dc = _pp9e.diffuse_continuation
             _apply_match = os.environ.get("H3_TP2_CONT_MATCH", "0").strip() == "1"
+            _xfade = os.environ.get("H3_TP2_CONT_XFADE", "0").strip() == "1"
 
-            def _dc(diffuse, kwargs, **kw):  # noqa: ANN001
-                return _orig_dc(_cm.wrap_diffuse(diffuse, apply=_apply_match), kwargs, **kw)
+            if _xfade:
+                # own copy of upstream's loop (continuation.py, v0.30.0) with the hand-over crossfaded over the overlap
+                from vllm_omni.diffusion.models.minimax_h3 import continuation as _ct
+
+                def _dc(diffuse, kwargs, *, window_frames, overlap_frames, text_conditioning=None):  # noqa: ANN001
+                    diffuse = _cm.wrap_diffuse(diffuse, apply=_apply_match)
+                    windows = _ct.plan_continuation_windows(kwargs["num_frames"], window_frames, overlap_frames)
+                    if text_conditioning is not None and len(text_conditioning) != len(windows):
+                        raise _ct.OmniClientError("MiniMax H3 requires one text conditioning per continuation window")
+                    media_time_origin = max(item[0].shape[0] for item in text_conditioning) if text_conditioning else None
+                    source_rows = kwargs.get("locked_audio_rows")
+                    source = None if source_rows is None else source_rows.reshape(2, kwargs["audio_t"], 32)
+                    video = audio = None
+                    for index, window in enumerate(windows):
+                        frames = window.end - window.start
+                        args = {**kwargs, "num_frames": frames, "latent_t": _ct._video_t(frames),
+                                "audio_t": window.audio_end - window.audio_start, "temporal_offset": window.start * (40.0 / 24.0)}
+                        if text_conditioning is not None:
+                            args["text_embeddings"], args["text_tags"] = text_conditioning[index]
+                            args["media_time_origin"] = media_time_origin
+                        if source is not None:
+                            args["locked_audio_rows"] = source[:, window.audio_start:window.audio_end].reshape(-1, 32)
+                        overlap_v = _ct._video_t(window.overlap) if window.overlap else 0
+                        if video is not None and audio is not None:
+                            guide_video = _ct.minimax_h3_patchify_video_latent(video[:, :, -overlap_v:], patch_size=(1, 2, 2))
+                            guide_audio = _ct.minimax_h3_pack_audio_latent(audio[..., -window.overlap_audio_t:])
+                            for name, guide in (("visual_condition", guide_video), ("audio_condition", guide_audio)):
+                                existing = kwargs.get(name)
+                                args[name] = guide if existing is None else torch.cat((existing, guide), dim=0)
+                            args["visual_condition_shapes"] = [*(kwargs.get("visual_condition_shapes") or []), (overlap_v, kwargs["latent_h"], kwargs["latent_w"])]
+                            args["audio_condition_lengths"] = [*(kwargs.get("audio_condition_lengths") or []), window.overlap_audio_t]
+                            args["ref_blocks"] = [*(kwargs.get("ref_blocks") or []), {"kind": "latent_guide", "latent_t": overlap_v,
+                                                  "latent_h": kwargs["latent_h"], "latent_w": kwargs["latent_w"], "ref_audio_t": window.overlap_audio_t}]
+                        _ct.logger.info("MiniMax H3 continuation window %d/%d: frames [%d, %d), hidden overlap %d, temporal offset %.6f (h3_tp2 crossfade)",
+                                        index + 1, len(windows), window.start, window.end, window.overlap, args["temporal_offset"])
+                        sampled_video, sampled_audio = diffuse(**args)
+                        if video is None:
+                            video, audio = sampled_video, sampled_audio
+                        else:
+                            video = _cm.crossfade_tail(video, sampled_video, overlap_v)
+                            audio = torch.cat((audio, sampled_audio[..., window.overlap_audio_t:]), dim=-1)
+                    assert video is not None and audio is not None
+                    if video.shape[2] != kwargs["latent_t"] or audio.shape[-1] != kwargs["audio_t"]:
+                        raise RuntimeError("MiniMax H3 continuation produced inconsistent cumulative AV lengths")
+                    return video, audio
+            else:
+                def _dc(diffuse, kwargs, **kw):  # noqa: ANN001
+                    return _orig_dc(_cm.wrap_diffuse(diffuse, apply=_apply_match), kwargs, **kw)
 
             _pp9e.diffuse_continuation = _dc
             _pp9e._h3_tp2_cont_match_patched = True
-            logger.warning("h3_tp2: continuation hand-over diagnostics ON; latent match %s", "ON" if _apply_match else "off")
+            logger.warning("h3_tp2: continuation hand-over diagnostics ON; latent match %s; crossfade %s",
+                           "ON" if _apply_match else "off", "ON" if _xfade else "off")
     except Exception as e:  # noqa: BLE001
         logger.warning("h3_tp2: continuation hand-over hook not installed (%s)", e)
 
