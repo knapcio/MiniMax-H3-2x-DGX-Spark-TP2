@@ -111,8 +111,11 @@ class _FakeFC1:
     def __init__(self, x32, sa, sb):
         self.x32, self.sa, self.sb = x32, sa, sb
     def __call__(self, x):
-        fp8_swiglu._tls.stash = (self.x32, self.sa, self.sb, None)
-        return torch.empty(x.shape[0], 256, device="cuda", dtype=torch.bfloat16), None
+        if getattr(fp8_swiglu._tls, "stash_next", False):      # like the dispatcher hook: only when asked
+            fp8_swiglu._tls.stash = (self.x32, self.sa, self.sb, None)
+            fp8_swiglu._tls.stash_next = False
+            return torch.empty(x.shape[0], 256, device="cuda", dtype=torch.bfloat16), None
+        return fp8_gemm.scale_bias_cast_torch(self.x32, self.sa, self.sb, None, torch.bfloat16), None   # stock fc1
 
 
 class _FakeFC2:
