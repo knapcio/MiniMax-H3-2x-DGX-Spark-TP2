@@ -115,15 +115,22 @@ from 1026.7 s (warm repeat; the first request after the boot took 1248.6 s) to 7
 by eye in one sample (`results/20261028-v030-ref2va-edge1024/`);
 it changes the conditioning input, not the model; continuation runs with it are being measured.
 
-**The long-clip recipe so far** (one sample each, 30 s 960x576): `H3_TP2_REF_SHORT_EDGE=1024` + `CONT_PROMPTS=auto`
-+ a driving soundtrack renders in 2725 s against 3591 s for the plain mode, with no cut, smooth seams, flat audio and
-lively motion to the end (`results/20261028-v030-recipe-30s-960/`). At 1344x768 the same recipe takes 9805 s against
-10114 s (the reference rows are a smaller share of the sequence there), keeps the seams smooth and the motion alive, but
-the model still cut once on its own inside a window (`results/20261028-v030-recipe-30s-1344/`, one sample). Open:
-fine detail decays across windows (the 60 s clip's grass is a blurred surface by the end, Laplacian variance 83 -> 6),
-so the recipe is clean at 30 s 960x576 and not yet at 60 s or at 1344x768. With upstream's largest window (345
-frames) and per-window prompts, a 60 s clip with generated audio kept its audio level and did not blur, but the model changed
-the weather on its own four times (fog, sun in and out: a dissolve and two cuts) and over-sharpened the sky at the end (`results/20261028-v030-continuation-60s-win345-prompts/`, one sample).
+**Long clips, where this stands after the 2026-10-27/29 campaign** (one sample per cell unless noted; all 960x576
+unless noted; `results/20261028-clip-metrics/` has the per-second numbers):
+
+| Goal | Lever | Result |
+|---|---|---|
+| Speed of the continuation | `H3_TP2_REF_SHORT_EDGE=1024` | -24 % at 960x576, -3 % at 1344x768, no other effect (same fades and detail): recommended |
+| Motion decay across windows | per-window prompts (`CONT_PROMPTS=auto`) | fixed, free |
+| Generated-audio fade (-8..-18 dB over 30-60 s) | a driving soundtrack (`audio_mode: lock_source`) or the largest window (345 frames) | both keep the level flat; `audio_flow_shift` 1 makes it worse |
+| Texture blur over 60 s | the largest window (345) | no blur, but over-sharpening instead at the end |
+| Unrequested cuts and dissolves inside windows | prompt wording, light-lock wording, an opening-frames anchor, a tail anchor, H3's own looped audio as the track | none works: the cuts land on the same frames whatever the prompt (sampling events of the per-window seed), the anchors add cuts, the loop runs the motion away. One 60 s clip with a music track had no cuts; one sample. |
+
+So a 30 s 960x576 clip with reference 1024 + per-window prompts + a soundtrack came out clean (one sample,
+`results/20261028-v030-recipe-30s-960/`); at 1344x768 and at 60 s no combination tried is reliably free of the
+model's own scene changes, and the final detail drifts (blur with 277-frame windows, over-sharpening with 345). The
+30 s 960x576 recipe is the honest offer; longer or larger is possible (the mode allows 300 s, about 2.2 h per 60 s)
+but comes with the model's own cuts. Not yet tested on other prompts and references.
 
 ## The model
 
