@@ -54,3 +54,10 @@ clip-metrics script gets per-second colour means (and the sheets stay the primar
 offer; the README now says up to 30 s. The per-window prompt cannot stop the action loop (each window renders "a
 woman walks along the stream" again); a lever against that would have to describe the *state* reached, not the
 action, in the later windows, or carry a longer tail. Open for the next fleet window.
+
+Re-measured with chroma means (clip-metrics `colour U/V per 5 s`): the chroma barely moves in either clip (U 116-120,
+V 133-135), so the "colour changes" are not a hue shift; it is the **luma** that climbs steadily, 47 at the start to
+83 at 30 s and 88 at 60 s (the `light per second` line, 0-255), window after window: the clip washes out. The 30 s
+clip has the same climb (47 -> 83). Light drift is therefore the third decay axis to fix for anything beyond one
+window, next to texture and the action loop; a per-window "the light stays as in the opening seconds" sentence
+(`H3_TP2_CONT_PROMPTS_EXTRA`) was tested on 10-28 for cuts, not for this, and is in the staged `queue19.sh` (arm B).

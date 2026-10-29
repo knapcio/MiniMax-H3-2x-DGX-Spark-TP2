@@ -6,6 +6,8 @@
 #   coherence = gradient-orientation coherence of the same half (0 = isotropic texture, 1 = one direction): rising with
 #             detail flags directional streaking (idea: astra review round 7)
 #   light   = mean luma of one frame per second (0-255; a slow rise or fall is light drift)
+#   colour  = mean U and V (chroma, 0-255, 128 = neutral) per 5 s: a drift of more than a few units between windows
+#             is a colour change the eye sees and no other metric here catches (owner's 60 s review, 2026-10-29)
 #   audio   = mean volume per 10 s (dB)
 #   cuts    = frames with an ffmpeg scene score > 0.1 (hard cuts only)
 #   1s-change = mean absolute luma change between frame n and frame n+24, per second: a dissolve or a fast state
@@ -18,7 +20,7 @@ PY=${PY:-$(dirname "$0")/../../.venv/bin/python}; command -v "$PY" >/dev/null 2>
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 ffmpeg -loglevel error -i "$F" -vf "fps=1,crop=iw:ih/2:0:ih/2,format=gray" "$T/d%03d.png"
 ffmpeg -loglevel error -i "$F" -vf "scale=iw/4:ih/4,format=gray" "$T/m%05d.png"
-ffmpeg -loglevel error -i "$F" -vf "fps=1,signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=$T/yavg.txt" -f null -
+ffmpeg -loglevel error -i "$F" -vf "fps=1,signalstats,metadata=print:file=$T/yavg.txt" -f null -
 ffmpeg -loglevel error -nostats -i "$F" -vf "select=gte(scene\,0),metadata=print:key=lavfi.scene_score:file=$T/scene.txt" -f null -
 n=$(ls "$T"/m*.png | wc -l); [ "$n" -gt 24 ] && [ -s "$T/scene.txt" ] && [ -s "$T/d001.png" ] || { echo "clip-metrics: frame extraction failed for $F" >&2; exit 1; }
 dur=$(( (n + 23) / 24 ))
@@ -42,7 +44,10 @@ sec = [np.mean(d[s*24:(s+1)*24]) for s in range(len(d) // 24 + (1 if len(d) % 24
 print("motion per second: " + " ".join(f"{v:.1f}" for v in sec))
 d24 = [np.abs(fr[i + 24] - fr[i]).mean() for i in range(0, len(fr) - 24, 24)]
 print("1s-change per second: " + " ".join(f"{v:.0f}" for v in d24))
-print("light per second: " + " ".join(f"{float(v):.0f}" for v in re.findall(r"YAVG=([\d.]+)", open(t + "/yavg.txt").read())))
+stats = open(t + "/yavg.txt").read()
+print("light per second: " + " ".join(f"{float(v):.0f}" for v in re.findall(r"YAVG=([\d.]+)", stats)))
+u = [float(v) for v in re.findall(r"UAVG=([\d.]+)", stats)]; vv = [float(v) for v in re.findall(r"VAVG=([\d.]+)", stats)]
+print("colour U/V per 5 s: " + " ".join(f"{np.mean(u[i:i+5]):.0f}/{np.mean(vv[i:i+5]):.0f}" for i in range(0, len(u), 5)))
 print("detail per second: " + " ".join(f"{v:.0f}" for v in det))
 print("coherence per second: " + " ".join(f"{v:.2f}" for v in coh))
 seam = W                      # output switches to window k at k*(W-O) + O: 277, 532, 787 ... for 277/22

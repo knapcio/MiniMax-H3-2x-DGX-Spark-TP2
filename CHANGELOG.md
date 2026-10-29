@@ -211,3 +211,5 @@
   pair already runs it through its env since 13:40. Server-side window prompts documented as default.
 - 2026-10-29 17:45: owner's review of the 60 s clip: colour changes and the subject's walk looping per window, invisible
   to the metrics. 60 s withdrawn from the README offer (up to 30 s); per-second colour means to be added to clip-metrics.
+- 2026-10-29 17:55: clip-metrics gets chroma means per 5 s; on the 30/60 s clips the chroma is flat and the luma
+  climbs 47 -> 83 (30 s) and 47 -> 88 (60 s): the "colour change" is a wash-out, a light drift per window.
