@@ -57,3 +57,23 @@ a 60 s clip follow for the morning.
 With the tail pinned as target rows the guide block adds nothing measurable; dropping it makes every window after the
 first cheaper. The 30 s and 60 s clips of the night run with edit=1 first (queue25/26) and edit=2 after the
 calibration (queue27) for the morning comparison.
+
+## 30 s with the pinned prefix (edit=1): the model cut right after the prefix at the first seam
+
+`edit30-guide`, 3 windows, seed 1101, 2740 s (window 1 967 s: a slow first request; windows 2-3 770 / 560 s), peak
+68.5 GB, audio flat (-50..-51 dB), motion 6-9 throughout (no decay), detail 59-232 (no runaway grain), luma 46 -> 69
+(the wash-out remains).
+
+| Seam | hand-over diagnostics | inter-frame change at the seam vs neighbours | luma step | scene score |
+|---|---|---|---|---|
+| 277 (11.5 s) | regenerated overlap == tail (pinned) | **24.80** vs 4.68 / 6.60 | +4.6 | **0.164: a hard cut** |
+| 532 (22.2 s) | pinned | 7.65 vs 7.30 / 8.88 | +1.0 | none |
+
+Frames 272/276 (window 1) against 277/281 (window 2) in `edit30-frames-272-276-277-281.png`: the woman by the stream,
+then a different shot of an oak trunk. With the overlap pinned as target rows, the model still started a new shot
+in the first free frame of window 2; in the 16 s render with the same seed and prefix (X4) the same window continued
+the shot. So the pinned prefix makes the hand-over exact when the model continues, but whether it continues is a
+sampling event per window. Consequence: a per-window seam check in latent space (mean |v[t+1]-v[t]| at the boundary
+against the window's median; `H3_TP2_CONT_RETRY`, `H3_TP2_CONT_SEAM_RATIO`) that re-samples the window with another
+seed. The 60 s render of the night runs with retries 2 at ratio 3.0 and logs the ratio of every window; the ratios of
+the cut and the clean seams calibrate the threshold.

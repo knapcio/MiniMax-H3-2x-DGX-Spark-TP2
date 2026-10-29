@@ -228,3 +228,7 @@
 - 2026-10-29 21:20: owner on X4 (pinned prefix): no jump noticed; the first hand-over that passed the eye.
 - 2026-10-29 21:40: pinned prefix without the guide block (edit=2): seam as clean as with it (luma step +0.2, no
   spike) and the second window 18 % faster. 30 s / 60 s with both variants queued for the morning.
+- 2026-10-29 22:35: 30 s with the pinned prefix: the first hand-over is a hard cut (scene 0.164, inter-frame 24.8 at
+  neighbours 5-7), the second clean; the prefix makes a continuation exact but does not force one. Added a latent
+  seam check per window with seed retries (`H3_TP2_CONT_RETRY=2`, ratio 3.0) and run the 60 s with it. Memory
+  compacted on both Sparks before that boot (fragmented after a day of restarts).
