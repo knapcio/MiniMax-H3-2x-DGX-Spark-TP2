@@ -178,3 +178,8 @@
   differs from the baseline rendered in the previous boot (29.0 dB from frame 1; same code, request and seed), while
   at 960x576 the same wrapper reproduced the stock clip across boots. A 1344 cross-boot/within-boot chain with the
   latents digest (queue12c) decides whether the diffusion is boot-dependent at that cell.
+- 2026-10-29 11:00: reproducibility chain at 5 s 960x576 (six renders, five boots): one latents digest and one
+  framemd5 (85437ffa) for the two-pass default, the fused SwiGLU level 1 and the stock CUTLASS kernel, within and
+  across boots; batched tile decode keeps the latents and changes only the decoder output (deterministic itself).
+  Fused SwiGLU level 1 is bit-identical and denoises in 389 s against 442-447 s (first requests); a warm-pair chain
+  measures the gain before it becomes a default. Stock 590 s vs two-pass 495-501 s wall at this cell.
