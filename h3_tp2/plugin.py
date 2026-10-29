@@ -449,8 +449,14 @@ def _apply(role: str) -> None:
             _orig_dc = _pp9e.diffuse_continuation
             _apply_match = os.environ.get("H3_TP2_CONT_MATCH", "0").strip() == "1"
             _xfade = os.environ.get("H3_TP2_CONT_XFADE", "0").strip() == "1"
+            # H3_TP2_CONT_EDIT=1|2: the previous window's tail becomes pinned TARGET rows of the new window through
+            # upstream's latent-edit path (mask 0 = keep the clean rows as the noise-augmented anchor at the condition
+            # timestep, like FL2VA keyframes; restore 0 = restore them at the end), video and audio. "2" also drops
+            # upstream's latent-guide condition block (the same frames would otherwise be in the sequence twice).
+            _edit = os.environ.get("H3_TP2_CONT_EDIT", "0").strip()
+            _edit = int(_edit) if _edit in ("1", "2") else 0
 
-            if _xfade:
+            if _xfade or _edit:
                 # own copy of upstream's loop (continuation.py, v0.30.0) with the hand-over crossfaded over the overlap
                 from vllm_omni.diffusion.models.minimax_h3 import continuation as _ct
 
@@ -476,20 +482,40 @@ def _apply(role: str) -> None:
                         if video is not None and audio is not None:
                             guide_video = _ct.minimax_h3_patchify_video_latent(video[:, :, -overlap_v:], patch_size=(1, 2, 2))
                             guide_audio = _ct.minimax_h3_pack_audio_latent(audio[..., -window.overlap_audio_t:])
-                            for name, guide in (("visual_condition", guide_video), ("audio_condition", guide_audio)):
-                                existing = kwargs.get(name)
-                                args[name] = guide if existing is None else torch.cat((existing, guide), dim=0)
-                            args["visual_condition_shapes"] = [*(kwargs.get("visual_condition_shapes") or []), (overlap_v, kwargs["latent_h"], kwargs["latent_w"])]
-                            args["audio_condition_lengths"] = [*(kwargs.get("audio_condition_lengths") or []), window.overlap_audio_t]
-                            args["ref_blocks"] = [*(kwargs.get("ref_blocks") or []), {"kind": "latent_guide", "latent_t": overlap_v,
-                                                  "latent_h": kwargs["latent_h"], "latent_w": kwargs["latent_w"], "ref_audio_t": window.overlap_audio_t}]
+                            if _edit != 2:
+                                for name, guide in (("visual_condition", guide_video), ("audio_condition", guide_audio)):
+                                    existing = kwargs.get(name)
+                                    args[name] = guide if existing is None else torch.cat((existing, guide), dim=0)
+                                args["visual_condition_shapes"] = [*(kwargs.get("visual_condition_shapes") or []), (overlap_v, kwargs["latent_h"], kwargs["latent_w"])]
+                                args["audio_condition_lengths"] = [*(kwargs.get("audio_condition_lengths") or []), window.overlap_audio_t]
+                                args["ref_blocks"] = [*(kwargs.get("ref_blocks") or []), {"kind": "latent_guide", "latent_t": overlap_v,
+                                                      "latent_h": kwargs["latent_h"], "latent_w": kwargs["latent_w"], "ref_audio_t": window.overlap_audio_t}]
+                            if _edit:
+                                dev = video.device
+                                rows_per_frame = (video.shape[3] // 2) * (video.shape[4] // 2)
+                                n_rows = args["latent_t"] * rows_per_frame
+                                n_guide = guide_video.shape[0]
+                                clean = torch.zeros((n_rows, guide_video.shape[1]), device=dev, dtype=torch.float32)
+                                clean[:n_guide] = guide_video.float()
+                                mask = torch.ones(n_rows, device=dev, dtype=torch.float32); mask[:n_guide] = 0.0
+                                args["video_edit_clean_rows"], args["video_edit_mask_rows"], args["video_edit_restore_mask_rows"] = clean, mask, mask.clone()
+                                ov_a, a_t = window.overlap_audio_t, args["audio_t"]
+                                clean_a = torch.zeros((2 * a_t, guide_audio.shape[1]), device=dev, dtype=torch.float32)
+                                mask_a = torch.ones(2 * a_t, device=dev, dtype=torch.float32)
+                                for c in range(2):
+                                    clean_a[c * a_t:c * a_t + ov_a] = guide_audio[c * ov_a:(c + 1) * ov_a].float()
+                                    mask_a[c * a_t:c * a_t + ov_a] = 0.0
+                                args["audio_edit_clean_rows"], args["audio_edit_mask_rows"], args["audio_edit_restore_mask_rows"] = clean_a, mask_a, mask_a.clone()
+                                _ct.logger.info("h3_tp2 continuation edit prefix: %d of %d video rows and %d of %d audio rows pinned to the previous tail (guide block %s)",
+                                                n_guide, n_rows, 2 * ov_a, 2 * a_t, "kept" if _edit == 1 else "dropped")
                         _ct.logger.info("MiniMax H3 continuation window %d/%d: frames [%d, %d), hidden overlap %d, temporal offset %.6f (h3_tp2 crossfade)",
                                         index + 1, len(windows), window.start, window.end, window.overlap, args["temporal_offset"])
                         sampled_video, sampled_audio = diffuse(**args)
                         if video is None:
                             video, audio = sampled_video, sampled_audio
                         else:
-                            video = _cm.crossfade_tail(video, sampled_video, overlap_v)
+                            video = (_cm.crossfade_tail(video, sampled_video, overlap_v) if _xfade
+                                     else torch.cat((video, sampled_video[:, :, overlap_v:]), dim=2))
                             audio = torch.cat((audio, sampled_audio[..., window.overlap_audio_t:]), dim=-1)
                     assert video is not None and audio is not None
                     if video.shape[2] != kwargs["latent_t"] or audio.shape[-1] != kwargs["audio_t"]:
@@ -501,8 +527,8 @@ def _apply(role: str) -> None:
 
             _pp9e.diffuse_continuation = _dc
             _pp9e._h3_tp2_cont_match_patched = True
-            logger.warning("h3_tp2: continuation hand-over diagnostics ON; latent match %s; crossfade %s",
-                           "ON" if _apply_match else "off", "ON" if _xfade else "off")
+            logger.warning("h3_tp2: continuation hand-over diagnostics ON; latent match %s; crossfade %s; edit prefix %s",
+                           "ON" if _apply_match else "off", "ON" if _xfade else "off", _edit or "off")
     except Exception as e:  # noqa: BLE001
         logger.warning("h3_tp2: continuation hand-over hook not installed (%s)", e)
 
