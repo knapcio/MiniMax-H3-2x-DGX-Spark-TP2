@@ -32,3 +32,17 @@ prompt per window re-introduces the subject in every window and hands over with 
 The seam metric (inter-frame change at the seam against its neighbours) did not see the first clip's bump: it is a
 brightness and texture step, not motion. Frames 276/278 of each clip are in `seam1-*.png` here. 60 s with the same
 request follows.
+
+## 60 s with the same request (`long60-forest-cp-s1101`, 16:01-17:16)
+
+| Wall | Windows | Decode | Peak | Cuts | Seams 277 / 532 / 787 / 1042 / 1297 | Motion per s | Detail per s | Audio per 10 s |
+|---|---|---|---|---|---|---|---|---|
+| 4469.7 s (74.5 min) | 653 / 769 / 766 / 764 / 767 / 421 s | 290 s | 67.9 GB | none | 9.0 / 8.5 / 10.5 / 12.3 / 11.0 against neighbours 4-18: no step at any seam (frame strips checked) | 6-10 for 30 s, 12-17 at 35-45 s, 13-15 after | 70 at the start, 400-700 in the second half | -51.6 / -52.3 / -51.9 / -51.6 / -51.2 / -50.4 dB: flat |
+
+No cut, no seam step, one woman, flat audio over six windows. The second half is the known texture drift of long
+continuations: from about 30 s the foliage and the water take on a grainy, sparkly texture (the detail metric is 5-10x
+the opening's) while the composition settles into a near-static shot of the woman by the stream; the high "motion"
+numbers there are that shimmer, not camera or subject motion (`long60-window-prompts-sheet.png`, one frame per 5 s).
+The window-2 and later denoising times (764-769 s) are 17 % above window 1 (653 s), the second-request slowdown seen
+at 1344x768 too. So: 30 s is the clean offer; 60 s renders reliably in this sample but its second half looks worse
+than its first, and a 60 s request costs 75 min.
