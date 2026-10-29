@@ -116,6 +116,7 @@ def install() -> None:
     if getattr(orig, "_h3_tp2_tensor32", False):
         return
     stats = {"two_pass": 0, "stock": 0}
+    seen: set = set()
 
     def _mm(a, b, scale_a, scale_b, out_dtype, bias=None):  # noqa: ANN001
         M, N = a.shape[0], b.shape[-1]
@@ -131,6 +132,9 @@ def install() -> None:
             return orig(a, b, scale_a, scale_b, out_dtype, bias)
         stats["two_pass"] += 1
         n = stats["two_pass"] + stats["stock"]
+        if len(seen) < 64 and (M, N, a.shape[1]) not in seen:   # each distinct shape once, for the determinism sweep
+            seen.add((M, N, a.shape[1]))
+            logger.info("h3_tp2: FP8 GEMM two-pass shape M=%d N=%d K=%d", M, N, a.shape[1])
         if n == 2000 or n % 20000 == 0:
             logger.info("h3_tp2: FP8 GEMM dispatch so far: two-pass %d, stock %d", stats["two_pass"], stats["stock"])
         if _stash_hook is not None:
