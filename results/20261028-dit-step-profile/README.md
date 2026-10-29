@@ -46,3 +46,13 @@ would be roughly a quarter cheaper) at the price of more hand-overs, which is wh
 window-2 profile (the +41 % of guide windows) is queued separately.
 
 Files: `~/h3-tp2-logs/profile-head-4088226.txt` on spark-06.
+
+## Window 2 of a 15 s continuation (107 frames), rank 0, step 5 (profiled 2026-10-29 02:11)
+
+Meant to explain the +1..+51 % cost of windows after the first, but a 15 s clip's second window is only 107 frames,
+so this profile is a small-window profile, not an equal-size comparison (an equal-size one, from a 30 s clip, is
+queued). What it does show for a 107-frame window: GEMM 13.1 s (46 %), attention 11.2 s (39 %), all-to-all 2.17 s
+(7.6 %), and 3.94 s (13.9 %) booked as "Command Buffer Full", the host waiting on a full launch queue, which is a much
+larger share than in the big-window profile: small windows are closer to launch-bound. The variance of the later
+windows across today's runs (chain13 +1 %, plain +10 %, chain6 +41 %, chain8 +51 % against window 1 of the same run)
+does not match any fixed structural cost (the guide adds 2.5 % rows); it looks time-varying, host-side.
