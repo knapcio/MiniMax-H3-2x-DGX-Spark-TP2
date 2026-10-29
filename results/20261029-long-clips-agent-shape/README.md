@@ -46,3 +46,11 @@ numbers there are that shimmer, not camera or subject motion (`long60-window-pro
 The window-2 and later denoising times (764-769 s) are 17 % above window 1 (653 s), the second-request slowdown seen
 at 1344x768 too. So: 30 s is the clean offer; 60 s renders reliably in this sample but its second half looks worse
 than its first, and a 60 s request costs 75 min.
+
+**Owner's review of the 60 s clip (17:40): "a disaster: colour changes and a looping figure."** The metrics used here
+(scene-cut score, seam deltas, motion, detail, audio level) saw none of it: colour drift between windows and the
+subject repeating her walk in every window are not cuts, not seam steps and not loudness. Two consequences: the
+clip-metrics script gets per-second colour means (and the sheets stay the primary check, by eye), and 60 s is off the
+offer; the README now says up to 30 s. The per-window prompt cannot stop the action loop (each window renders "a
+woman walks along the stream" again); a lever against that would have to describe the *state* reached, not the
+action, in the later windows, or carry a longer tail. Open for the next fleet window.

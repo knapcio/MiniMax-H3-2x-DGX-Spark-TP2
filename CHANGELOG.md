@@ -209,3 +209,5 @@
   drift). README: 30 s by default, 60 s on request with the caveat. Serving stays on this config for the evening.
 - 2026-10-29 17:30: fused SwiGLU level 1 becomes the code default (`H3_TP2_FP8_FUSE_SWIGLU=0` disables); the serving
   pair already runs it through its env since 13:40. Server-side window prompts documented as default.
+- 2026-10-29 17:45: owner's review of the 60 s clip: colour changes and the subject's walk looping per window, invisible
+  to the metrics. 60 s withdrawn from the README offer (up to 30 s); per-second colour means to be added to clip-metrics.
