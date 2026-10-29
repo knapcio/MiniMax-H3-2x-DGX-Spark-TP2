@@ -73,8 +73,18 @@ def crossfade_tail(video: torch.Tensor, new_window: torch.Tensor, overlap_v: int
     window's regenerated overlap, then append the new window's free frames.  Upstream keeps the previous window's
     frames up to the hand-over and switches to the new window there, so any difference in fine texture between the
     two renderings of the same frames shows as a jump; the ramp spreads it over the overlap (0.9 s at 22 frames)."""
-    prev_tail = video[:, :, -overlap_v:]
-    regen = new_window[:, :, :overlap_v]
+    prev_tail = video[:, :, -overlap_v:].float()
+    regen = new_window[:, :, :overlap_v].float()
     w = torch.linspace(0.0, 1.0, steps=overlap_v + 2, device=video.device, dtype=torch.float32)[1:-1].view(1, 1, -1, 1, 1)
-    blended = (prev_tail.float() * (1 - w) + regen.float() * w).to(video.dtype)
-    return torch.cat((video[:, :, :-overlap_v], blended, new_window[:, :, overlap_v:]), dim=2)
+    blended = prev_tail * (1 - w) + regen * w
+    # variance-preserving: a mix of two renderings with different fine texture has a lower std mid-ramp (the decoded
+    # frame dips darker/flatter for a few frames: the owner's "blink" at the seam, 2026-10-29 20:10). Re-match every
+    # blended frame's per-channel mean/std to the interpolation of the two sources' statistics.
+    dims = (0, 3, 4)   # per channel and per latent frame
+    m_prev, s_prev = prev_tail.mean(dim=dims, keepdim=True), prev_tail.std(dim=dims, keepdim=True)
+    m_new, s_new = regen.mean(dim=dims, keepdim=True), regen.std(dim=dims, keepdim=True)
+    m_target = m_prev * (1 - w) + m_new * w
+    s_target = s_prev * (1 - w) + s_new * w
+    m_b, s_b = blended.mean(dim=dims, keepdim=True), blended.std(dim=dims, keepdim=True)
+    blended = (blended - m_b) * (s_target / s_b.clamp_min(1e-6)) + m_target
+    return torch.cat((video[:, :, :-overlap_v], blended.to(video.dtype), new_window[:, :, overlap_v:]), dim=2)
