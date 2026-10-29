@@ -190,3 +190,8 @@
   cuBLASLt determinism sweep on the DiT GEMM shapes (PyTorch sets no reduction-scheme mask for scaled_gemm).
 - 2026-10-29 12:00: cuBLASLt scalar-scale `_scaled_mm` (the two-pass first pass) is bit-stable on the DiT shapes for
   M 36864-73728, same inputs and moved inputs; the 1344x768 variation is not this kernel on these shapes.
+- 2026-10-29 13:30: fused SwiGLU level 1 warm pairs: fused 380-406 s (median 385) vs plain 399-447 s (median 416)
+  denoising at 5 s 960x576, bit-identical in all six renders; boot-to-boot spread ~10 %. Becomes a default (code
+  change after the evening's serving window). Evening plan (owner 12:50): both hosts on the FL2VA partition with the
+  two-pass GEMM + fused level 1, batched decode off, a 10 s and a 5 s smoke render from a still; the 1344 attribution
+  pairs and the NVlabs calibration are postponed.

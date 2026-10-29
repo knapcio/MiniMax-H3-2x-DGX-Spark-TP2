@@ -61,3 +61,23 @@ repeats on the same inputs plus six repeats with the inputs re-allocated behind 
 returned identical bits, and vLLM's CUTLASS per-row kernel too. Whatever flips the 1344x768 result, it is not the
 two-pass GEMM's first pass on these shapes at these M (the exact M values of a 1344 request are logged by the next
 boots; the stock-CUTLASS pair in `queue12e.sh` is the direct test).
+
+## Fused SwiGLU level 1: warm pairs (`queue12d.sh`, 12:18-13:27, 5 s 960x576)
+
+Three boots, two requests each, fused / plain / fused; every render framemd5 85437ffa (the fusion is bit-identical in
+all six of its renders today, E, E2-E5, plus the earlier A/B).
+
+| Arm | Boot, request | Denoising | Wall |
+|---|---|---|---|
+| E2 fused | 1, first | 385.4 s | 437.0 s |
+| E3 fused | 1, second | 384.6 s | 418.7 s |
+| A3 plain | 2, first | 405.7 s | 451.0 s |
+| A4 plain | 2, second | 399.3 s | 437.7 s |
+| E4 fused | 3, first | 405.8 s | 453.1 s |
+| E5 fused | 3, second | 379.9 s | 418.7 s |
+
+With the morning's renders: fused 380-406 s (median 385), plain 399-447 s (median 416): about -7 % denoising at the
+median, -5 % on the warm pairs (384.6 / 379.9 vs 399.3), inside a boot-to-boot spread of about 10 % that is larger than
+the gain itself (E4 at 405.8 s is a fused first request). The fusion removes one bf16 write+read of the 28672-wide fc1
+output per MLP (2.1 GB at this M) and never changes a bit, so it becomes a default; the exact gain per request is
+whatever the boot gives.
