@@ -7,7 +7,7 @@ def test_window_count_matches_render_sh():
     assert cp.window_count(30) == 3        # 736 frames -> 277 + 2 x 255
     assert cp.window_count(60) == 6
     assert cp.window_count(30, 345, 22) == 3
-    assert cp.window_count(14.4, 345, 22) == 1
+    assert cp.window_count(14.0, 345, 22) == 1   # 341 frames -> 345 (17k+5)
 
 
 def test_prompts_shape_and_wording():
