@@ -183,3 +183,8 @@
   across boots; batched tile decode keeps the latents and changes only the decoder output (deterministic itself).
   Fused SwiGLU level 1 is bit-identical and denoises in 389 s against 442-447 s (first requests); a warm-pair chain
   measures the gain before it becomes a default. Stock 590 s vs two-pass 495-501 s wall at this cell.
+- 2026-10-29 11:55: 1344x768 chain: two requests in one process gave different latents (F, G) and the next boot
+  reproduced G's (H): the diffusion at this cell takes one of at least two values, not boot-bound; at 960x576 it is
+  deterministic. Batched decode at 1344 is decode-only (H = G's latents, 45.2 dB, decode 42 -> 28 s). Attribution
+  queued: prompt/media/latents digests per render, two renders per boot for ref 1024 / ref 2048 / stock CUTLASS, and a
+  cuBLASLt determinism sweep on the DiT GEMM shapes (PyTorch sets no reduction-scheme mask for scaled_gemm).

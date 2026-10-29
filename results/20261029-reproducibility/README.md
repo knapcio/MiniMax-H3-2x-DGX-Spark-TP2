@@ -33,3 +33,23 @@ Findings:
 - At 1344x768 (reference 1024) two renders in different boots gave different samples (`../20261029-vae-stack-tiles/`,
   29 dB); both predate the latents digest. `queue12c.sh` (F/G in one fresh boot, H batched decode in a further boot)
   repeats that cell with the digest.
+
+## 1344x768, reference 1024 (`queue12c.sh`): not deterministic, and not boot-bound either
+
+| Arm | Boot | Latents sha256 | framemd5 | Denoising | Wall |
+|---|---|---|---|---|---|
+| `v030-t32-ref1024-1344` (08:38 boot) | a, first | (predates the digest) | c86f7279 | 503.0 s | 555.9 s |
+| `v030-vaestack2-1344` (09:09 boot, batched decode) | b, first | (predates the digest) | 5b4a3f5a | 510.3 s | 546.5 s |
+| F two-pass | c, first | e474c9ac | 8a129b58 | 521.2 s | 575.1 s |
+| G two-pass | c, second | **591e4c0d** | 7b9e4c16 | 594.9 s | 641.5 s |
+| H two-pass + batched decode | d, first | **591e4c0d** | 9eb3db3d (45.2 dB to G: decoder only) | 519.7 s | 547.5 s |
+
+Two requests in one process (F, G) gave different latents; the next boot's first request (H) gave G's latents. So the
+diffusion output at this cell takes one of (at least) two values independent of the boot, while at 960x576 (reference
+2048) six renders in five boots agreed. The same prompt, image and seed; the prompt and media digests (logged since
+11:30) are the next attribution step: `queue12e.sh` runs two renders per boot for reference 1024, reference 2048 and
+the stock CUTLASS kernel (is it the two-pass GEMM: PyTorch's `scaled_gemm` sets no cuBLASLt reduction-scheme mask, so
+a split-K algorithm with atomics or an alignment-dependent algorithm choice would do exactly this), and
+`scripts/fp8-gemm-determinism.py` repeats the scalar-scale `_scaled_mm` on the DiT shapes over a range of M, also with
+the inputs moved to other addresses. G's denoising was 14 % slower than F's in the same process (595 vs 521 s), the
+second-request slowdown seen before at this cell; H, a first request, was back at 520 s.

@@ -61,3 +61,11 @@ request and seed. Both renders predate the latents digest; the queue12c chain (t
 boot, then the batched decode in a further boot, every render with its latents digest) attributes it: within-boot vs
 cross-boot vs the decode flag. Until then the 1344 decode gain (-16 s per 5 s clip) is measured but the flag is not a
 default.
+
+### 1344x768 resolved (chain of 11:04-11:49): decode-only there too
+
+`v030-repro-H-1344-vaestack` (batched decode, its own boot) produced the latents of `v030-repro-G-1344` (stock decode,
+the previous boot): same latents sha256 591e4c0d, frames 45.2 dB / SSIM 0.979 apart, decode 42.2 -> 28.0 s. The 29 dB
+"different sample" of the first 1344 pair was the diffusion's own request-to-request variation at this cell (see
+`../20261029-reproducibility/`), not the decode flag. Measured gain of the flag: -8.5 s per 5 s clip at 960x576,
+-14..-16 s at 1344x768, peak unchanged; the clip is the same clip up to decoder arithmetic (45 dB).
