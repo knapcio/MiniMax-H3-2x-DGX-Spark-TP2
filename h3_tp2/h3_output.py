@@ -76,6 +76,38 @@ def frames_digest(frames_u8: np.ndarray) -> str:
     return hashlib.sha256(np.ascontiguousarray(frames_u8).tobytes()).hexdigest()
 
 
+def tensors_digest(obj) -> str:  # noqa: ANN001
+    """sha256 over the raw bytes of every tensor reachable from ``obj`` (tuples, lists, dicts), in traversal order.
+
+    Logged for the diffusion output before the VAE decode, so a changed clip can be attributed to the diffusion
+    (different latents) or to the decoder (same latents, different frames).  bf16/fp8 tensors are hashed as bytes.
+    """
+    h = hashlib.sha256()
+    n = 0
+
+    def walk(x, depth=0):  # noqa: ANN001
+        nonlocal n
+        if depth > 3 or isinstance(x, torch.nn.Module):
+            return
+        if isinstance(x, torch.Tensor):
+            t = x.detach()
+            t = t.contiguous().view(torch.uint8) if t.dtype in (torch.bfloat16, torch.float8_e4m3fn, torch.float8_e5m2) else t.contiguous()
+            h.update(t.cpu().numpy().tobytes())
+            n += 1
+        elif isinstance(x, dict):
+            for k in sorted(x, key=str):
+                walk(x[k], depth + 1)
+        elif isinstance(x, (tuple, list)):
+            for y in x:
+                walk(y, depth + 1)
+        elif hasattr(x, "__dict__") and not isinstance(x, type):
+            for k in sorted(vars(x)):
+                walk(vars(x)[k], depth + 1)
+
+    walk(obj)
+    return f"{h.hexdigest()} tensors={n}"
+
+
 def install(pipeline_module, api_utils_module, convert_u8: bool = True) -> None:
     """Patch the pipeline module and the API encoder module (idempotent).
 
@@ -131,11 +163,17 @@ def install(pipeline_module, api_utils_module, convert_u8: bool = True) -> None:
 
         def diffuse(self, *a, **kw):  # noqa: ANN001
             t0 = time.monotonic()
+            out = None
             try:
-                return orig_diffuse(self, *a, **kw)
+                out = orig_diffuse(self, *a, **kw)
+                return out
             finally:
                 _sync()
                 logger.info("h3_tp2 phase diffuse %.1f s", time.monotonic() - t0)
+                try:
+                    logger.info("h3_tp2 latents sha256 %s", tensors_digest(out))
+                except Exception as e:  # noqa: BLE001  (a digest must never break a render)
+                    logger.info("h3_tp2 latents sha256 unavailable (%s)", e)
 
         cls.decode = decode
         cls.encode_prompt = encode_prompt
