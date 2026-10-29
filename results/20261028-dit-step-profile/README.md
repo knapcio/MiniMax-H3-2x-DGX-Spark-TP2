@@ -74,3 +74,9 @@ is not a property of the hand-over (the guide adds 2.5 % rows) but something tra
 Against the stock-kernel window-1 profile (69.4 s, GEMM 21.1 s): the two-pass GEMM halves the GEMM phase (10.4 s);
 attention is now two thirds of a continuation step. The all-to-all is twice the window-1 figure (4.3 against 2.2 s);
 rank 1's profile of the same step says whether that is waiting on the peer (an imbalance) or more bytes.
+
+Rank 1 (spark-05), the same step: attention 34.01 s, two-pass GEMM 8.61 + 3.35 = 11.96 s, all-to-all 2.90 s, total
+52.5 s. So the two ranks do the same attention work, rank 1's GEMM phase is 1.6 s slower per step (15 %: the scalar
+GEMM 8.6 against 7.6 s and the scale pass 3.35 against 2.76 s, same shapes), and rank 0 spends the difference waiting
+in the all-to-all (4.3 against 2.9 s). A 3 % imbalance in rank 1's favour of the slower box; whether spark-05's GPU is
+simply slower or warmer at that moment is not established (its sampler showed the same clocks).
