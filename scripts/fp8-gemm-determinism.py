@@ -40,6 +40,19 @@ for name, N, K in shapes:
         dt = (time.perf_counter() - t0) / reps * 1e3
         same = all(torch.equal(outs[0], o) for o in outs[1:])
         maxdiff = max((outs[0] - o).abs().max().item() for o in outs[1:])
+        # the same inputs at other addresses: cuBLASLt's heuristic may pick another algorithm for another pointer
+        # alignment / allocator state (what differs between two requests of one process)
+        pads = []
+        for r in range(reps):
+            pads.append(torch.empty(int(torch.randint(1, 64, (1,)).item()) * 1024 + 256, device=dev, dtype=torch.uint8))
+            a2 = a.clone()
+            o2 = torch._scaled_mm(a2, b, scale_a=sa, scale_b=sbs, out_dtype=torch.float32)
+            if not torch.equal(outs[0], o2):
+                same = False
+                maxdiff = max(maxdiff, (outs[0] - o2).abs().max().item())
+                print(f"      moved inputs rep {r}: a@{a2.data_ptr() % 4096} out@{o2.data_ptr() % 4096} DIFFERS", flush=True)
+            del a2, o2
+        del pads
         ctl = "n/a"
         if have_cutlass:
             sa_row = torch.rand(M, 1, device=dev) * 0.01 + 0.001
