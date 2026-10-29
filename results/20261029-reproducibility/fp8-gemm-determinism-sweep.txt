@@ -1,0 +1,41 @@
+qkv  N=21504 K= 5376 M= 36864: cublasLt scalar fp32-out same                     143.5 ms | cutlass per-row same
+qkv  N=21504 K= 5376 M= 40960: cublasLt scalar fp32-out same                     152.3 ms | cutlass per-row same
+qkv  N=21504 K= 5376 M= 49152: cublasLt scalar fp32-out same                     182.7 ms | cutlass per-row same
+qkv  N=21504 K= 5376 M= 57344: cublasLt scalar fp32-out same                     208.0 ms | cutlass per-row same
+qkv  N=21504 K= 5376 M= 61440: cublasLt scalar fp32-out same                     226.2 ms | cutlass per-row same
+qkv  N=21504 K= 5376 M= 65536: cublasLt scalar fp32-out same                     241.5 ms | cutlass per-row same
+qkv  N=21504 K= 5376 M= 67584: cublasLt scalar fp32-out same                     245.2 ms | cutlass per-row same
+qkv  N=21504 K= 5376 M= 69632: cublasLt scalar fp32-out same                     258.1 ms | cutlass per-row same
+qkv  N=21504 K= 5376 M= 71680: cublasLt scalar fp32-out same                     264.9 ms | cutlass per-row same
+qkv  N=21504 K= 5376 M= 73728: cublasLt scalar fp32-out same                     268.5 ms | cutlass per-row same
+out  N= 5376 K= 7168 M= 36864: cublasLt scalar fp32-out same                      24.5 ms | cutlass per-row same
+out  N= 5376 K= 7168 M= 40960: cublasLt scalar fp32-out same                      18.6 ms | cutlass per-row same
+out  N= 5376 K= 7168 M= 49152: cublasLt scalar fp32-out same                      50.6 ms | cutlass per-row same
+out  N= 5376 K= 7168 M= 57344: cublasLt scalar fp32-out same                      56.1 ms | cutlass per-row same
+out  N= 5376 K= 7168 M= 61440: cublasLt scalar fp32-out same                      60.3 ms | cutlass per-row same
+out  N= 5376 K= 7168 M= 65536: cublasLt scalar fp32-out same                      63.2 ms | cutlass per-row same
+out  N= 5376 K= 7168 M= 67584: cublasLt scalar fp32-out same                      64.5 ms | cutlass per-row same
+out  N= 5376 K= 7168 M= 69632: cublasLt scalar fp32-out same                      65.9 ms | cutlass per-row same
+out  N= 5376 K= 7168 M= 71680: cublasLt scalar fp32-out same                      68.7 ms | cutlass per-row same
+out  N= 5376 K= 7168 M= 73728: cublasLt scalar fp32-out same                      70.0 ms | cutlass per-row same
+fc1  N=28672 K= 5376 M= 36864: cublasLt scalar fp32-out same                     181.7 ms | cutlass per-row same
+fc1  N=28672 K= 5376 M= 40960: cublasLt scalar fp32-out same                     208.4 ms | cutlass per-row same
+fc1  N=28672 K= 5376 M= 49152: cublasLt scalar fp32-out same                     236.5 ms | cutlass per-row same
+fc1  N=28672 K= 5376 M= 57344: cublasLt scalar fp32-out same                     279.9 ms | cutlass per-row same
+fc1  N=28672 K= 5376 M= 61440: cublasLt scalar fp32-out same                     299.2 ms | cutlass per-row same
+fc1  N=28672 K= 5376 M= 65536: cublasLt scalar fp32-out same                     319.1 ms | cutlass per-row same
+fc1  N=28672 K= 5376 M= 67584: cublasLt scalar fp32-out same                     323.2 ms | cutlass per-row same
+fc1  N=28672 K= 5376 M= 69632: cublasLt scalar fp32-out same                     334.2 ms | cutlass per-row same
+fc1  N=28672 K= 5376 M= 71680: cublasLt scalar fp32-out same                     338.7 ms | cutlass per-row same
+fc1  N=28672 K= 5376 M= 73728: cublasLt scalar fp32-out same                     348.6 ms | cutlass per-row same
+fc2  N= 5376 K=14336 M= 36864: cublasLt scalar fp32-out same                      33.1 ms | cutlass per-row same
+fc2  N= 5376 K=14336 M= 40960: cublasLt scalar fp32-out same                      46.9 ms | cutlass per-row same
+fc2  N= 5376 K=14336 M= 49152: cublasLt scalar fp32-out same                      56.8 ms | cutlass per-row same
+fc2  N= 5376 K=14336 M= 57344: cublasLt scalar fp32-out same                      64.6 ms | cutlass per-row same
+fc2  N= 5376 K=14336 M= 61440: cublasLt scalar fp32-out same                      68.7 ms | cutlass per-row same
+fc2  N= 5376 K=14336 M= 65536: cublasLt scalar fp32-out same                      69.1 ms | cutlass per-row same
+fc2  N= 5376 K=14336 M= 67584: cublasLt scalar fp32-out same                      68.4 ms | cutlass per-row same
+fc2  N= 5376 K=14336 M= 69632: cublasLt scalar fp32-out same                      80.3 ms | cutlass per-row same
+fc2  N= 5376 K=14336 M= 71680: cublasLt scalar fp32-out same                      81.8 ms | cutlass per-row same
+fc2  N= 5376 K=14336 M= 73728: cublasLt scalar fp32-out same                      75.4 ms | cutlass per-row same
+non-deterministic (shape, M): none

@@ -53,3 +53,11 @@ a split-K algorithm with atomics or an alignment-dependent algorithm choice woul
 `scripts/fp8-gemm-determinism.py` repeats the scalar-scale `_scaled_mm` on the DiT shapes over a range of M, also with
 the inputs moved to other addresses. G's denoising was 14 % slower than F's in the same process (595 vs 521 s), the
 second-request slowdown seen before at this cell; H, a first request, was back at 520 s.
+
+### cuBLASLt scalar-scale GEMM: bit-stable on the DiT shapes (`fp8-gemm-determinism-sweep.txt`, spark-05, 11:57)
+
+`scripts/fp8-gemm-determinism.py` on the four DiT shapes (qkv, out, fc1, fc2) for M from 36864 to 73728 rows: six
+repeats on the same inputs plus six repeats with the inputs re-allocated behind random pads (other addresses) all
+returned identical bits, and vLLM's CUTLASS per-row kernel too. Whatever flips the 1344x768 result, it is not the
+two-pass GEMM's first pass on these shapes at these M (the exact M values of a 1344 request are logged by the next
+boots; the stock-CUTLASS pair in `queue12e.sh` is the direct test).

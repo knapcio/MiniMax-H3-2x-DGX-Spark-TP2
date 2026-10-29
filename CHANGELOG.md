@@ -188,3 +188,5 @@
   deterministic. Batched decode at 1344 is decode-only (H = G's latents, 45.2 dB, decode 42 -> 28 s). Attribution
   queued: prompt/media/latents digests per render, two renders per boot for ref 1024 / ref 2048 / stock CUTLASS, and a
   cuBLASLt determinism sweep on the DiT GEMM shapes (PyTorch sets no reduction-scheme mask for scaled_gemm).
+- 2026-10-29 12:00: cuBLASLt scalar-scale `_scaled_mm` (the two-pass first pass) is bit-stable on the DiT shapes for
+  M 36864-73728, same inputs and moved inputs; the 1344x768 variation is not this kernel on these shapes.
