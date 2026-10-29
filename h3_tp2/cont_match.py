@@ -47,17 +47,63 @@ def match_window(prev_tail: torch.Tensor, new_window: torch.Tensor, overlap_v: i
     return out
 
 
-def wrap_diffuse(diffuse, *, apply: bool):  # noqa: ANN001
-    """Return a ``diffuse`` replacement for one continuation request (state: the previous window's video latents)."""
+def seam_ratio(video: torch.Tensor, overlap_v: int) -> tuple[float, float, float]:
+    """Latent-space seam check of one sampled window: mean |v[t+1]-v[t]| at the boundary between the last overlap
+    frame and the first free frame, against the median of the same quantity over the window's free part.
+    Returns (boundary, median, ratio).  A cut right after the prefix shows as a ratio far above 1."""
+    v = video.float()
+    d = (v[:, :, 1:] - v[:, :, :-1]).abs().mean(dim=(0, 1, 3, 4))   # per transition
+    boundary = float(d[overlap_v - 1].item())
+    free = d[overlap_v:]
+    median = float(free.median().item()) if free.numel() else boundary
+    return boundary, median, boundary / max(median, 1e-6)
+
+
+def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, retries: int = 0, max_ratio: float = 2.0):  # noqa: ANN001
+    """Return a ``diffuse`` replacement for one continuation request (state: the previous window's video latents).
+
+    With ``retries`` > 0 a window whose latent seam ratio exceeds ``max_ratio`` is sampled again with another seed
+    (up to ``retries`` times); the attempt with the lowest ratio is kept.
+    """
     state = {"prev": None, "index": 0}
+
+    def _overlap(args):  # noqa: ANN001
+        blocks = args.get("ref_blocks") or []
+        guide = next((b for b in reversed(blocks) if isinstance(b, dict) and b.get("kind") == "latent_guide"), None)
+        if guide is not None:
+            return int(guide["latent_t"])
+        mask = args.get("video_edit_mask_rows")
+        if mask is not None and overlap_v_hint:
+            return overlap_v_hint
+        return None
 
     def _diffuse(**args):  # noqa: ANN003
         state["index"] += 1
-        video, audio = diffuse(**args)
-        blocks = args.get("ref_blocks") or []
-        guide = next((b for b in reversed(blocks) if isinstance(b, dict) and b.get("kind") == "latent_guide"), None)
-        if state["prev"] is not None and guide is not None and isinstance(video, torch.Tensor) and video.dim() == 5:
-            ov = int(guide["latent_t"])
+        ov = _overlap(args) if state["prev"] is not None else None
+        best = None
+        for attempt in range(1 + (retries if ov else 0)):
+            a = dict(args)
+            if attempt and "seed" in a and a["seed"] is not None:
+                a["seed"] = int(a["seed"]) + 7919 * attempt
+            video, audio = diffuse(**a)
+            if not ov or not (isinstance(video, torch.Tensor) and video.dim() == 5):
+                best = (video, audio, 0.0)
+                break
+            try:
+                b, m, r = seam_ratio(video, ov)
+                logger.info("h3_tp2 seam check window %d attempt %d (seed %s): boundary %.4f median %.4f ratio %.2f",
+                            state["index"], attempt + 1, a.get("seed"), b, m, r)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("h3_tp2 seam check skipped (%s)", e)
+                best = (video, audio, 0.0)
+                break
+            if best is None or r < best[2]:
+                best = (video, audio, r)
+            if r <= max_ratio:
+                break
+            logger.warning("h3_tp2 seam check window %d: ratio %.2f > %.2f, re-sampling with another seed", state["index"], r, max_ratio)
+        video, audio, _ = best
+        if state["prev"] is not None and ov:
             try:
                 video = match_window(state["prev"][:, :, -ov:], video, ov, apply=apply, index=state["index"])
             except Exception as e:  # noqa: BLE001  (diagnostics never break a render)

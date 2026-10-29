@@ -455,13 +455,18 @@ def _apply(role: str) -> None:
             # upstream's latent-guide condition block (the same frames would otherwise be in the sequence twice).
             _edit = os.environ.get("H3_TP2_CONT_EDIT", "0").strip()
             _edit = int(_edit) if _edit in ("1", "2") else 0
+            # H3_TP2_CONT_RETRY=n: re-sample a window (another seed, up to n times) when its latent seam ratio exceeds
+            # H3_TP2_CONT_SEAM_RATIO (default 2.0): the model may still cut right after the prefix (a sampling event).
+            _retries = int(os.environ.get("H3_TP2_CONT_RETRY", "0") or 0)
+            _max_ratio = float(os.environ.get("H3_TP2_CONT_SEAM_RATIO", "2.0") or 2.0)
 
             if _xfade or _edit:
                 # own copy of upstream's loop (continuation.py, v0.30.0) with the hand-over crossfaded over the overlap
                 from vllm_omni.diffusion.models.minimax_h3 import continuation as _ct
 
                 def _dc(diffuse, kwargs, *, window_frames, overlap_frames, text_conditioning=None):  # noqa: ANN001
-                    diffuse = _cm.wrap_diffuse(diffuse, apply=_apply_match)
+                    diffuse = _cm.wrap_diffuse(diffuse, apply=_apply_match, overlap_v_hint=_ct._video_t(overlap_frames),
+                                               retries=_retries, max_ratio=_max_ratio)
                     windows = _ct.plan_continuation_windows(kwargs["num_frames"], window_frames, overlap_frames)
                     if text_conditioning is not None and len(text_conditioning) != len(windows):
                         raise _ct.OmniClientError("MiniMax H3 requires one text conditioning per continuation window")
@@ -527,8 +532,8 @@ def _apply(role: str) -> None:
 
             _pp9e.diffuse_continuation = _dc
             _pp9e._h3_tp2_cont_match_patched = True
-            logger.warning("h3_tp2: continuation hand-over diagnostics ON; latent match %s; crossfade %s; edit prefix %s",
-                           "ON" if _apply_match else "off", "ON" if _xfade else "off", _edit or "off")
+            logger.warning("h3_tp2: continuation hand-over diagnostics ON; latent match %s; crossfade %s; edit prefix %s; seam retries %d (ratio > %.1f)",
+                           "ON" if _apply_match else "off", "ON" if _xfade else "off", _edit or "off", _retries, _max_ratio)
     except Exception as e:  # noqa: BLE001
         logger.warning("h3_tp2: continuation hand-over hook not installed (%s)", e)
 
