@@ -56,3 +56,21 @@ queued). What it does show for a 107-frame window: GEMM 13.1 s (46 %), attention
 larger share than in the big-window profile: small windows are closer to launch-bound. The variance of the later
 windows across today's runs (chain13 +1 %, plain +10 %, chain6 +41 %, chain8 +51 % against window 1 of the same run)
 does not match any fixed structural cost (the guide adds 2.5 % rows); it looks time-varying, host-side.
+
+## Equal-size window 2 (277 frames, 30 s clip), rank 0, step 5, two-pass GEMM on (profiled 2026-10-29 07:58)
+
+| Kernel family | Self CUDA | Share |
+|---|---|---|
+| Attention (cuDNN, the same sm80 flash kernel) | 34.29 s | 65.2 % |
+| FP8 GEMM, two-pass: `torch._scaled_mm` + the Triton scale pass | 7.61 s + 2.76 s = 10.37 s | 19.7 % |
+| Ulysses all-to-all (NCCL) | 4.32 s | 8.2 % |
+| Copies | 1.07 s | 2.0 % |
+| FP8 activation quant | 0.74 s | 1.4 % |
+| `silu_and_mul` | 0.62 s | 1.2 % |
+
+52.6 s of kernel time per step. Window 1 of the same run took 1048.6 s for 20 steps, 52.4 s per step: in this
+controlled run window 2 costs the same as window 1, so the +10..+51 % of later windows seen in some of the day's runs
+is not a property of the hand-over (the guide adds 2.5 % rows) but something transient that did not recur here.
+Against the stock-kernel window-1 profile (69.4 s, GEMM 21.1 s): the two-pass GEMM halves the GEMM phase (10.4 s);
+attention is now two thirds of a continuation step. The all-to-all is twice the window-1 figure (4.3 against 2.2 s);
+rank 1's profile of the same step says whether that is waiting on the peer (an imbalance) or more bytes.
