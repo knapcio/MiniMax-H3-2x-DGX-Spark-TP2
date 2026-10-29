@@ -68,8 +68,8 @@ does not match any fixed structural cost (the guide adds 2.5 % rows); it looks t
 | FP8 activation quant | 0.74 s | 1.4 % |
 | `silu_and_mul` | 0.62 s | 1.2 % |
 
-52.6 s of kernel time per step. Window 1 of the same run took 1048.6 s for 20 steps, 52.4 s per step: in this
-controlled run window 2 costs the same as window 1, so the +10..+51 % of later windows seen in some of the day's runs
+52.6 s of kernel time per step. Window 1 of the same run took 1048.6 s for 20 steps, 52.4 s per step, and window 2
+1124.0 s (+7 %, with the profiler's own overhead on one step): in this controlled run window 2 costs about the same as window 1, so the +10..+51 % of later windows seen in some of the day's runs
 is not a property of the hand-over (the guide adds 2.5 % rows) but something transient that did not recur here.
 Against the stock-kernel window-1 profile (69.4 s, GEMM 21.1 s): the two-pass GEMM halves the GEMM phase (10.4 s);
 attention is now two thirds of a continuation step. The all-to-all is twice the window-1 figure (4.3 against 2.2 s);
