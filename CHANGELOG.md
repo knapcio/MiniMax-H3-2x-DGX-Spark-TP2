@@ -195,3 +195,5 @@
   change after the evening's serving window). Evening plan (owner 12:50): both hosts on the FL2VA partition with the
   two-pass GEMM + fused level 1, batched decode off, a 10 s and a 5 s smoke render from a still; the 1344 attribution
   pairs and the NVlabs calibration are postponed.
+- 2026-10-29 14:15: evening serving config live (FL2VA partition, two-pass GEMM + fused SwiGLU level 1, batched decode
+  off): 10 s 1344x768 from a still in 1441 s (stock 1690 s, two-pass alone 1488 s), peak 69.6 GB; 5 s warm 505 s.
