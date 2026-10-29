@@ -210,11 +210,8 @@ def install(level: int = 1) -> None:
                 out = _fc2_direct(self.fc2, q, scale, lead)
                 if out is not None:
                     return out
-                del q, scale                             # unsupported fc2 layout: recompute the plain way
-                hidden = None
-                stash = None
-            if hidden is None:
-                # fall back: the fp32 product was freed, redo fc1 through the stock path (rare, correct, slower)
+                del q, scale
+                # unsupported fc2 layout: the fp32 product is gone, redo fc1 through the stock path (correct, slower)
                 hidden, _ = self.fc1(x)
                 hidden = self.act_fn(hidden)
             else:

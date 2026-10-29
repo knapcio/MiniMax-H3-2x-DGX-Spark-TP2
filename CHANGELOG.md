@@ -162,3 +162,6 @@
   assume a stock baseline.
 - 2026-10-29 06:20: FL2VA 20 s 1344x768 with the two-pass GEMM: denoising 5454 s (e1aa6eae stock: ~6600 s), about
   -17 %; the GEMM share shrinks as attention grows with the clip length.
+- 2026-10-29 06:40: the fused SwiGLU level-1 render A/B failed at once (`UnboundLocalError`: the patched forward
+  referenced a deleted local on the level-1 path; the unit tests had not exercised the success path). Fixed, a
+  success-path test for both levels added, redeployed; the level-1 rerun is queued after the VAE and profile steps.

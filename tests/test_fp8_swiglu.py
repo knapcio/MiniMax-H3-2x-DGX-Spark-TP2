@@ -103,3 +103,55 @@ def test_fused_swiglu_quant_matches_vllm_quant(M, width, bias):
     assert q.shape == q_ref.shape and q.dtype == q_ref.dtype and s.shape == s_ref.shape
     assert torch.equal(q.view(torch.int8), q_ref.view(torch.int8))
     assert torch.equal(s.view(-1), s_ref.view(-1))
+
+
+class _FakeFC1:
+    """Stands in for vLLM's fc1: the dispatcher's hook would stash the fp32 product and hand back a placeholder."""
+    output_size_per_partition = 256
+    def __init__(self, x32, sa, sb):
+        self.x32, self.sa, self.sb = x32, sa, sb
+    def __call__(self, x):
+        fp8_swiglu._tls.stash = (self.x32, self.sa, self.sb, None)
+        return torch.empty(x.shape[0], 256, device="cuda", dtype=torch.bfloat16), None
+
+
+class _FakeFC2:
+    """No quant_method: level 2's direct path declines and the forward must fall back correctly."""
+    def __init__(self):
+        self.calls = 0
+    def __call__(self, h):
+        self.calls += 1
+        return h.float().sum(-1, keepdim=True), None
+
+
+@pytest.mark.parametrize("level", [1, 2])
+def test_mlp_forward_success_paths(level):
+    """The patched forward runs end to end at both levels with the stash populated (the bug of 2026-10-29 06:34:
+    the level-1 path referenced a deleted local)."""
+    from vllm_omni.diffusion.models.minimax_h3 import minimax_h3_transformer as tr
+    cls = tr.MiniMaxH3MLP
+    saved = (getattr(cls, "forward"), getattr(cls, "_h3_tp2_fused_swiglu", False))
+    cls._h3_tp2_fused_swiglu = False
+    fp8_gemm._state["triton"] = True
+    fp8_swiglu.install(level=level)
+    try:
+        torch.manual_seed(2)
+        M = 8
+        x32 = torch.randn(M, 256, device="cuda") * 300
+        sa = torch.rand(M, device="cuda") * 0.01 + 0.001
+        sb = torch.rand(256, device="cuda") * 0.01 + 0.001
+        fc1 = _FakeFC1(x32, sa, sb)
+        fc2 = _FakeFC2()
+
+        class MLP:
+            pass
+        m = MLP(); m.fc1 = fc1; m.fc2 = fc2
+        m.act_fn = lambda h: fp8_swiglu.scale_swiglu_reference(x32, sa, sb, None)   # stock activation on the fallback path
+        x = torch.zeros(M, 64, device="cuda", dtype=torch.bfloat16)
+        out = cls.forward(m, x)
+        ref = fp8_swiglu.scale_swiglu_reference(x32, sa, sb, None).float().sum(-1, keepdim=True)
+        assert torch.equal(out, ref)
+        assert fc2.calls == 1
+        assert getattr(fp8_swiglu._tls, "stash", None) is None and fp8_swiglu._tls.stash_next is False
+    finally:
+        cls.forward, cls._h3_tp2_fused_swiglu = saved
