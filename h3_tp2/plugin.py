@@ -436,6 +436,26 @@ def _apply(role: str) -> None:
             _cls9d._h3_tp2_cont_prompts_patched = True
             logger.warning("h3_tp2: server-side per-window continuation prompts ON (H3_TP2_CONT_PROMPTS=off disables)")
 
+    # 9e) continuation hand-over diagnostics (always on, one log line per window) and H3_TP2_CONT_MATCH=1: per-channel
+    #     affine match of each new window's video latents to the previous window's tail over the hidden overlap
+    #     (experiment against the exposure/texture step at the seams; audio untouched).
+    try:
+        from h3_tp2 import cont_match as _cm
+        from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _pp9e
+
+        if not getattr(_pp9e, "_h3_tp2_cont_match_patched", False):
+            _orig_dc = _pp9e.diffuse_continuation
+            _apply_match = os.environ.get("H3_TP2_CONT_MATCH", "0").strip() == "1"
+
+            def _dc(diffuse, kwargs, **kw):  # noqa: ANN001
+                return _orig_dc(_cm.wrap_diffuse(diffuse, apply=_apply_match), kwargs, **kw)
+
+            _pp9e.diffuse_continuation = _dc
+            _pp9e._h3_tp2_cont_match_patched = True
+            logger.warning("h3_tp2: continuation hand-over diagnostics ON; latent match %s", "ON" if _apply_match else "off")
+    except Exception as e:  # noqa: BLE001
+        logger.warning("h3_tp2: continuation hand-over hook not installed (%s)", e)
+
     edge = os.environ.get("H3_TP2_REF_SHORT_EDGE", "").strip()
     if edge:
         from vllm_omni.model_executor.models.minimax_h3 import preprocessing as _pre
