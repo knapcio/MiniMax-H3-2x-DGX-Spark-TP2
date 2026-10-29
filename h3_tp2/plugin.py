@@ -400,6 +400,39 @@ def _apply(role: str) -> None:
             if hasattr(_vae.MiniMaxH3VideoVAE, _m):
                 setattr(_vae.MiniMaxH3VideoVAE, _m, _with_stack(_m))
 
+    # 9d) H3_TP2_CONT_PROMPTS=auto (default; "off" disables): a long_video continuation request without its own
+    #     continuation_prompts gets one prompt per window (first: the prompt + "one single continuous take"; the rest:
+    #     "the same continuous shot goes on ..." + the prompt), the wording measured on 2026-10-27/28 that keeps the shot
+    #     and the subject continuous across the seams. Runs identically on every rank (a pure function of the request).
+    if os.environ.get("H3_TP2_CONT_PROMPTS", "auto").strip().lower() != "off":
+        from h3_tp2 import cont_prompts as _cp
+        from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _pp9d
+
+        _cls9d = _pp9d.MiniMaxH3Pipeline
+        if not getattr(_cls9d, "_h3_tp2_cont_prompts_patched", False):
+            _orig_plc = _cls9d._prepare_local_conditioning
+            _extra_words = os.environ.get("H3_TP2_CONT_PROMPTS_EXTRA", "")
+
+            def _plc(self, raw_prompt, sampling, *a, **kw):  # noqa: ANN001
+                try:
+                    ea = getattr(sampling, "extra_args", None)
+                    if (isinstance(ea, dict) and ea.get("long_video") and ea.get("long_video_mode", "continuation") == "continuation"
+                            and not ea.get("continuation_prompts")):
+                        dur = _cp.request_duration(ea)
+                        base, _ = self._extract_prompt(raw_prompt)
+                        if dur is not None and isinstance(base, str) and base.strip():
+                            n = _cp.window_count(dur, int(ea.get("continuation_window_frames", 277)), int(ea.get("continuation_overlap_frames", 22)))
+                            if n > 1:
+                                ea["continuation_prompts"] = _cp.continuation_prompts(base, n, _extra_words)
+                                logger.info("h3_tp2: continuation prompts generated for %d windows (%.1f s)", n, dur)
+                except Exception as e:  # noqa: BLE001  (never break a request over the prompt helper)
+                    logger.warning("h3_tp2: continuation prompt helper skipped (%s)", e)
+                return _orig_plc(self, raw_prompt, sampling, *a, **kw)
+
+            _cls9d._prepare_local_conditioning = _plc
+            _cls9d._h3_tp2_cont_prompts_patched = True
+            logger.warning("h3_tp2: server-side per-window continuation prompts ON (H3_TP2_CONT_PROMPTS=off disables)")
+
     edge = os.environ.get("H3_TP2_REF_SHORT_EDGE", "").strip()
     if edge:
         from vllm_omni.model_executor.models.minimax_h3 import preprocessing as _pre

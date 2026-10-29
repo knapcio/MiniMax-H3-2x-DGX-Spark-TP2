@@ -1,0 +1,26 @@
+from h3_tp2 import cont_prompts as cp
+
+
+def test_window_count_matches_render_sh():
+    assert cp.window_count(5) == 1
+    assert cp.window_count(10) == 1
+    assert cp.window_count(30) == 3        # 736 frames -> 277 + 2 x 255
+    assert cp.window_count(60) == 6
+    assert cp.window_count(30, 345, 22) == 3
+    assert cp.window_count(14.4, 345, 22) == 1
+
+
+def test_prompts_shape_and_wording():
+    ps = cp.continuation_prompts("A forest. The stream flows.", 3, "The light stays the same.")
+    assert len(ps) == 3
+    assert ps[0].startswith("A forest. The stream flows") and "One single continuous take" in ps[0]
+    assert ps[0].endswith("The light stays the same.")
+    assert ps[1] == ps[2] and ps[1].startswith(cp.REST_PREFIX) and "A forest. The stream flows." in ps[1]
+    assert cp.continuation_prompts("x", 1) == ["x" + cp.FIRST_SUFFIX]
+
+
+def test_request_duration():
+    assert cp.request_duration({"duration": 30}) == 30.0
+    assert cp.request_duration({"duration_seconds": 12.5}) == 12.5
+    assert cp.request_duration({"target": {"duration_seconds": 8}}) == 8.0
+    assert cp.request_duration({}) is None
