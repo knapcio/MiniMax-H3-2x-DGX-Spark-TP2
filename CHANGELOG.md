@@ -221,3 +221,7 @@
   a latent crossfade over the overlap plus a subject-free later-window prompt removes the inter-frame spike at the
   seam (8.1 -> 5.4 at neighbours 5.1-5.7). `H3_TP2_CONT_MATCH`, `H3_TP2_CONT_XFADE`, `H3_TP2_CONT_PROMPTS_REST`
   (`results/20261029-seam-loop/`). Owner's eye pending.
+- 2026-10-29 21:15: the latent crossfade blinks (luma +-3 at the latent-frame period inside the ramp; owner saw it
+  twice) and is withdrawn. New: the previous window's tail pinned as target rows through upstream's latent-edit path
+  (`H3_TP2_CONT_EDIT=1|2`, video and audio): at 16 s the regenerated overlap equals the tail exactly, luma step +0.3,
+  no spike in the inter-frame change, per-frame luma monotone across the seam.

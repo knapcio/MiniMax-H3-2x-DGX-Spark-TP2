@@ -24,3 +24,24 @@ What the levers are: the match is a per-channel gain/offset of the whole new win
 hidden overlap (deterministic, no model change, not bit-identical to upstream by design); the crossfade replaces
 upstream's hard switch by a ramp over the overlap in latent space (`h3_tp2/plugin.py` 9e keeps a copy of upstream's
 loop for it); the later-window prompt describes continuation of what is in the frame instead of repeating the subject.
+
+## Owner on X1 / X3 (20:10, 20:45): a blink at 11 s. Per-frame luma confirms it and the crossfade is withdrawn
+
+Luma per frame (every 2nd, frames 240-300): T2 (no crossfade) 48 48 48 49 ... 53 53, smooth; X1 and X3 (latent
+crossfade, plain and variance-preserving) ... 54 55 54 55 **52 55 53 57** 55 55 ...: an oscillation of +-3 at the
+latent-frame period inside the ramp. Blending two latent trajectories is not something the VAE decodes smoothly; the
+crossfade is withdrawn (code kept behind `H3_TP2_CONT_XFADE`, off).
+
+## X4: the previous tail pinned as target rows (`H3_TP2_CONT_EDIT=1`, upstream's latent-edit path)
+
+Instead of conditioning the new window on a latent-guide block only, the overlap frames of the new window are made
+pinned target rows: mask 0 (the model sees the noise-augmented clean rows at the condition timestep, as FL2VA keeps
+its keyframe) and restore 0 (the clean rows are restored at the end); audio rows the same way; upstream's guide block
+kept (`=2` drops it). 16 s, seed 1101, the later-window prompt without the subject, no match, no crossfade:
+
+| | hand-over diagnostics | luma step (-3..+3) | inter-frame change at the seam vs neighbours | luma per frame 240-300 (every 2nd) |
+|---|---|---|---|---|
+| X4 | regenerated overlap == guide tail (max channel shift 0.0000) | **+0.3** | **3.99 vs 4.07 / 4.20** | 49 50 50 50 50 51 51 52 52 52 53 53 54 54 54 55 55 55 55 56 56 56 56 57 57 56 56: monotone, no step, no oscillation |
+
+The cleanest hand-over of the day by every number; frames 254/266/278/290 in `x4-frames-254-266-278-290.png`. Owner's
+eye pending (morning). X5 (guide block dropped) and a 30 s clip follow.
