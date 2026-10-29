@@ -207,3 +207,5 @@
 - 2026-10-29 17:20: 60 s with the plain agent request and server-side window prompts: 4470 s, no cut, no seam step,
   one subject, flat audio; grainy texture and a near-static shot in the second half (the known long-continuation
   drift). README: 30 s by default, 60 s on request with the caveat. Serving stays on this config for the evening.
+- 2026-10-29 17:30: fused SwiGLU level 1 becomes the code default (`H3_TP2_FP8_FUSE_SWIGLU=0` disables); the serving
+  pair already runs it through its env since 13:40. Server-side window prompts documented as default.

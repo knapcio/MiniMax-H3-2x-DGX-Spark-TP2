@@ -348,7 +348,9 @@ def _apply(role: str) -> None:
         #      that size is still allocated).  Matches two-pass + silu_and_mul on the tested inputs and build.
         #      "2" additionally quantises the SwiGLU output per token inside the kernel for fc2 (vLLM's compiled quant
         #      reproduced bit for bit), so the bf16 [M, ffn] activation is never written either.
-        _fuse = os.environ.get("H3_TP2_FP8_FUSE_SWIGLU", "0").strip()
+        #      Level 1 is the default since 2026-10-29 (bit-identical to the two-pass path in nine renders, -5..-7 %
+        #      denoising); "0" disables, "2" stays experimental (one of two renders differed from the plain digest).
+        _fuse = os.environ.get("H3_TP2_FP8_FUSE_SWIGLU", "1").strip()
         if _fuse in ("1", "2"):
             from . import fp8_swiglu as _fsw
 
