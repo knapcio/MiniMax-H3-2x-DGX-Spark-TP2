@@ -335,7 +335,11 @@ def _apply(role: str) -> None:
     # 9b) H3_TP2_FP8_GEMM=tensor32: scalar-scale FP8 GEMM with fp32 output + one exact Triton scale/bias/round pass
     #     instead of the per-row-scale CUTLASS epilogue (3.2x slower GEMM on sm121).  Same arithmetic, accumulation
     #     order differs (not bit-identical).  See h3_tp2/fp8_gemm.py and results/20261028-fp8-gemm-bench/.
-    if os.environ.get("H3_TP2_FP8_GEMM", "").strip().lower() == "tensor32":
+    #     DEFAULT ON since 2026-10-29 (owner's call: a clean speedup with no quality loss): -19..-24 % per render,
+    #     byte-identical output at the serving cell (FL2VA 5 s 1344x768), same-class samples elsewhere.
+    #     H3_TP2_FP8_GEMM=stock restores vLLM's CUTLASS kernel.
+    _gemm = os.environ.get("H3_TP2_FP8_GEMM", "tensor32").strip().lower()
+    if _gemm == "tensor32":
         from . import fp8_gemm as _fp8
 
         _fp8.install()

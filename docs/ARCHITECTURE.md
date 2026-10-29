@@ -107,7 +107,7 @@ same-seed frame digest (`h3_tp2 frames sha256` in the head journal, framemd5 in 
   extrapolates its temporal RoPE and the VAE runs lengths it was not validated on). Experiment only.
 - `H3_TP2_PROFILE_STEP=<n>`: torch.profiler around the n-th DiT forward of the process (one denoising step), table
   in the log and in `~/h3-tp2-logs/profile-<role>-<pid>.txt`. Measurement only.
-- `H3_TP2_FP8_GEMM=tensor32`: the two-pass FP8 GEMM (`h3_tp2/fp8_gemm.py`): scalar-scale cuBLASLt GEMM with fp32 output
+- `H3_TP2_FP8_GEMM=tensor32` (the default since 2026-10-29; `stock` restores vLLM's CUTLASS kernel): the two-pass FP8 GEMM (`h3_tp2/fp8_gemm.py`): scalar-scale cuBLASLt GEMM with fp32 output
   plus one Triton pass for the per-token / per-channel scales, bias and rounding in vLLM's epilogue order. 3x faster
   GEMMs on the GB10, -24 % on a warm 5 s render; not bit-identical to the stock CUTLASS kernel (reduction order).
 - `H3_TP2_FP8_FUSE_SWIGLU=1` (with `tensor32`): the MLP's fc1 keeps its fp32 product and one Triton kernel applies the

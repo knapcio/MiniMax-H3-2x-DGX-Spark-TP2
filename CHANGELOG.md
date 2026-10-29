@@ -157,3 +157,6 @@
 - 2026-10-29 04:50: two-pass FP8 GEMM at the serving cell (FL2VA 1344x768): 5 s warm 558 vs 688 s (-19 %), first
   request 537 vs 853 s (-37 %), 10 s 1488 vs 1741 s (-15 %); the 5 s MP4s are byte-identical to the stock render in
   both runs (SSIM 1.0), the 10 s frames differ. 20 s pending.
+- 2026-10-29 05:45: the two-pass FP8 GEMM becomes the default (owner: a clean speedup with no quality loss);
+  `H3_TP2_FP8_GEMM=stock` restores the CUTLASS kernel. Deployed to the Sparks after the night queue's A/B steps that
+  assume a stock baseline.
