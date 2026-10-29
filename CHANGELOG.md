@@ -168,3 +168,9 @@
 - 2026-10-29 07:10: fused SwiGLU level 2 in the real model: two identical requests gave two different clips (one equal
   to the stock-kernel render) and only ~1 % less denoising; withdrawn as unsafe under the DiT's compiled regions.
   Level 1 rerun pending; the fusion stays opt-in and experimental.
+- 2026-10-29 09:25: VAE batched tile decode, decode-only with a 4-tile cap, at 5 s 960x576: decode 24.5 -> 15.9 s
+  (-35 %), peak +0.1 GB, the clip is the stock-decode clip (45.1 dB / SSIM 0.978, decoder arithmetic only). The
+  first try's different scene came from the batched encode. Found at the same time: the two-pass digest 8e58f759
+  predates round 8's epilogue change, so the night's "not identical to 8e58f759" verdicts (fused SwiGLU, batched
+  decode) were against a stale baseline; a latents digest is now logged per render and a reproducibility chain
+  (same boot x2, fresh boot, batched decode, fused SwiGLU level 1, stock) replaces the fused-SwiGLU rerun.

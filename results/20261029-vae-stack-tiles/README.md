@@ -18,3 +18,29 @@ clip: the flag also switches the VAE *encoder's* tile path (the reference image 
 produced a different sample. As implemented this is not a decode-only lever. The next version toggles `stack_tiling`
 only around the decode and caps the tiles per decoder call; then the diffusion stays bit-identical and only the
 decoder's own algorithm choice can differ (NVlabs measured 71 dB for that).
+
+## Second version: decode-only, at most 4 tiles per decoder call (`H3_TP2_VAE_STACK_TILES=1`, `H3_TP2_VAE_TILE_BATCH=4`)
+
+5 s 960x576 Ref2VA, 20 steps, seed 1101, two-pass GEMM default (repo 82b6564). The reference encode keeps the stock
+per-tile path; the flag is raised only around `decode_latent` / `decode_with_chunks`.
+
+| | stock decode (`v030-fp8-base-2`, framemd5 85437ffa) | batched decode, cap 4 (`v030-vaestack2-960`) |
+|---|---|---|
+| Wall clock | 451.6 s (two-pass, old digest run) | 446.1 s |
+| VAE decode | 24.5 s | 15.9 s (-35 %) |
+| Peak | 64.6 GB | 64.7 GB |
+| framemd5 | 85437ffa | b0981821 |
+| PSNR / SSIM vs stock decode | | **45.1 dB / 0.978: the same clip**, decoder-level differences only |
+
+The first try's "different scene" (24.5 dB) came from the batched *encode* changing the conditioning; with the encode
+untouched the diffusion sample is the one the stock decode produces (the two-pass default renders 85437ffa at this
+cell since round 8, see the note below) and only the decoder's own arithmetic differs (batched tiles pick other
+cuDNN/cuBLAS algorithms; NVlabs measured 71 dB for the same change in their decoder, ours is 45 dB on uint8 frames).
+A latents digest per render (`h3_tp2 latents sha256`, since aea1aac) is the direct check and runs in the
+reproducibility chain (queue12b, arm D). 1344x768 below.
+
+Note on digests: the two-pass digest 8e58f759 used as "the" reference during the night was rendered before round 8
+changed the kernel epilogue (ff9c01e, 2026-10-28 16:56); after that change the plain two-pass render at this cell is
+byte-identical to the stock render (85437ffa). Every "must equal 8e58f759" comparison after 16:56 was against a stale
+baseline; the queue12b chain re-establishes same-boot, cross-boot, batched-decode and fused-SwiGLU digests on one
+revision.
