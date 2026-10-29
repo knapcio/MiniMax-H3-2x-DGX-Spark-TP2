@@ -77,3 +77,27 @@ sampling event per window. Consequence: a per-window seam check in latent space 
 against the window's median; `H3_TP2_CONT_RETRY`, `H3_TP2_CONT_SEAM_RATIO`) that re-samples the window with another
 seed. The 60 s render of the night runs with retries 2 at ratio 3.0 and logs the ratio of every window; the ratios of
 the cut and the clean seams calibrate the threshold.
+
+## 60 s with the pinned prefix and the seam check (`edit60-guide`, 22:38-23:50, memory compacted before the boot)
+
+4319 s (windows 658 / 735 / 745 / 735 / 735 / 407 s: the first request is back at 650 s after the compaction), peak
+68.8 GB. Seam check per window (latent boundary delta / window median): 0.90, 0.92, 0.94, 0.96, 1.06, no retry
+triggered. Pixel side, all five seams:
+
+| Seam | inter-frame change at the seam vs neighbours | luma step |
+|---|---|---|
+| 277 | 5.26 vs 4.04 / 5.53 | +0.7 |
+| 532 | 8.07 vs 5.58 / 8.60 | +1.6 |
+| 787 | 9.92 vs 7.05 / 11.27 | +1.6 |
+| 1042 | 11.58 vs 8.37 / 13.37 | +1.4 |
+| 1297 | 11.06 vs 9.35 / 11.23 | +0.8 |
+
+No cut, no seam spike, one woman through six windows (`edit60-sheet.png`), audio -51.5 / -52.0 / -46.5 dB. So the
+pinned prefix plus the seam check gives clean hand-overs over a minute; the latent ratio of a continued window sits at
+0.9-1.1 and a cut should stand far above (the 30 s cut window was not measured; the threshold 3.0 stays provisional).
+
+What remains is the **drift inside the free frames, window after window**: luma 47 -> 88 over 60 s (+41), the
+detail metric 70 -> 1000+ (grain / sparkle in the second half, visible in the sheet), motion 7 -> 15 (shimmer, not
+camera). Each window is a fresh sample that starts exactly from the previous tail and then drifts toward the model's
+brighter, sharper prior; the drift compounds. Next lever: a per-channel latent look-lock of every window's free frames
+to the first window's statistics (`H3_TP2_CONT_LOCK=first`), tested at 30 s.

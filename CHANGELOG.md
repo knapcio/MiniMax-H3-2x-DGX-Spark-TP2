@@ -232,3 +232,6 @@
   neighbours 5-7), the second clean; the prefix makes a continuation exact but does not force one. Added a latent
   seam check per window with seed retries (`H3_TP2_CONT_RETRY=2`, ratio 3.0) and run the 60 s with it. Memory
   compacted on both Sparks before that boot (fragmented after a day of restarts).
+- 2026-10-29 23:55: 60 s with the pinned prefix + seam check: no cut, five clean seams (luma steps +0.7..+1.6, no
+  inter-frame spike), one subject, flat audio; seam ratios 0.90-1.06 (no retry). Remaining: the per-window drift
+  (luma 47 -> 88, grain in the second half). Next: a latent look-lock of each window to the first window's statistics.
