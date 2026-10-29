@@ -151,3 +151,6 @@
 - 2026-10-29 01:40: H3's own looped audio as the driving track (60 s): audio flat but two cuts and runaway motion
   (4 -> 21) with over-sharpened texture; the no-track fallback is not a recipe, and cut-freeness is not a property of
   `lock_source` itself (one music-track sample clean, this ambient-loop sample not).
+- 2026-10-29 02:55: VAE `stack_tiling` as a plain flag: decode -34 % but peak +32 GB (all tiles in one batch) and
+  a different clip (the flag also batches the reference-image encode, which changed the conditioning); 1344x768 run
+  cancelled. To be redone as decode-only with a tile cap.
