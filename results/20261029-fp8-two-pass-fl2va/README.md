@@ -10,7 +10,7 @@ went through the two-pass path).
 | 5 s, first request after boot | 853.3 s (798.6 / 45.1) | 537.4 s (485.9 / 43.4) | -37 % | **byte-identical MP4** (framemd5 3f06def6, SSIM 1.0) |
 | 5 s, warm | 687.6 s (640.4 / 44.2) | 558.4 s (512.9 / 42.6) | -19 % | **byte-identical MP4** |
 | 10 s, warm | 1741.2 s | 1487.9 s (1399.2 / 84.9) | -15 % | frames differ (8fd1b8b8 vs b825141f) |
-| 20 s, warm | (reference: 6740 s on e1aa6eae) | pending | | |
+| 20 s, warm | (no v0.30 stock run; 6740 s wall on e1aa6eae with ~6600 s of denoising) | denoising 5454.3 s | about -17 % on the denoising against the e1aa6eae figure | frames not compared (no same-stack baseline) |
 | Peak | 62.5-67.5 GB | 63.5-69.5 GB | +1-2 GB | |
 
 The 5 s result is the striking one: a different GEMM kernel (different reduction order, 3.8e-6 on a single GEMM) and

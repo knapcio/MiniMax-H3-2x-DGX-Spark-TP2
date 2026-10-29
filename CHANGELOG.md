@@ -160,3 +160,5 @@
 - 2026-10-29 05:45: the two-pass FP8 GEMM becomes the default (owner: a clean speedup with no quality loss);
   `H3_TP2_FP8_GEMM=stock` restores the CUTLASS kernel. Deployed to the Sparks after the night queue's A/B steps that
   assume a stock baseline.
+- 2026-10-29 06:20: FL2VA 20 s 1344x768 with the two-pass GEMM: denoising 5454 s (e1aa6eae stock: ~6600 s), about
+  -17 %; the GEMM share shrinks as attention grows with the clip length.
