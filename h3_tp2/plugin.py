@@ -350,23 +350,51 @@ def _apply(role: str) -> None:
 
             _fsw.install(level=int(_fuse))
 
-    # 9c) H3_TP2_VAE_STACK_TILES=1: the checkpoint's own batched tile path for the video VAE (``stack_tiling``, off by
-    #     default and not exposed by vLLM-Omni): each rank decodes its tiles as one batch instead of one call per tile.
-    #     Same arithmetic per tile; batching can change cuDNN/cuBLAS algorithm choice, so the frame digest is checked.
-    #     (Pointed at by NVlabs' sol-engine GB10 port, which measures 1.47x on the decode with the same change.)
+    # 9c) H3_TP2_VAE_STACK_TILES=1: the checkpoint's batched tile path for the video VAE (``stack_tiling``), DECODE ONLY
+    #     (the flag is raised around decode_latent / decode_with_chunks and lowered again, so the reference-image encode
+    #     keeps the stock per-tile path and the diffusion stays bit-identical), with at most H3_TP2_VAE_TILE_BATCH tiles
+    #     per decoder call (default 4; the first try batched every local tile and peaked 32 GB higher).  Same arithmetic
+    #     per tile; batching can change cuDNN/cuBLAS algorithm choice inside the decoder, so the frames may differ.
     if os.environ.get("H3_TP2_VAE_STACK_TILES", "0") == "1":
+        import torch
         from vllm_omni.diffusion.models.minimax_h3 import vae as _vae
 
-        _orig_vae_init = _vae.MiniMaxH3VideoVAE.__init__
+        _tile_batch = max(1, int(os.environ.get("H3_TP2_VAE_TILE_BATCH", "4")))
+        _patched_models: set = set()
 
-        def _vae_init(self, *a, **kw):  # noqa: ANN001
-            _orig_vae_init(self, *a, **kw)
-            model = getattr(self, "model", None)
-            if model is not None and hasattr(model, "stack_tiling"):
+        def _chunked_run_tile_tasks(self, tiles, tile_indices, forward_fn, stack_tiling, cls_agg=None):  # noqa: ANN001
+            if not stack_tiling or not tile_indices or cls_agg is not None:
+                return self._h3_tp2_orig_run_tile_tasks(tiles, tile_indices, forward_fn, stack_tiling, cls_agg)
+            out = []
+            for i in range(0, len(tile_indices), _tile_batch):
+                out.extend(self._h3_tp2_orig_run_tile_tasks(tiles, tile_indices[i:i + _tile_batch], forward_fn, True, None))
+            return out
+
+        def _with_stack(method_name):  # noqa: ANN001
+            orig = getattr(_vae.MiniMaxH3VideoVAE, method_name)
+
+            def wrapped(self, *a, **kw):  # noqa: ANN001
+                model = getattr(self, "model", None)
+                if model is None or not hasattr(model, "stack_tiling"):
+                    return orig(self, *a, **kw)
+                cls = type(model)
+                if cls not in _patched_models and hasattr(cls, "_run_tile_tasks"):
+                    cls._h3_tp2_orig_run_tile_tasks = cls._run_tile_tasks
+                    cls._run_tile_tasks = _chunked_run_tile_tasks
+                    _patched_models.add(cls)
+                    logger.warning("h3_tp2: video VAE batched tile DECODE on (<= %d tiles per decoder call); encode unchanged", _tile_batch)
+                prev = model.stack_tiling
                 model.stack_tiling = True
-                logger.warning("h3_tp2: video VAE stack_tiling ON (batched tile decode; frame digest to be checked)")
+                try:
+                    return orig(self, *a, **kw)
+                finally:
+                    model.stack_tiling = prev
 
-        _vae.MiniMaxH3VideoVAE.__init__ = _vae_init
+            return wrapped
+
+        for _m in ("decode_latent", "decode_with_chunks"):
+            if hasattr(_vae.MiniMaxH3VideoVAE, _m):
+                setattr(_vae.MiniMaxH3VideoVAE, _m, _with_stack(_m))
 
     edge = os.environ.get("H3_TP2_REF_SHORT_EDGE", "").strip()
     if edge:

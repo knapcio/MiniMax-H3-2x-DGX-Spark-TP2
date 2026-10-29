@@ -117,8 +117,10 @@ same-seed frame digest (`h3_tp2 frames sha256` in the head journal, framemd5 in 
   `H3_TP2_FP8_FUSE_SWIGLU=2` also quantises the SwiGLU output per token inside the same kernel (one program per row) and
   hands fc2's scaled-mm kernel the FP8 activation and scales directly, reproducing vLLM's compiled per-token quant bit
   for bit (tested against it), so the bf16 [M, ffn] activation is never written either.
-- `H3_TP2_VAE_STACK_TILES=1`: turns on the H3 VAE's own batched tile decode (`stack_tiling`), one decoder call per rank
-  instead of one per tile. Measured in results/ (decode time, frame digest).
+- `H3_TP2_VAE_STACK_TILES=1`: the H3 VAE's own batched tile path (`stack_tiling`) raised only around the decode (the
+  reference-image encode keeps the per-tile path, so the diffusion stays bit-identical), at most
+  `H3_TP2_VAE_TILE_BATCH` (default 4) tiles per decoder call. The first try (flag on for encode and decode, no cap)
+  changed the clip and peaked 32 GB higher: results/20261029-vae-stack-tiles/.
 - Continuation experiments (vLLM-Omni >= 0.30, all change the output): `H3_TP2_WINDOW_SEED_STEP=<n>` (seed + k*n in
   window k), `H3_TP2_WINDOW_TEMPORAL_OFFSET=<x|cap:x>` (the per-window RoPE time origin), `H3_TP2_REF_SHORT_EDGE=<px>`
   (reference image resized to this short edge instead of 2048), `H3_TP2_ANCHOR_FRAMES=<17n+5>` (the first window's
