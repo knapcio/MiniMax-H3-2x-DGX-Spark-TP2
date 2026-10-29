@@ -216,3 +216,8 @@
 - 2026-10-29 17:45: owner's verdict on the 30 s window-prompt clip: colour/texture step at 12 s and the subject doubled;
   per-frame luma confirms a +10 step across frame 277 (the strips had hidden it). Continuation declared not usable;
   serving restored to single-window FL2VA 4-15 s (two-pass + fused level 1). README leads with the verdict.
+- 2026-10-29 19:30: first-seam loop at 16 s: the regenerated overlap does not match the guide tail in latent
+  statistics (std +14 %, a channel shifted ~1 sigma); per-channel latent match removes the exposure step (+4.2 -> -0.6),
+  a latent crossfade over the overlap plus a subject-free later-window prompt removes the inter-frame spike at the
+  seam (8.1 -> 5.4 at neighbours 5.1-5.7). `H3_TP2_CONT_MATCH`, `H3_TP2_CONT_XFADE`, `H3_TP2_CONT_PROMPTS_REST`
+  (`results/20261029-seam-loop/`). Owner's eye pending.
