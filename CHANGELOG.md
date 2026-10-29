@@ -154,3 +154,6 @@
 - 2026-10-29 02:55: VAE `stack_tiling` as a plain flag: decode -34 % but peak +32 GB (all tiles in one batch) and
   a different clip (the flag also batches the reference-image encode, which changed the conditioning); 1344x768 run
   cancelled. To be redone as decode-only with a tile cap.
+- 2026-10-29 04:50: two-pass FP8 GEMM at the serving cell (FL2VA 1344x768): 5 s warm 558 vs 688 s (-19 %), first
+  request 537 vs 853 s (-37 %), 10 s 1488 vs 1741 s (-15 %); the 5 s MP4s are byte-identical to the stock render in
+  both runs (SSIM 1.0), the 10 s frames differ. 20 s pending.
