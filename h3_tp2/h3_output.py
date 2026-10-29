@@ -155,11 +155,31 @@ def install(pipeline_module, api_utils_module, convert_u8: bool = True) -> None:
 
         def encode_prompt(self, *a, **kw):  # noqa: ANN001
             t0 = time.monotonic()
+            out = None
             try:
-                return orig_encode(self, *a, **kw)
+                out = orig_encode(self, *a, **kw)
+                return out
             finally:
                 _sync()
                 logger.info("h3_tp2 phase encode_prompt %.1f s", time.monotonic() - t0)
+                _log_digest("prompt", out)
+
+        def _log_digest(what, obj):  # noqa: ANN001
+            try:
+                logger.info("h3_tp2 %s sha256 %s", what, tensors_digest(obj))
+            except Exception as e:  # noqa: BLE001  (a digest must never break a render)
+                logger.info("h3_tp2 %s sha256 unavailable (%s)", what, e)
+
+        if hasattr(cls, "_encode_local_media"):  # v0.30: reference image / video / audio -> conditioning rows
+            orig_media = cls._encode_local_media
+
+            def _encode_local_media(self, *a, **kw):  # noqa: ANN001
+                out = orig_media(self, *a, **kw)
+                _sync()
+                _log_digest("media", out)
+                return out
+
+            cls._encode_local_media = _encode_local_media
 
         def diffuse(self, *a, **kw):  # noqa: ANN001
             t0 = time.monotonic()
@@ -170,10 +190,7 @@ def install(pipeline_module, api_utils_module, convert_u8: bool = True) -> None:
             finally:
                 _sync()
                 logger.info("h3_tp2 phase diffuse %.1f s", time.monotonic() - t0)
-                try:
-                    logger.info("h3_tp2 latents sha256 %s", tensors_digest(out))
-                except Exception as e:  # noqa: BLE001  (a digest must never break a render)
-                    logger.info("h3_tp2 latents sha256 unavailable (%s)", e)
+                _log_digest("latents", out)
 
         cls.decode = decode
         cls.encode_prompt = encode_prompt
