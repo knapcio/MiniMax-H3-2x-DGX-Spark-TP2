@@ -213,3 +213,6 @@
   to the metrics. 60 s withdrawn from the README offer (up to 30 s); per-second colour means to be added to clip-metrics.
 - 2026-10-29 17:55: clip-metrics gets chroma means per 5 s; on the 30/60 s clips the chroma is flat and the luma
   climbs 47 -> 83 (30 s) and 47 -> 88 (60 s): the "colour change" is a wash-out, a light drift per window.
+- 2026-10-29 17:45: owner's verdict on the 30 s window-prompt clip: colour/texture step at 12 s and the subject doubled;
+  per-frame luma confirms a +10 step across frame 277 (the strips had hidden it). Continuation declared not usable;
+  serving restored to single-window FL2VA 4-15 s (two-pass + fused level 1). README leads with the verdict.

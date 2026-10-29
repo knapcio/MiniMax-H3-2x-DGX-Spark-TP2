@@ -61,3 +61,10 @@ V 133-135), so the "colour changes" are not a hue shift; it is the **luma** that
 clip has the same climb (47 -> 83). Light drift is therefore the third decay axis to fix for anything beyond one
 window, next to texture and the action loop; a per-window "the light stays as in the opening seconds" sentence
 (`H3_TP2_CONT_PROMPTS_EXTRA`) was tested on 10-28 for cuts, not for this, and is in the staged `queue19.sh` (arm B).
+
+**Correction (17:45):** the "seam invisible" reading of the 30 s window-prompt clip was wrong. The owner saw a colour
+and texture change at 12 s and the woman doubled; per-frame signalstats around frame 277 give luma 50.9 / 51.4 / 52.3
+/ 53.1 / 53.9 -> 64.1 / 65.5 / 65.4 (a +10 step, +19 %, inside six frames) with chroma flat, so the hand-over is a
+brightness and texture step that a 300 px frame strip hides and a viewer sees at once. Per-window prompts do not fix
+the hand-over. Owner's verdict: the continuation is not usable; serving restored to single-window FL2VA (4-15 s) at
+17:35. The chain's metrics need a per-seam luma step (frames -3..+3) and the owner's eye stays the gate.
