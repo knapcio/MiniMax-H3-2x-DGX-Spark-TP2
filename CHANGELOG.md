@@ -148,3 +148,6 @@
   and per-window prompts (or the sample), not the reference size.
 - 2026-10-28 23:30: tail-anchor control: one cut on the same frame as the opening anchor (423), +10 % time: any extra
   video-reference block in a continuation window makes the model cut; both anchor variants closed.
+- 2026-10-29 01:40: H3's own looped audio as the driving track (60 s): audio flat but two cuts and runaway motion
+  (4 -> 21) with over-sharpened texture; the no-track fallback is not a recipe, and cut-freeness is not a property of
+  `lock_source` itself (one music-track sample clean, this ambient-loop sample not).

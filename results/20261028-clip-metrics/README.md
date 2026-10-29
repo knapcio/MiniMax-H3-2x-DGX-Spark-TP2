@@ -20,6 +20,7 @@ luma change between consecutive frames). Windows: 1 = 0-11.5 s, 2 = 11.5-22.2 s,
 | ref 1024 only 30 s | 960x576 | 3-8 / 3-5.5 / 2.1-3.4 | 18-50 / 19-49 / 23-33 | none |
 | opening anchor 30 s | 960x576 | 3-7 / 4-7.6 / 2.4-5 | 46-65 / 33-80 / 62-221 | 12.5 s, 17.6 s, 20.5 s |
 | tail anchor (control) 30 s | 960x576 | 3-7 / 2-4.6 / 2-6.9 | 46-65 / 32-55 / 41-203 | 17.6 s |
+| H3 loop as track + ref 1024 + prompts 60 s | 960x576 | 4-6 / 5-6 / 5-10.5 / 7-15 / 8-18.5 / 9-21 (accelerates) | 27-49 / 31-53 / 43-100 / 54-147 / 56-207 / 64-309 (over-sharpened) | 34.5 s, 46.0 s |
 | recipe 30 s | 1344x768 | 2.3-2.9 / 2.6-4.8 / 4-5.5 | 46-93 / 58-120 / 89-161 (streaky) | 14.0 s (0.26) |
 
 What this says, with one clip per row:
