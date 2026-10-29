@@ -81,3 +81,22 @@ median, -5 % on the warm pairs (384.6 / 379.9 vs 399.3), inside a boot-to-boot s
 the gain itself (E4 at 405.8 s is a fused first request). The fusion removes one bf16 write+read of the 28672-wide fc1
 output per MLP (2.1 GB at this M) and never changes a bit, so it becomes a default; the exact gain per request is
 whatever the boot gives.
+
+## 1344x768 stage attribution (`queue12e.sh`, 2026-10-29/30 night): the variation is inside the denoising loop
+
+Every render logs the prompt embeddings (text encoder, a VLM that also sees the reference image), the encoded
+reference media and the diffusion latents.
+
+| Pair | Boot | prompt sha256 | media sha256 | latents sha256 | denoising |
+|---|---|---|---|---|---|
+| I1 ref 1024 | 1, first | 37b0266c | 45ad333f | 591e4c0d (= G, H) | |
+| I2 ref 1024 | 1, second | 37b0266c | 45ad333f | 591e4c0d | |
+| K1 ref 2048 | 2, first | f594cf56 | fa377e9b | d6a72400 | 844.7 s |
+| K2 ref 2048 | 2, second | f594cf56 | fa377e9b | **749fa85d** | 786.9 s |
+
+The prompt embeddings and the reference encoding are identical within a boot; the latents are not always: K1 and K2
+differ with the same inputs, I1 and I2 agree, and F / G (11:11, same boot, ref 1024) differed. So the per-request
+variation at 1344x768 sits in the denoising loop (DiT forward + sampler), not in the encoders; the stock-CUTLASS pair
+(S1/S2) says whether the two-pass GEMM is involved. Four of the five ref-1024 renders with the digest gave 591e4c0d,
+one gave e474c9ac: not a coin flip per request, a rare event. (The step-0 input digest hook never fired: the DiT
+forward is not reached through the class attribute; to be fixed before the noise can be separated from the loop.)
