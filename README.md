@@ -132,6 +132,37 @@ model's own scene changes, and the final detail drifts (blur with 277-frame wind
 30 s 960x576 recipe is the honest offer; longer or larger is possible (the mode allows 300 s, about 2.2 h per 60 s)
 but comes with the model's own cuts. Not yet tested on other prompts and references.
 
+### Long clips from a client or an agent: the request
+
+The server must run the v0.30.0 stack on the **Ref2VA** partition (`scripts/select-stack.sh long Ref2VA` on both
+Sparks, agent restarted before head) with `H3_TP2_REF_SHORT_EDGE=1024` in `~/.h3-tp2.env` on the head; FL2VA (the image
+as the first frame) cannot continue a clip. On Ref2VA the image is a **reference for look and subject**, not the first
+frame: the clip resembles the picture, it does not start from it. One request at a time; the call is synchronous and
+returns the MP4 (with audio) in the response body.
+
+```bash
+curl -sS --max-time 14400 -X POST http://127.0.0.1:18093/v1/videos/sync \
+  -F "prompt=An old forest with a small stream. Leaves sway in a light breeze, the stream ripples and glistens, a woman in a white dress walks slowly along it. Steady camera, one continuous take, natural forest ambience." \
+  -F "width=960" -F "height=576" -F "aspect_ratio=16:9" -F "fps=24" \
+  -F "num_inference_steps=20" -F "flow_shift=12" -F "seed=1101" \
+  -F 'extra_params={"task": "ref2va", "duration": 30, "audio_flow_shift": 3.0, "long_video": true, "long_video_mode": "continuation"}' \
+  -F "input_reference=@picture.jpg" -o clip.mp4 -w "HTTP %{http_code}\n"
+```
+
+What to expect and what to tell the user:
+
+| | |
+|---|---|
+| Lengths | 4-15 s: one window (same fields without the two `long_video` keys also work on Ref2VA). 16-60 s: windows of 277 frames continued from each other. The mode allows up to 300 s; untested here beyond 60 s. |
+| Size | 960x576 for long clips (1344x768 takes 2.8x longer at 30 s and its first seam cut in the one sample). |
+| Time on the pair (two-pass GEMM + fused SwiGLU, reference 1024) | 30 s: about 45 min; 60 s: about 1.5 h (first request after a boot up to 10 % slower). |
+| Prompt | Describe the motion of what is **in** the picture (this water, these clouds, this person); a prompt that asks for something the picture does not contain makes the model move the camera to find it. End with "Steady camera, one continuous take". |
+| Known limits | The model may insert a cut of its own inside a window (a seed-dependent sampling event, not a prompt error); the generated audio fades about 8 dB over 30 s; motion calms down window by window. A clip with a cut is best redone with another `seed`. Per-window prompts (`continuation_prompts`, a list with one string per window) and a driving soundtrack (`audio_reference`, `audio_mode: lock_source`) improve the odds, see the table above. |
+| Reference size | The server resizes the reference to a 1024 px short edge; a larger picture is fine. |
+
+`clients/h3-generate.py --long --duration 30 --image picture.jpg "prompt"` in the workspace sends the same request
+through an SSH tunnel.
+
 ## The model
 
 MiniMax H3-Base FL2VA: DiT 62 GB BF16 (31 GB after online FP8), Qwen3-VL text encoder with 50 retained layers
