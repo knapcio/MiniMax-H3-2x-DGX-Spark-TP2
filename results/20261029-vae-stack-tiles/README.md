@@ -44,3 +44,20 @@ changed the kernel epilogue (ff9c01e, 2026-10-28 16:56); after that change the p
 byte-identical to the stock render (85437ffa). Every "must equal 8e58f759" comparison after 16:56 was against a stale
 baseline; the queue12b chain re-establishes same-boot, cross-boot, batched-decode and fused-SwiGLU digests on one
 revision.
+
+## 1344x768 (reference 1024): decode -36 %, but the sample changed between the two boots
+
+| | baseline (`v030-t32-ref1024-1344`, 08:38 boot) | batched decode, cap 4 (`v030-vaestack2-1344`, 09:09 boot) |
+|---|---|---|
+| Wall clock | 555.9 s | 546.5 s |
+| Denoising / VAE decode | 503.0 / 42.8 s | 510.3 / 27.2 s (-36 %) |
+| Peak | 64.3 GB | 64.0 GB |
+| framemd5 | c86f7279 | 5b4a3f5a |
+| PSNR / SSIM vs baseline | | 29.0 dB / 0.873 from the first frame on: **a different sample** (the tree stands elsewhere) |
+
+The decode-only wrapper cannot touch the latents, and at 960x576 the same wrapper reproduced the stock clip (45 dB)
+across boots a day apart. So at 1344x768 the diffusion itself differed between these two boots, with the same code,
+request and seed. Both renders predate the latents digest; the queue12c chain (two plain 1344 renders in one fresh
+boot, then the batched decode in a further boot, every render with its latents digest) attributes it: within-boot vs
+cross-boot vs the decode flag. Until then the 1344 decode gain (-16 s per 5 s clip) is measured but the flag is not a
+default.

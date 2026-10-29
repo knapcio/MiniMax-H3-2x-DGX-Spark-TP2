@@ -174,3 +174,7 @@
   predates round 8's epilogue change, so the night's "not identical to 8e58f759" verdicts (fused SwiGLU, batched
   decode) were against a stale baseline; a latents digest is now logged per render and a reproducibility chain
   (same boot x2, fresh boot, batched decode, fused SwiGLU level 1, stock) replaces the fused-SwiGLU rerun.
+- 2026-10-29 09:35: batched tile decode at 1344x768: decode 42.8 -> 27.2 s (-36 %), peak -0.3 GB, but the sample
+  differs from the baseline rendered in the previous boot (29.0 dB from frame 1; same code, request and seed), while
+  at 960x576 the same wrapper reproduced the stock clip across boots. A 1344 cross-boot/within-boot chain with the
+  latents digest (queue12c) decides whether the diffusion is boot-dependent at that cell.
