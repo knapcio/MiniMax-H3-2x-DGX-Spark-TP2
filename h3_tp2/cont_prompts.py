@@ -23,11 +23,16 @@ def window_count(duration_s: float, window_frames: int = 277, overlap_frames: in
     return 1 + math.ceil((frames - window_frames) / (window_frames - overlap_frames))
 
 
-def continuation_prompts(base: str, n_windows: int, extra: str = "") -> list[str]:
+def continuation_prompts(base: str, n_windows: int, extra: str = "", rest_template: str = "") -> list[str]:
+    """``rest_template`` (H3_TP2_CONT_PROMPTS_REST) replaces the later windows' wording; ``{base}`` in it is the prompt."""
     base = base.strip()
     extra = extra.strip()
     first = base.rstrip(". ") + FIRST_SUFFIX + (" " + extra if extra else "")
-    rest = REST_PREFIX + base + (" " + extra if extra else "")
+    if rest_template.strip():
+        rest = rest_template.strip().replace("{base}", base)
+    else:
+        rest = REST_PREFIX + base
+    rest = rest + (" " + extra if extra else "")
     return [first] + [rest] * (n_windows - 1)
 
 

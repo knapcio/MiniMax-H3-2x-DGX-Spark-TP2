@@ -12,7 +12,8 @@
 #   cuts    = frames with an ffmpeg scene score > 0.1 (hard cuts only)
 #   1s-change = mean absolute luma change between frame n and frame n+24, per second: a dissolve or a fast state
 #             change (fog rolling in, sun going behind a cloud) shows here as a spike without a single-frame cut
-#   seams   = luma change at every window hand-over (k*(window-overlap) + overlap) against the 27 frames before it
+#   seams   = luma change at every window hand-over (k*(window-overlap) + overlap) against the 27 frames before it,
+#             plus the mean-luma step across the hand-over (3 frames before vs 3 after): the exposure jump the eye sees
 # Usage: clip-metrics.sh <clip.mp4> [window_frames=277] [overlap_frames=22]   (needs ffmpeg + the H3 venv's numpy/PIL)
 set -euo pipefail
 F=$1; W=${2:-277}; O=${3:-22}
@@ -53,7 +54,8 @@ print("coherence per second: " + " ".join(f"{v:.2f}" for v in coh))
 seam = W                      # output switches to window k at k*(W-O) + O: 277, 532, 787 ... for 277/22
 while seam < len(fr):
     i = seam - 1
-    print(f"seam frame {seam} ({seam/24:.1f} s): {d[i-1]:.2f} [{d[i]:.2f}] {d[i+1]:.2f}  (mean of the 27 frames before: {np.mean(d[i-28:i-1]):.2f})")
+    lb, la = np.mean([fr[j].mean() for j in range(seam-3, seam)]), np.mean([fr[j].mean() for j in range(seam, seam+3)])
+    print(f"seam frame {seam} ({seam/24:.1f} s): {d[i-1]:.2f} [{d[i]:.2f}] {d[i+1]:.2f}  (mean of the 27 frames before: {np.mean(d[i-28:i-1]):.2f}); luma step {lb:.1f} -> {la:.1f} ({la-lb:+.1f}, frames -3..+3)")
     seam += W - O
 cuts = []
 txt = open(t + "/scene.txt").read()

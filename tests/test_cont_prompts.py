@@ -24,3 +24,9 @@ def test_request_duration():
     assert cp.request_duration({"duration_seconds": 12.5}) == 12.5
     assert cp.request_duration({"target": {"duration_seconds": 8}}) == 8.0
     assert cp.request_duration({}) is None
+
+
+def test_rest_template_override():
+    ps = cp.continuation_prompts("A forest.", 3, "", "Keep going. {base} Nothing new enters.")
+    assert ps[1] == "Keep going. A forest. Nothing new enters." and ps[2] == ps[1]
+    assert cp.continuation_prompts("A forest.", 2, "x", "Keep going.")[1] == "Keep going. x"

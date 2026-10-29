@@ -414,6 +414,7 @@ def _apply(role: str) -> None:
         if not getattr(_cls9d, "_h3_tp2_cont_prompts_patched", False):
             _orig_plc = _cls9d._prepare_local_conditioning
             _extra_words = os.environ.get("H3_TP2_CONT_PROMPTS_EXTRA", "")
+            _rest_template = os.environ.get("H3_TP2_CONT_PROMPTS_REST", "")   # experiments: later windows' wording
 
             def _plc(self, raw_prompt, sampling, *a, **kw):  # noqa: ANN001
                 try:
@@ -425,8 +426,8 @@ def _apply(role: str) -> None:
                         if dur is not None and isinstance(base, str) and base.strip():
                             n = _cp.window_count(dur, int(ea.get("continuation_window_frames", 277)), int(ea.get("continuation_overlap_frames", 22)))
                             if n > 1:
-                                ea["continuation_prompts"] = _cp.continuation_prompts(base, n, _extra_words)
-                                logger.info("h3_tp2: continuation prompts generated for %d windows (%.1f s)", n, dur)
+                                ea["continuation_prompts"] = _cp.continuation_prompts(base, n, _extra_words, _rest_template)
+                                logger.info("h3_tp2: continuation prompts generated for %d windows (%.1f s); window 2: %s", n, dur, ea["continuation_prompts"][1][:160])
                 except Exception as e:  # noqa: BLE001  (never break a request over the prompt helper)
                     logger.warning("h3_tp2: continuation prompt helper skipped (%s)", e)
                 return _orig_plc(self, raw_prompt, sampling, *a, **kw)
