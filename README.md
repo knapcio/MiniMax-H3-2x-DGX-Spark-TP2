@@ -155,7 +155,7 @@ What to expect and what to tell the user:
 |---|---|
 | Lengths | 4-15 s: one window (same fields without the two `long_video` keys also work on Ref2VA). 16-60 s: windows of 277 frames continued from each other. The mode allows up to 300 s; untested here beyond 60 s. |
 | Size | 960x576 for long clips (1344x768 takes 2.8x longer at 30 s and its first seam cut in the one sample). |
-| Time on the pair (two-pass GEMM + fused SwiGLU, reference 1024) | 30 s: about 45 min; 60 s: about 1.5 h (first request after a boot up to 10 % slower). |
+| Time on the pair (two-pass GEMM + fused SwiGLU, reference 1024) | 30 s: 35 min measured (2097 s, windows 640 / 736 / 561 s + 149 s decode, peak 68.5 GB); 60 s: about 1.2 h expected (first request after a boot up to 10 % slower). |
 | Prompt | Describe the motion of what is **in** the picture (this water, these clouds, this person); a prompt that asks for something the picture does not contain makes the model move the camera to find it. End with "Steady camera, one continuous take". |
 | Known limits | The model may insert a cut of its own inside a window (a seed-dependent sampling event, not a prompt error); the generated audio fades about 8 dB over 30 s; motion calms down window by window. A clip with a cut is best redone with another `seed`. Per-window prompts (`continuation_prompts`, a list with one string per window) and a driving soundtrack (`audio_reference`, `audio_mode: lock_source`) improve the odds, see the table above. |
 | Reference size | The server resizes the reference to a 1024 px short edge; a larger picture is fine. |

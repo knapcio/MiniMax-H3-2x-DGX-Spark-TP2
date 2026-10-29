@@ -197,3 +197,7 @@
   pairs and the NVlabs calibration are postponed.
 - 2026-10-29 14:15: evening serving config live (FL2VA partition, two-pass GEMM + fused SwiGLU level 1, batched decode
   off): 10 s 1344x768 from a still in 1441 s (stock 1690 s, two-pass alone 1488 s), peak 69.6 GB; 5 s warm 505 s.
+- 2026-10-29 15:05: owner: the wife needs 30-60 s clips tonight, the image as a reference is fine, her agent follows
+  the README. Serving switched to long stack / Ref2VA with reference 1024 + two-pass + fused level 1; README section
+  "Long clips from a client or an agent: the request" (curl, limits, times, prompt rules); `clients/h3-generate.py
+  --long`. 30 s with that plain request: 2097 s, no cuts, flat audio, seams invisible (`results/20261029-long-clips-agent-shape/`).
