@@ -43,5 +43,6 @@ kept (`=2` drops it). 16 s, seed 1101, the later-window prompt without the subje
 |---|---|---|---|---|
 | X4 | regenerated overlap == guide tail (max channel shift 0.0000) | **+0.3** | **3.99 vs 4.07 / 4.20** | 49 50 50 50 50 51 51 52 52 52 53 53 54 54 54 55 55 55 55 56 56 56 56 57 57 56 56: monotone, no step, no oscillation |
 
-The cleanest hand-over of the day by every number; frames 254/266/278/290 in `x4-frames-254-266-278-290.png`. Owner's
-eye pending (morning). X5 (guide block dropped) and a 30 s clip follow.
+The cleanest hand-over of the day by every number; frames 254/266/278/290 in `x4-frames-254-266-278-290.png`.
+**Owner (21:20): no jump noticed, "it was nice"**: the first seam that passed the eye. X5 (guide block dropped), a 30 s and
+a 60 s clip follow for the morning.

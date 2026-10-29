@@ -225,3 +225,4 @@
   twice) and is withdrawn. New: the previous window's tail pinned as target rows through upstream's latent-edit path
   (`H3_TP2_CONT_EDIT=1|2`, video and audio): at 16 s the regenerated overlap equals the tail exactly, luma step +0.3,
   no spike in the inter-frame change, per-frame luma monotone across the seam.
+- 2026-10-29 21:20: owner on X4 (pinned prefix): no jump noticed; the first hand-over that passed the eye.
