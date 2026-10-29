@@ -184,6 +184,7 @@ def install(pipeline_module, api_utils_module, convert_u8: bool = True) -> None:
         def diffuse(self, *a, **kw):  # noqa: ANN001
             t0 = time.monotonic()
             out = None
+            _step0["armed"] = True
             try:
                 out = orig_diffuse(self, *a, **kw)
                 return out
@@ -196,6 +197,28 @@ def install(pipeline_module, api_utils_module, convert_u8: bool = True) -> None:
         cls.encode_prompt = encode_prompt
         cls.diffuse = diffuse
         cls._h3_tp2_output_patched = True
+
+        # the DiT's first forward of each diffusion (its kwargs: noisy latents, embeddings, positions, timesteps) hashed
+        # once per request: equal here but different latents means the denoising loop itself varies
+        _step0 = {"armed": False}
+        try:
+            from vllm_omni.diffusion.models.minimax_h3 import minimax_h3_transformer as _tr
+
+            _dit = _tr.MiniMaxH3DiTModel
+            if not getattr(_dit, "_h3_tp2_step0_patched", False):
+                _orig_dit_fwd = _dit.forward
+
+                def _dit_fwd(self, **kw):  # noqa: ANN001
+                    if _step0["armed"]:
+                        _step0["armed"] = False
+                        _sync()
+                        _log_digest("step0", kw)
+                    return _orig_dit_fwd(self, **kw)
+
+                _dit.forward = _dit_fwd
+                _dit._h3_tp2_step0_patched = True
+        except Exception as e:  # noqa: BLE001
+            logger.info("h3_tp2 step0 digest not installed (%s)", e)
 
     if convert_u8:
         pipeline_module._minimax_h3_post_process = post_process
