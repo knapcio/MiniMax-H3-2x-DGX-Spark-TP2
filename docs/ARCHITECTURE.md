@@ -110,7 +110,8 @@ same-seed frame digest (`h3_tp2 frames sha256` in the head journal, framemd5 in 
 - `H3_TP2_FP8_GEMM=tensor32` (the default since 2026-10-29; `stock` restores vLLM's CUTLASS kernel): the two-pass FP8 GEMM (`h3_tp2/fp8_gemm.py`): scalar-scale cuBLASLt GEMM with fp32 output
   plus one Triton pass for the per-token / per-channel scales, bias and rounding in vLLM's epilogue order. 3x faster
   GEMMs on the GB10, -24 % on a warm 5 s render; not bit-identical to the stock CUTLASS kernel (reduction order).
-- `H3_TP2_FP8_FUSE_SWIGLU=1` (with `tensor32`): the MLP's fc1 keeps its fp32 product and one Triton kernel applies the
+- `H3_TP2_FP8_FUSE_SWIGLU=1` (with `tensor32`; EXPERIMENTAL: level 2 produced non-deterministic clips in the real model
+  and ~1 % gain, see results/20261029-fp8-fused-swiglu/; do not use for serving): the MLP's fc1 keeps its fp32 product and one Triton kernel applies the
   epilogue and `silu_and_mul` (`h3_tp2/fp8_swiglu.py`), removing the writes and reads of the bf16 [M, 2*ffn] intermediate (about 4 GB of
   traffic per layer at M = 36864; a placeholder of that size is still allocated). Matches two-pass + `silu_and_mul` bit
   for bit on the tested inputs and this build (vLLM's silu rounds to bf16 before the product). Render gain: see results/.

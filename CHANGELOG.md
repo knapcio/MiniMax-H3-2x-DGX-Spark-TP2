@@ -165,3 +165,6 @@
 - 2026-10-29 06:40: the fused SwiGLU level-1 render A/B failed at once (`UnboundLocalError`: the patched forward
   referenced a deleted local on the level-1 path; the unit tests had not exercised the success path). Fixed, a
   success-path test for both levels added, redeployed; the level-1 rerun is queued after the VAE and profile steps.
+- 2026-10-29 07:10: fused SwiGLU level 2 in the real model: two identical requests gave two different clips (one equal
+  to the stock-kernel render) and only ~1 % less denoising; withdrawn as unsafe under the DiT's compiled regions.
+  Level 1 rerun pending; the fusion stays opt-in and experimental.
