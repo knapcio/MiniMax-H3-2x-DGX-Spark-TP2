@@ -21,7 +21,9 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import time
+from contextlib import nullcontext
 
 import numpy as np
 import torch
@@ -108,6 +110,18 @@ def tensors_digest(obj) -> str:  # noqa: ANN001
     return f"{h.hexdigest()} tensors={n}"
 
 
+def _blend_trace_context(pipeline):  # noqa: ANN001
+    if os.environ.get("H3_TP2_VAE_BLEND_TRACE", "0").strip() != "1":
+        return nullcontext()
+    try:
+        from h3_tp2.vae_trace import trace_temporal_blends
+
+        return trace_temporal_blends(pipeline.video_vae.model)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("h3_tp2 VAE temporal blend tracing unavailable (%s)", exc)
+        return nullcontext()
+
+
 def install(pipeline_module, api_utils_module, convert_u8: bool = True) -> None:
     """Patch the pipeline module and the API encoder module (idempotent).
 
@@ -127,7 +141,8 @@ def install(pipeline_module, api_utils_module, convert_u8: bool = True) -> None:
 
         def decode(self, *a, **kw):  # noqa: ANN001
             t0 = time.monotonic()
-            out = orig_decode(self, *a, **kw)
+            with _blend_trace_context(self):
+                out = orig_decode(self, *a, **kw)
             _sync()
             t1 = time.monotonic()
             if not convert_u8:
@@ -146,7 +161,8 @@ def install(pipeline_module, api_utils_module, convert_u8: bool = True) -> None:
             def decode_to_mp4(self, *a, **kw):  # noqa: ANN001
                 t0 = time.monotonic()
                 try:
-                    return orig_decode_mp4(self, *a, **kw)
+                    with _blend_trace_context(self):
+                        return orig_decode_mp4(self, *a, **kw)
                 finally:
                     _sync()
                     logger.info("h3_tp2 phase decode_to_mp4 %.1f s", time.monotonic() - t0)

@@ -289,3 +289,5 @@
 - 2026-10-30 16:48: experimental brightness-only repair of the saved history5s clip (separate file; no runtime
   change): 42/736 decoded frames altered, chroma and copied audio identical, no newly clipped luma at 255, original
   dip steps -2.22..-6.21 -> -0.02..-0.22 YAVG; no remaining 17-frame run >=2 YAVG. Playback review pending.
+- 2026-10-30 16:55: opt-in `H3_TP2_VAE_BLEND_TRACE=1` logs sampled old/new/blended luma at temporal VAE overlaps to
+  investigate the 17-frame flicker. CPU-only checks pass; distributed GPU decode and measurement overhead unverified.

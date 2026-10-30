@@ -47,6 +47,12 @@ for both video and audio, but is unmeasured. A matched A/B against the 345-frame
 17-frame drops, audio, and the owner's eye; separate decode-only tests would help distinguish the decoder from the
 latents. Default overlap and lock reference remain unchanged.
 
+To distinguish the two inputs to the decoder's five-frame overlap, `H3_TP2_VAE_BLEND_TRACE=1` enables a diagnostic
+on the next head start after this code is installed on both nodes. It logs the old, new and blended approximate luma
+for each temporal overlap, from spatially sampled decoded tensors, without intentionally changing the result. Its
+frame index is approximate; compare the trace with the rendered frame-level metrics. The hook is off by default,
+CPU-tested on stand-ins, and not yet qualified in a distributed GPU decode. Run only when the pair is available.
+
 ### Experimental repair of the existing 5 s-history clip (not a model fix)
 
 `experimental-deflicker.py` makes a separate, explicitly altered copy: it detects the repeated drops and lifts luma
