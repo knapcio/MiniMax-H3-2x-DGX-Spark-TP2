@@ -132,6 +132,29 @@ model's own scene changes, and the final detail drifts (blur with 277-frame wind
 30 s 960x576 recipe is the honest offer; longer or larger is possible (the mode allows 300 s, about 2.2 h per 60 s)
 but comes with the model's own cuts. Not yet tested on other prompts and references.
 
+### A painting that comes alive (locked camera, the picture as the first frame): the request
+
+This is the use the pair is tuned for since 2026-10-30 (`results/20261030-painting-fl2va-continuation/`): the still is
+the first frame (FL2VA), the camera stays locked, the clouds, water, leaves and figures move, the soundscape is added
+by hand afterwards. The continuation runs on the **FL2VA** partition with the pinned prefix (no reference block), so
+the same request shape as a 10 s clip works for 16-60 s: add the two `long_video` keys.
+
+```bash
+curl -sS --max-time 14400 -X POST http://127.0.0.1:18093/v1/videos/sync \
+  -F "prompt=The painting comes alive: a wide landscape under a huge sky. The clouds drift slowly, their shadows glide over the plain, the river glints and ripples, leaves tremble in a light breeze, a few birds cross the sky, the tiny figures on the road walk on. The camera is locked on a tripod and does not move at all; one continuous take; soft natural ambience." \
+  -F "width=1344" -F "height=768" -F "aspect_ratio=16:9" -F "fps=24" \
+  -F "num_inference_steps=20" -F "flow_shift=12" -F "seed=1101" \
+  -F 'extra_params={"task": "fl2va", "duration": 30, "audio_flow_shift": 3.0, "frame_indices": [0], "long_video": true, "long_video_mode": "continuation"}' \
+  -F "input_reference=@painting.png" -o clip.mp4 -w "HTTP %{http_code}\n"
+```
+
+| | |
+|---|---|
+| Measured (Koninck landscape, 1344x768, 20 steps) | 16 s in 40 min, 30 s in 84 min: hand-overs invisible in every number (luma step 0.0 / -0.3, no inter-frame spike, no cut), the picture stays the picture, the clouds keep drifting, audio flat. 960x576 is about half the time. |
+| Prompt | Say that the camera is locked and describe only the motion of what is in the picture; the model brightens a painting's tone a little in the first seconds. |
+| Sound | The generated ambience is there but can be muted; the audio look-lock keeps its level flat. |
+| Server | The FL2VA partition (`scripts/select-stack.sh long FL2VA`); the continuation defaults in `h3_tp2/plugin.py` (pinned prefix, seam retries, video and audio look-lock, a seed per window). |
+
 ### Long clips from a client or an agent: the request
 
 **Status 2026-10-30 morning.** On 2026-10-29 the owner rejected the continuation by eye (a light and texture step at
