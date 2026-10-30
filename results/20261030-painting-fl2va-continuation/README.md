@@ -39,6 +39,22 @@ few frames. The 16 s and default 30 s clips have no such sequence at the same >=
 once-per-second brightness values showed slow drift but missed this repeated flicker. Reproduce with
 `python3 scripts/luma_flicker.py <clip>`; a global luma test is a diagnostic, not a substitute for visual review.
 
+Owner follow-up (17:40): the second experimental repair, which uses a blurred spatial luminance adjustment instead of
+one global offset, **looks better**; the people moved a little too fast and strangely, although the clip was generally
+very good. This is an observation of the reviewed clip, not proof that the generative cause has been fixed or that no
+motion artifacts remain. The local file is `d30_koninck_history5s_regional_deflicker_EXPERIMENT.mp4` in
+`~/Downloads/h3-prod-smoke/`; source preserved. `experimental-regional-deflicker.py` reproduces the experiment with
+Pillow and FFmpeg; it uses neighboring frames to estimate a bounded blurred Y-plane correction only on the 42 frames
+identified by the existing detector. It can alter real movement or light and is **not a default**.
+
+At 336x192 grayscale, median mean absolute frame change at the 13 flicker boundaries in the three lower image regions
+is 7.07 / 7.59 / 6.88 in the original, 2.15 / 2.02 / 2.09 after the first global repair, and 1.16 / 1.16 / 1.12
+after this spatial experiment; other frame-to-frame changes there are about 0.13–0.19. `regional-flicker.py` reproduces
+this clip-specific diagnostic. The new file fully decodes, has 736 video frames and the same audio SHA-256; direct
+YUV frame comparison finds 42 changed luma frames, unchanged chroma throughout and unchanged other decoded frames.
+The remaining signal and the user's motion feedback call for further visual and model-side testing. A separate
+16 s comparison changes only the wording for the figures to very slow small steps; it is queued, not yet rendered.
+
 The 17-frame period matches the checkpoint's `vae_clip_length=17` and the decoder's 17-frame chunk geometry; that
 alignment suggests a temporal decode boundary artifact, but the cause is not established. Crossfade was OFF. The
 look-lock is one possible contributor: it adjusts latent mean/std, not decoded luma, so the earlier claim that it

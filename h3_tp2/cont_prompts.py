@@ -37,10 +37,14 @@ def continuation_prompts(base: str, n_windows: int, extra: str = "", rest_templa
 
 
 def request_duration(extra_args: dict) -> float | None:
-    for key in ("duration_seconds", "duration"):
-        if extra_args.get(key) is not None:
-            return float(extra_args[key])
-    target = extra_args.get("target") or {}
-    if isinstance(target, dict) and target.get("duration_seconds") is not None:
-        return float(target["duration_seconds"])
-    return None
+    """Match encoder_processing's field precedence, including explicit nulls.
+
+    An explicit null selects the encoder's num_frames/default path; it must
+    not silently fall through to a lower-priority duration.
+    """
+    target = extra_args.get("target")
+    if target is not None and not isinstance(target, dict):
+        raise ValueError("target must be an object")
+    target = target if target is not None else {}
+    value = target.get("duration_seconds", extra_args.get("duration_seconds", extra_args.get("duration")))
+    return None if value is None else float(value)

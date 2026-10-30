@@ -6,6 +6,7 @@ def test_window_count_matches_render_sh():
     assert cp.window_count(10) == 1
     assert cp.window_count(30) == 3        # 736 frames -> 277 + 2 x 255
     assert cp.window_count(60) == 6
+    assert cp.window_count(300) == 29
     assert cp.window_count(30, 345, 22) == 3
     assert cp.window_count(14.0, 345, 22) == 1   # 341 frames -> 345 (17k+5)
 
@@ -23,6 +24,10 @@ def test_request_duration():
     assert cp.request_duration({"duration": 30}) == 30.0
     assert cp.request_duration({"duration_seconds": 12.5}) == 12.5
     assert cp.request_duration({"target": {"duration_seconds": 8}}) == 8.0
+    assert cp.request_duration({"duration": 30, "duration_seconds": 60, "target": {"duration_seconds": 300}}) == 300.0
+    assert cp.request_duration({"duration": 30, "duration_seconds": 60, "target": {}}) == 60.0
+    assert cp.request_duration({"duration": 30, "duration_seconds": 60, "target": {"duration_seconds": None}}) is None
+    assert cp.request_duration({"duration": 30, "duration_seconds": None}) is None
     assert cp.request_duration({}) is None
 
 

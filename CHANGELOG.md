@@ -297,3 +297,7 @@
 - 2026-10-30 17:08: owner on the experimental deflickered history5s copy: improved, but flicker remains. Owner also
   reports the cloud shadows on the ground look too strong or misaligned with the clouds; exact cause unknown. Next
   painting A/B removes the explicit moving-shadow request while keeping the rest of the 16 s request matched.
+- 2026-10-30 17:45: corrected continuation duration precedence to match the running encoder, including explicit nulls;
+  CPU plans for 4–300 s match the upstream planner. 300 s remains unverified; guarded streaming, memory and speed tests
+  are queued. A local spatial deflicker experiment looks better to the owner, who also reports figures move too fast;
+  a matched slower-figures prompt is queued. See `results/20261030-300s-readiness/`.
