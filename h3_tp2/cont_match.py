@@ -154,7 +154,13 @@ def lock_to_reference(ref_stats: tuple[torch.Tensor, torch.Tensor], new_window: 
     gain = (s_ref / sd.clamp_min(1e-6)).clamp(0.5, 2.0)
     gain = 1.0 + strength * (gain - 1.0)
     m_target = m + strength * (m_ref - m)
-    out = (free - m.view(1, -1, 1, 1, 1)) * gain.view(1, -1, 1, 1, 1) + m_target.view(1, -1, 1, 1, 1)
+    # ramped: no correction at the first free frame (it continues the pinned tail exactly), the full correction at the
+    # window's end; a whole-window correction stepped the brightness at the hand-over (-8.5 luma at seam 2, 03:27)
+    n_free = free.shape[2]
+    w = torch.linspace(0.0, 1.0, steps=n_free + 1, device=free.device, dtype=torch.float32)[1:].view(1, 1, -1, 1, 1)
+    gain_t = 1.0 + w * (gain.view(1, -1, 1, 1, 1) - 1.0)
+    shift_t = w * (m_target - m).view(1, -1, 1, 1, 1)
+    out = (free - m.view(1, -1, 1, 1, 1)) * gain_t + m.view(1, -1, 1, 1, 1) + shift_t
     m2, s2 = _stats(out)
     logger.info("h3_tp2 look-lock window %d: free frames mean %.4f std %.4f -> %.4f / %.4f (reference %.4f / %.4f, strength %.2f)",
                 index, m.mean().item(), sd.mean().item(), m2.mean().item(), s2.mean().item(), m_ref.mean().item(), s_ref.mean().item(), strength)
