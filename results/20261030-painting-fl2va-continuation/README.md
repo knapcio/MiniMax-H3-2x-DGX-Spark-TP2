@@ -75,7 +75,11 @@ is pending. Local copy: `~/Downloads/h3-prod-smoke/d30_koninck_history5s_deflick
 ## The 60 s render runs at 120 s/step instead of 86-88 (`koninck60-fl2va`, 14:38-, investigation in progress)
 
 Window 1 (277 frames, the same shape as the 30 s windows of 11:23 and 11:52 at 88.4 / 87.0 s/step) took 122.7 s/step,
-window 2 120.0 s/step, every step within 0.4 s of the next: a deterministic slowdown of 36-40 %, not interference.
+window 2 120.0 s/step, every step within 0.4 s of the next: a steady 36-40 % slowdown on these samples. Stable
+step times alone do not rule out a constant source of interference.
+The first 16 s painting run at 10:14 and the 60 s run at 14:38 also logged the same four large FP8 GEMM shapes
+(`M=42880`, with `N/K=21504/5376`, `28672/5376`, `5376/7168`, `5376/14336`); this rules out a change in those
+logged matrix dimensions alone, not a change in kernel, memory, communication or other runtime state.
 Checks on the live pair did not reveal a cause: GPU clocks (2164 MHz on both, cap 2200, no throttle flag, 67 / 79 C),
 the fabric (both RoCE ports ACTIVE 200 Gb/s, the render's 2 x 258 MB/s on them, nothing on the management links),
 CPU (performance governor, 3.35 GHz, worker at 230 % on both ranks, no cgroup limits), disk (0 MB/s), the plugin
