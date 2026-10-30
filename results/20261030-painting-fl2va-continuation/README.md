@@ -21,3 +21,13 @@ the locks have nothing to correct. Owner's eye pending; 30 s, a 5 s pinned histo
 30 s (`koninck30-grid.png`, one frame every 3 s): the picture stays the picture across three windows, the clouds keep
 drifting, both hand-overs are invisible in the numbers, audio -39..-40 dB flat. At 1344x768 a window costs ~25 min
 (84 min for 30 s); 960x576 would be about half.
+
+## A 5 s pinned history (`koninck30-hist5s`, window 345 / overlap 124, 12:18-14:30)
+
+The owner asked whether a sliding window with more history would help. With 124 frames (5.2 s) of the previous
+window pinned instead of 22 (0.9 s): seams -0.5 / +0.2 luma, inter-frame 0.57 / 0.50 against neighbours 0.3-0.5,
+ratios 0.98 / 0.98, no cut, motion 0.3-1.4, light 115 -> 135 in the first (longer) window then 125-131, 7865 s
+(2.6x the 22-frame run: fewer new frames per window and 345-frame windows at 1344x768). On a locked camera the
+hand-over was already invisible with 0.9 s of history, so the extra history buys nothing visible here and costs
+2.6x; the default stays 22 frames. (On a moving camera the longer history can only help what was in the frame within
+those 5 s.)

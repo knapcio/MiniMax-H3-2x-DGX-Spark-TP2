@@ -276,3 +276,5 @@
   no cut, seam ratio 1.00, the clouds move and the picture stays the picture (`results/20261030-painting-fl2va-continuation/`).
 - 2026-10-30 12:20: Koninck 30 s on FL2VA: two invisible hand-overs (-0.3 luma, no spike), no cut, light 115-129, the
   painting stays the painting; 5016 s at 1344x768.
+- 2026-10-30 14:35: 5 s pinned history on the painting (window 345 / overlap 124): seams as clean as with 0.9 s,
+  2.6x the time; default overlap stays 22. Memory compacted again before the 60 s painting render.
