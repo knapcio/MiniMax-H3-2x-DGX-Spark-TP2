@@ -60,6 +60,11 @@ decision. This combined prompt is an experiment; it does not isolate which wordi
 check that prompt, seed, image and other request fields match, and write `quality-speed-comparison-20261030.json`
 and `quality-steps-comparison-20261030.json` with wall time, per-window times, memory minima and diagnostic quality
 signals. Ten steps might be faster but may degrade the image; neither single comparison justifies changing a default.
+[`compare_length.py`](compare_length.py) also waits for the matched 960x576 16/60 s streaming controls, checks that
+only duration differs, and reports their first 277-frame window times in `quality-length-comparison-20261030.json`.
+This is one same-boot pair with potentially different cache/runtime state, so it cannot by itself establish why the
+original 1344x768 60 s request slowed down. The comparator is staged on Spark_06 as
+`compare-quality-length-20261030.py` (SHA-256 `fd82725a97cf5f200dd3e196272bee1d8ec1555ae21d7375bbfcb10c339d5246`).
 
 Only if those tests succeed, both 960 clips have no detected hard cut, the 16 s clip has no repeated global luma
 drops, both nodes' traces for both clips stay at or above 8 GiB, and 29 times the slowest measured 60 s window plus a 35%
