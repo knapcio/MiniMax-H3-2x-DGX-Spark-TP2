@@ -21,7 +21,9 @@ ORIGINAL = ("The painting comes alive: a wide Dutch landscape under a huge sky. 
 COMBINED = ORIGINAL.replace("the tiny figures on the road walk on",
                             "the tiny figures on the road move very slowly, taking small natural steps without sudden movements").replace(
                                 "their shadows glide over the plain",
-                                "the light on the landscape stays soft and nearly constant, without strong moving cloud shadows")
+                                "the light on the landscape stays soft and nearly constant, without strong moving cloud shadows").replace(
+                                "The clouds drift slowly across the sky",
+                                "The clouds drift slowly across the sky, keeping their broad soft painted shapes")
 
 
 class Long300QueueTests(unittest.TestCase):

@@ -152,6 +152,7 @@ else echo 'cuts (scene score > 0.1): none'; fi
         self.assertTrue(stream["extra"]["preencode_mp4"])
         self.assertIn("move very slowly", slow["prompt"])
         self.assertIn("without strong moving cloud shadows", long["prompt"])
+        self.assertIn("keeping their broad soft painted shapes", long["prompt"])
         self.assertEqual(args("quality60-960-stream")["prompt"], long["prompt"])
         report = (self.results / "quality16-960-stream/luma-flicker.txt").read_text()
         self.assertIn("for 2 successive 17-frame periods", report)

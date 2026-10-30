@@ -45,7 +45,7 @@ test, not an end-to-end 300 s render.
 ## Deferred follow-up on the pair
 
 [`queue-quality.sh`](queue-quality.sh) is the exact script running on Spark_06 as
-`~/h3-tp2-results/queue-quality-20261030-v4.sh` (SHA-256 `c39a8b35b776d969463b10c0cfe72540a196250938abe3fcdb13d29fbc12cd4b`,
+`~/h3-tp2-results/queue-quality-20261030-v5.sh` (SHA-256 `36c4d6e6a6cfacd06cf5cc7d911a52f1fb0e579f3ee7bc81a441ab69d2430467`,
 process recorded in the workspace `SETUP.md`). Its fake-host tests cover failed guards, predecessor verification,
 no-overwrite, stopping on failure, and the conditional 300 s decision. The queue waits for the
 earlier 60 s chain to finish **with a verified MP4**. It verifies both services and memory guards, API request gauges,
@@ -53,8 +53,9 @@ GPU idleness and available memory on both hosts before every experiment; it stop
 service or overwrites an output. The planned controls on the same boot are: the original 16 s painting request, the
 same request with 10 rather than 20 denoising steps, the same request with 175-frame windows, the original request
 with only the figures told to move very slowly, and 5/16 s
-tests of the chunked MP4 path. Matched 16 s and 60 s 960x576 chunked tests combine the soft-light and slow-figures
-prompts, giving a longer quality and memory check before the 300 s decision.
+tests of the chunked MP4 path. Matched 16 s and 60 s 960x576 chunked tests combine soft light, slower figures and
+an instruction to keep the clouds' broad painted shapes, giving a longer quality and memory check before the 300 s
+decision. This combined prompt is an experiment; it does not isolate which wording caused any difference.
 `compare_speed.py` has two waiting processes on Spark_06 for the matched window-size and step-count controls. They
 check that prompt, seed, image and other request fields match, and write `quality-speed-comparison-20261030.json`
 and `quality-steps-comparison-20261030.json` with wall time, per-window times, memory minima and diagnostic quality
@@ -78,8 +79,9 @@ global screen does not prove that regional flicker or cloud shadows look right.
 On the already completed 60 s original, the standalone detector with this two-drop threshold found an additional
 short interval at 34.71–35.42 s, in addition to the two intervals reported with the original three-drop threshold.
 Before it started any quality request, v2 was replaced by v3 to add the matched 10-step control; v4 adds the 60 s
-960 control and uses its slowest window for the 300 s projection. The 60 s luma screen is saved for inspection,
-but is not a pass/fail criterion for the 300 s attempt. The first
+960 control and uses its slowest window for the 300 s projection. Before the quality queue started, v5 added the
+cloud-shape wording after a still-frame inspection of the original 60 s clip. The 60 s luma screen is saved for
+inspection, but is not a pass/fail criterion for the 300 s attempt. The first
 speed-comparison watcher had the same missing-luma-report assumption; the v2 comparator instead runs the pinned
 standalone detector itself on both verified clips. It was checked against the real 60 s clip and the old metrics
 format, and it reports rather than promotes either setting.
@@ -107,8 +109,8 @@ The idleness checks cannot reserve the API against an unrelated client arriving 
 
 ## Deferred 16-hour fallback for a 300 s test
 
-[`queue-long300.sh`](queue-long300.sh) is waiting as `queue-long300-20261030-v2.sh` on Spark_06 (SHA-256
-`92ef8d9c3b5ff707f862ee08d5d2ff28dcc549a1604b0c1040621abdf8315aa1`). If the first 300 s experiment succeeds,
+[`queue-long300.sh`](queue-long300.sh) is waiting as `queue-long300-20261030-v3.sh` on Spark_06 (SHA-256
+`bf3a22f9e776a65b39252a74bf04702e5290a836224b3215070a4ba9a6579f6a`). If the first 300 s experiment succeeds,
 it does nothing. If that experiment is skipped for quality, memory or a missing detector, it also does nothing.
 Only when it was skipped for insufficient time does the fallback recheck the verified 5/16/60 s streaming controls,
 the 16/60 s 960x576 controls' exact prompt/settings, no hard cuts, no two successive large global luma drops in the

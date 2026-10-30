@@ -202,7 +202,8 @@ fi
 
 original='The painting comes alive: a wide Dutch landscape under a huge sky. The clouds drift slowly across the sky, their shadows glide over the plain, the river and the pond in the distance glint and ripple, leaves on the trees tremble in a light breeze, a few birds fly across the sky, the tiny figures on the road walk on. The camera is locked on a tripod and does not move at all; one continuous take; soft natural ambience.'
 slow=${original/'the tiny figures on the road walk on'/'the tiny figures on the road move very slowly, taking small natural steps without sudden movements'}
-combined=${slow/'their shadows glide over the plain'/'the light on the landscape stays soft and nearly constant, without strong moving cloud shadows'}
+soft_light=${slow/'their shadows glide over the plain'/'the light on the landscape stays soft and nearly constant, without strong moving cloud shadows'}
+combined=${soft_light/'The clouds drift slowly across the sky'/'The clouds drift slowly across the sky, keeping their broad soft painted shapes'}
 python3 - "$case960/$tag960.mp4.timing.json" "$case60/$tag60.mp4.timing.json" "$combined" "$results/koninck.png" <<'PY'
 import json,sys
 from pathlib import Path

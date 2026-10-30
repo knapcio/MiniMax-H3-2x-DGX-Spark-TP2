@@ -88,9 +88,14 @@ old_figures='the tiny figures on the road walk on'
 new_figures='the tiny figures on the road move very slowly, taking small natural steps without sudden movements'
 old_shadows='their shadows glide over the plain'
 new_shadows='the light on the landscape stays soft and nearly constant, without strong moving cloud shadows'
-[[ "$original" == *"$old_figures"* && "$original" == *"$old_shadows"* ]]
+old_clouds='The clouds drift slowly across the sky'
+new_clouds='The clouds drift slowly across the sky, keeping their broad soft painted shapes'
+if [[ "$original" != *"$old_figures"* || "$original" != *"$old_shadows"* || "$original" != *"$old_clouds"* ]]; then
+  echo 'expected prompt clauses are missing'; exit 1
+fi
 slow_figures=${original/"$old_figures"/"$new_figures"}
-combined=${slow_figures/"$old_shadows"/"$new_shadows"}
+soft_light=${slow_figures/"$old_shadows"/"$new_shadows"}
+combined=${soft_light/"$old_clouds"/"$new_clouds"}
 paint="$results/koninck.png"
 [ -s "$paint" ]
 image_sha=$(sha256sum "$paint" | awk '{print $1}')

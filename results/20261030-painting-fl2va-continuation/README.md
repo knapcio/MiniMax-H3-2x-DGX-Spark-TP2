@@ -185,6 +185,19 @@ The first post-render 5 s T2VA calibration on the same boot finished at 18:38: 1
 versus the earlier short-request reference of 23.2 s/step; two 960x576 warmups were 8.51–8.56 s/step versus 8.65.
 These short shapes were not slow. They do not prove why the 277-frame FL2VA windows slowed: the tasks, frame counts
 and conditioning differ. A matched 16 s continuation control (`calib-safe-l16`) began at 18:38 to investigate.
+At 19:06 its first 277-frame window completed in 1,670.3 s, or 83.5 s/step (journal 83.27–83.51), close to the
+earlier 85.4 s/step 16 s reference and much faster than the 60 s render's first 277-frame window. The head had not
+restarted: systemd still showed the 14:31 boot and the same rank-0 process. Thus a persistent slow head boot alone
+does not explain the difference. The request lengths and intervening work differ, including the 5 s warmups, so this
+observation does not establish whether warmup, total request length or another runtime condition caused it. Window
+2 and the whole 16 s output were still in progress at this observation.
+
+The first-window `step0` digest matches between the 60 s and 16 s requests (`9e7843a1`, 14 tensors), as do the first
+prompt (`583119c1`) and image-conditioning (`2a5ba12d`) tensor digests. The first-window output-latent digests differ
+(`56fb4303` vs `1aadfdbe`). The digest hashes tensor bytes only, with limited recursion; it does not cover scalar
+arguments, all object state, tensor shape metadata or the model/backend state. The match narrows the input comparison
+but does not prove the complete requests or runtime states identical, and the different output does not by itself
+identify the cause of the slowdown.
 
 Window 1 (277 frames, the same shape as the 30 s windows of 11:23 and 11:52 at 88.4 / 87.0 s/step) took 122.7 s/step,
 window 2 120.0 s/step, every step within 0.4 s of the next: a steady 36-40 % slowdown on these samples. Stable
