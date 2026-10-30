@@ -140,7 +140,7 @@ by hand afterwards. The continuation runs on the **FL2VA** partition with the pi
 the same request shape as a 10 s clip works for 16-60 s: add the two `long_video` keys.
 
 ```bash
-curl -sS --max-time 14400 -X POST http://127.0.0.1:18093/v1/videos/sync \
+curl -sS --max-time 30000 -X POST http://127.0.0.1:18093/v1/videos/sync \
   -F "prompt=The painting comes alive: a wide landscape under a huge sky. The clouds drift slowly, their shadows glide over the plain, the river glints and ripples, leaves tremble in a light breeze, a few birds cross the sky, the tiny figures on the road walk on. The camera is locked on a tripod and does not move at all; one continuous take; soft natural ambience." \
   -F "width=1344" -F "height=768" -F "aspect_ratio=16:9" -F "fps=24" \
   -F "num_inference_steps=20" -F "flow_shift=12" -F "seed=1101" \
@@ -154,6 +154,23 @@ curl -sS --max-time 14400 -X POST http://127.0.0.1:18093/v1/videos/sync \
 | Prompt | Say that the camera is locked and describe only the motion of what is in the picture; the model brightens a painting's tone a little in the first seconds. |
 | Sound | The generated ambience is there but can be muted; the audio look-lock keeps its level flat. |
 | Server | The FL2VA partition (`scripts/select-stack.sh long FL2VA`); the continuation defaults in `h3_tp2/plugin.py` (pinned prefix, seam retries, video and audio look-lock, a seed per window). |
+
+Long jobs can exceed the original four-hour limits, especially after a slowdown or a seam retry. Before starting one,
+choose compatible server and client timeouts for the workload. For example, add these exports to the head's
+`~/.h3-tp2.env` and restart the head **when no render is in progress**; existing processes keep their old limits:
+
+```bash
+export H3_TP2_REQUEST_TIMEOUT_S=28800
+export VLLM_OMNI_DLO_DP_WAVE_TIMEOUT=28800
+export VLLM_OMNI_VIDEO_SYNC_TIMEOUT=29400
+export H3_RENDER_TIMEOUT_S=30000
+```
+
+The first two bounds allow eight hours for the executor/wave, the API and client have time to report a failure, and
+the memory guards remain active. Increasing the executor timeout also delays detection of a genuinely stuck request;
+these values are an example, not a guarantee that an arbitrarily long render will finish. External clients must use
+their own matching timeout. In the workspace, `clients/h3-generate.py --long --first-frame --image painting.png ...`
+sends this FL2VA request; without `--first-frame` the long client retains Ref2VA behaviour.
 
 ### Long clips from a client or an agent: the request
 
@@ -170,13 +187,13 @@ minute (47-88 before), detail at most 442 (1084 before), motion 5-9 throughout, 
 `CONT_LOCK=off` restore upstream's behaviour.
 
 The server must run the v0.30.0 stack on the **Ref2VA** partition (`scripts/select-stack.sh long Ref2VA` on both
-Sparks, agent restarted before head) with `H3_TP2_REF_SHORT_EDGE=1024` in `~/.h3-tp2.env` on the head; FL2VA (the image
-as the first frame) cannot continue a clip. On Ref2VA the image is a **reference for look and subject**, not the first
+Sparks, agent restarted before head) with `H3_TP2_REF_SHORT_EDGE=1024` in `~/.h3-tp2.env` on the head. On Ref2VA the
+image is a **reference for look and subject**, not the first
 frame: the clip resembles the picture, it does not start from it. One request at a time; the call is synchronous and
 returns the MP4 (with audio) in the response body.
 
 ```bash
-curl -sS --max-time 14400 -X POST http://127.0.0.1:18093/v1/videos/sync \
+curl -sS --max-time 30000 -X POST http://127.0.0.1:18093/v1/videos/sync \
   -F "prompt=An old forest with a small stream. Leaves sway in a light breeze, the stream ripples and glistens, a woman in a white dress walks slowly along it. Steady camera, one continuous take, natural forest ambience." \
   -F "width=960" -F "height=576" -F "aspect_ratio=16:9" -F "fps=24" \
   -F "num_inference_steps=20" -F "flow_shift=12" -F "seed=1101" \
@@ -253,7 +270,8 @@ The API is the stock vLLM-Omni one (`POST /v1/videos/sync`, `extra_params` with 
 so existing clients only need the host. The memory guards kill the rank when MemAvailable stays under 4 GiB for two
 samples: on GB10 the NVIDIA driver cannot fail an allocation gracefully and the whole host livelocks instead (that is
 how we lost an afternoon to a 10 s render on one Spark). The head then fails closed and systemd restarts it; a stuck
-request is bounded by `H3_TP2_REQUEST_TIMEOUT_S` (4 h) and the API by `VLLM_OMNI_VIDEO_SYNC_TIMEOUT`.
+request is bounded by `H3_TP2_REQUEST_TIMEOUT_S` (4 h by default) and the API by `VLLM_OMNI_VIDEO_SYNC_TIMEOUT`;
+long-running requests need compatible limits at each layer as described above.
 
 `python -m unittest discover -s tests` (any machine, no GPU) exercises the control channel and the agent's failure paths.
 

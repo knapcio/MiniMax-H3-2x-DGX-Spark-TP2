@@ -63,3 +63,4 @@ for m in re.finditer(r"frame:(\d+)\s+pts:\d+\s+pts_time:([\d.]+)\s*\n\s*lavfi\.s
     if float(m.group(3)) > 0.1: cuts.append(f"frame {m.group(1)} ({float(m.group(2)):.1f} s) score {m.group(3)}")
 print("cuts (scene score > 0.1): " + ("; ".join(cuts) if cuts else "none"))
 PY
+"$PY" "$(dirname "$0")/luma_flicker.py" "$F"

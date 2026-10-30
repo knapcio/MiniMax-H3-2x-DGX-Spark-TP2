@@ -160,9 +160,8 @@ def crossfade_tail(video: torch.Tensor, new_window: torch.Tensor, overlap_v: int
 def ref_slice(x: torch.Tensor, mode: str, *, dim: int) -> torch.Tensor:
     """The frames of the first window that define the look-lock reference.  ``window``: all of them (the first
     behaviour).  ``tail``: the last quarter (at least one frame): a first window that drifts (the painting brightened
-    115 -> 135 luma over 345 frames on 2026-10-30) has a whole-window mean well below the tail every later window is
-    pinned to, and the lock then pulled the free frames down by ~10 luma right after the hand-over (owner's eye:
-    a flicker at 15-22 s); the tail is the look the clip actually hands over."""
+    115 -> 135 luma over 345 frames on 2026-10-30) may be pulled toward an earlier look by a whole-window reference.
+    The owner reported flicker at 15-22 s; the cause and this alternative remain to be tested."""
     if mode != "tail":
         return x
     n = x.shape[dim]

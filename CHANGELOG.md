@@ -277,8 +277,12 @@
 - 2026-10-30 12:20: Koninck 30 s on FL2VA: two invisible hand-overs (-0.3 luma, no spike), no cut, light 115-129, the
   painting stays the painting; 5016 s at 1344x768.
 - 2026-10-30 14:35: 5 s pinned history on the painting (window 345 / overlap 124): seams as clean as with 0.9 s,
-  2.6x the time; default overlap stays 22. Memory compacted again before the 60 s painting render.
+  1.57x the time (7865 / 5016 s; correction: previously reported as 2.6x); default overlap stays 22. Memory compacted
+  again before the 60 s painting render.
 - 2026-10-30 16:25: owner's eye on the painting clips: 16 s and 30 s good; the 5 s history clip flickers a little at
-  15-22 s = the look-lock pulling window 2 toward the WHOLE-window-1 mean after a first window that brightened 115 ->
-  135 (light per second 135 -> 125 in four seconds). New option `H3_TP2_CONT_LOCK_REF=tail` (reference = the last
-  quarter of window 1; default `window` unchanged until measured).
+  15-22 s. Whole-window look-lock after a first window that brightened 115 -> 135 is a possible contributor, not a
+  verified cause. New option `H3_TP2_CONT_LOCK_REF=tail` (reference = the last quarter of window 1 for both video and
+  audio; default `window` unchanged until measured).
+- 2026-10-30 16:34: per-frame check found 13 periodic luma drops in the 5 s-history clip, frames 357..561, every
+  17 frames, median -6.10 YAVG; none in the default 16/30 s clips at the same threshold. This matches the VAE's
+  17-frame chunk geometry but does not establish causation. `scripts/luma_flicker.py` detects this pattern.
