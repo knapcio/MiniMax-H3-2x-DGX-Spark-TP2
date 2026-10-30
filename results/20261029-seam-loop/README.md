@@ -197,3 +197,8 @@ The same still, "a deer walks to the water and drinks, birds flit ...", seed 220
 But motion per second 3.6 .. 0.5 from 10 s on: with this seed the first window itself goes nearly static (3.2 -> 1.7
 by 9 s) and the continuation keeps it so (0.3-0.7 for the last 20 s). The hand-over machinery holds on a different
 prompt; what the windows contain is the model's sample, and a window that ends still continues still.
+
+The grid every 2 s (`deer30-grid.png`) shows what this sample is: the model rendered the scene as a framed painting
+(a pale mat around the picture from the first frame), the deer walks in the first 8 s, then the camera moves into a
+dark painted forest and stops. A sample-level failure of the reference + prompt pairing (the still read as a painting),
+nothing the continuation machinery can or should fix; a re-roll (another seed) is the answer for such a window 1.
