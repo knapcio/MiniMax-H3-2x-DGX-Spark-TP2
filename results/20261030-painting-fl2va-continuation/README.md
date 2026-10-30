@@ -142,8 +142,11 @@ failed benchmark or missing rate is a hold, not a completed calibration.
 
 At 16:39 the third window finished in 2398.1 s; at 17:18:59 the fourth finished in 2397.4 s (seam ratio 0.98) and
 window 5 began. The already running client and API have 14,400 s
-limits (client deadline about 18:37:51); the current rate puts the end of denoising around 18:39, before decode, so
-the clip may time out. Longer limits are staged for the next head restart, not effective in the live processes.
+limits (client deadline about 18:37:51). The earlier ~18:39 projection incorrectly applied a full-window rate to the
+shorter final window. At 18:11 the journal showed step 11/20 at 42.48 s/step, but the progress lines were buffered:
+window 6 actually finished at 18:13:07 in 850.0 s, seam ratio 0.99. The earlier ~18:18 projection from the stale
+progress was also too late. Decode and delivery remain pending; there are about 24.7 minutes until the client
+deadline. Longer limits are staged for the next head restart, not effective in the live processes.
 The timeout recovery queue checks the actual failure, waits for both nodes to be idle, and verifies the effective
 limits before retrying. The 23.2 s/step T2VA reference followed two 960x576 warm-up requests; the recovery queue
 repeats that sequence before each 1344 measurement. Individual runs still cannot establish a root cause on their own.
