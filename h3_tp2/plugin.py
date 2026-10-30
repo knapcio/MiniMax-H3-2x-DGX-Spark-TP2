@@ -469,6 +469,8 @@ def _apply(role: str) -> None:
             _lock_strength = float(os.environ.get("H3_TP2_CONT_LOCK_STRENGTH", "1.0") or 1.0)
             _lock_ramp = float(os.environ.get("H3_TP2_CONT_LOCK_RAMP", "0.25") or 0.25)   # fraction of the free frames
             _lock_audio = os.environ.get("H3_TP2_CONT_LOCK_AUDIO", "1").strip() == "1"   # the same lock for the audio latents
+            _lock_std_env = os.environ.get("H3_TP2_CONT_LOCK_STD", "").strip()   # strength of the std (contrast) part; "" = same as mean
+            _lock_std = float(_lock_std_env) if _lock_std_env else None
             # H3_TP2_WINDOW_SEED_STEP=n inside this loop too: window k samples with seed + k*n. Upstream re-creates the
             # generators from the request seed for every window, so equal-shaped windows restart the SAME noise and tend
             # to re-stage the same camera move (the owner's "the woman shown 5-6 times", 2026-10-30 07:35).
@@ -517,7 +519,7 @@ def _apply(role: str) -> None:
 
                 def _dc(diffuse, kwargs, *, window_frames, overlap_frames, text_conditioning=None):  # noqa: ANN001
                     diffuse = _cm.wrap_diffuse(diffuse, apply=_apply_match, overlap_v_hint=_ct._video_t(overlap_frames),
-                                               retries=_retries, max_ratio=_max_ratio, lock=_lock, lock_strength=_lock_strength, lock_ramp=_lock_ramp, lock_audio=_lock_audio)
+                                               retries=_retries, max_ratio=_max_ratio, lock=_lock, lock_strength=_lock_strength, lock_ramp=_lock_ramp, lock_audio=_lock_audio, lock_std=_lock_std)
                     windows = _ct.plan_continuation_windows(kwargs["num_frames"], window_frames, overlap_frames)
                     if text_conditioning is not None and len(text_conditioning) != len(windows):
                         raise _ct.OmniClientError("MiniMax H3 requires one text conditioning per continuation window")

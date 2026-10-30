@@ -60,7 +60,8 @@ def seam_ratio(video: torch.Tensor, overlap_v: int) -> tuple[float, float, float
 
 
 def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, retries: int = 0, max_ratio: float = 2.0,
-                 lock: str = "", lock_strength: float = 1.0, lock_ramp: float = 1.0, lock_audio: bool = False):  # noqa: ANN001
+                 lock: str = "", lock_strength: float = 1.0, lock_ramp: float = 1.0, lock_audio: bool = False,
+                 lock_std: float | None = None):  # noqa: ANN001
     """Return a ``diffuse`` replacement for one continuation request (state: the previous window's video latents).
 
     With ``retries`` > 0 a window whose latent seam ratio exceeds ``max_ratio`` is sampled again with another seed
@@ -117,7 +118,7 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
             try:
                 video = match_window(state["prev"][:, :, -ov:], video, ov, apply=apply, index=state["index"])
                 if lock == "first" and state["ref"] is not None:
-                    video = lock_to_reference(state["ref"], video, ov, lock_strength, index=state["index"], ramp=lock_ramp)
+                    video = lock_to_reference(state["ref"], video, ov, lock_strength, index=state["index"], ramp=lock_ramp, std_strength=lock_std)
                 if lock == "first" and lock_audio and state["ref_audio"] is not None and isinstance(audio, torch.Tensor) and audio.dim() == 3:
                     ov_a = _overlap_audio(args)
                     if ov_a:
@@ -157,7 +158,7 @@ def crossfade_tail(video: torch.Tensor, new_window: torch.Tensor, overlap_v: int
 
 
 def lock_to_reference(ref_stats: tuple[torch.Tensor, torch.Tensor], new_window: torch.Tensor, overlap_v: int,
-                      strength: float, *, index: int, ramp: float = 1.0) -> torch.Tensor:
+                      strength: float, *, index: int, ramp: float = 1.0, std_strength: float | None = None) -> torch.Tensor:
     """Per-channel affine of the new window's FREE frames (after the pinned overlap) so that their mean/std move
     toward the reference window's statistics by ``strength`` (1.0 = equal).  Against the drift that compounds window
     after window (luma +41 and a 10x detail metric over 60 s on 2026-10-29): every window restarts exactly from the
@@ -167,7 +168,7 @@ def lock_to_reference(ref_stats: tuple[torch.Tensor, torch.Tensor], new_window: 
     free = new_window[:, :, overlap_v:].float()
     m, sd = _stats(free)
     gain = (s_ref / sd.clamp_min(1e-6)).clamp(0.5, 2.0)
-    gain = 1.0 + strength * (gain - 1.0)
+    gain = 1.0 + (strength if std_strength is None else std_strength) * (gain - 1.0)   # std_strength 0 = mean only
     m_target = m + strength * (m_ref - m)
     # ramped: no correction at the first free frame (it continues the pinned tail exactly), the full correction at the
     # window's end; a whole-window correction stepped the brightness at the hand-over (-8.5 luma at seam 2, 03:27)
