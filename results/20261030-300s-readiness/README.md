@@ -71,6 +71,8 @@ the 960 control with `--minimum 2`, records `luma-flicker.txt` and permits the a
 report. Missing, modified or failed detector means skip, not pass. Fake-host tests exercise the actual detector with
 clean frames, two repeated drops, a failed decoder and a missing detector; the other limits still apply. A clean
 global screen does not prove that regional flicker or cloud shadows look right.
+On the already completed 60 s original, the standalone detector with this two-drop threshold found an additional
+short interval at 34.71–35.42 s, in addition to the two intervals reported with the original three-drop threshold.
 
 ## Staged prompt fix and deferred deployment
 
@@ -92,3 +94,21 @@ job store; an activating or uncertain head is left untouched on HOLD. A failure 
 leaves the service untouched on HOLD. The serving tree's `.synced-rev` remains `0ed86ba` because
 this is a five-file patch, not a full-tree sync. The deployment is **queued, not yet performed or GPU-qualified**.
 The idleness checks cannot reserve the API against an unrelated client arriving between the final check and stop.
+
+## Deferred VAE diagnostic
+
+[`queue-vae-trace.sh`](queue-vae-trace.sh) is waiting on Spark_06 as `queue-vae-trace-20261030.sh` (SHA-256
+`8c47c49ca09a180383922c84b66b41ea4621bf6ee2bfee55447ab98966876968`). It runs only after the patch and both of
+its verified smoke clips finish and the patch lock is released. It validates the deployed files on both hosts,
+requires an empty async-job store plus healthy, idle, sufficiently free nodes, and temporarily enables the trace via
+a runtime-only systemd drop-in. A 5 s smoke must actually emit usable blend logs before it runs the user's 30 s,
+345/124-frame history case. It saves decoded video, luma and trace reports. The sampled tile luma and approximate
+frame numbers are investigative evidence, not final-frame measurements or proof of a flicker cause.
+
+On success the queue removes its own verified drop-in and restarts the normal head with tracing off. On failure it
+attempts the same restoration only if the head is stopped or verifiably idle and no async jobs exist; a changed
+drop-in, busy/uncertain head or failed restoration is left untouched on HOLD. The temporary systemd setting does
+not survive host reboot. An uncontrolled termination at the wrong moment can still require manual recovery, and
+no idle check can reserve the API against a new unrelated request. The 12 fake-host tests cover those guards,
+restoration, startup failure and missing trace; they do not verify the GPU hook. The Mac collector watches for the
+verified diagnostic video and reports while it is online. The trace and diagnostic render are not new quality defaults.
