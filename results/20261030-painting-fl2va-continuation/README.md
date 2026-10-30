@@ -116,7 +116,8 @@ the current boot is slow, repeat after a head restart and an agent + head restar
 16 s continuation (window 1 reference 85.4 s/step), then restart the idle head to activate the longer timeouts. A
 failed benchmark or missing rate is a hold, not a completed calibration.
 
-At 16:39 the third window finished in 2398.1 s and window 4 began. The already running client and API have 14,400 s
+At 16:39 the third window finished in 2398.1 s; at 17:18:59 the fourth finished in 2397.4 s (seam ratio 0.98) and
+window 5 began. The already running client and API have 14,400 s
 limits (client deadline about 18:37:51); the current rate puts the end of denoising around 18:39, before decode, so
 the clip may time out. Longer limits are staged for the next head restart, not effective in the live processes.
 The timeout recovery queue checks the actual failure, waits for both nodes to be idle, and verifies the effective
