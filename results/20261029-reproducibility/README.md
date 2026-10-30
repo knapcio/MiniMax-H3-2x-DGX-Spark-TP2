@@ -98,8 +98,9 @@ The prompt embeddings and the reference encoding are identical within a boot; th
 differ with the same inputs, I1 and I2 agree, and F / G (11:11, same boot, ref 1024) differed. So the per-request
 variation at 1344x768 sits in the denoising loop (DiT forward + sampler), not in the encoders; the stock-CUTLASS pair
 (S1/S2) says whether the two-pass GEMM is involved. Four of the five ref-1024 renders with the digest gave 591e4c0d,
-one gave e474c9ac: not a coin flip per request, a rare event. (The step-0 input digest hook never fired: the DiT
-forward is not reached through the class attribute; to be fixed before the noise can be separated from the loop.)
+one gave e474c9ac: not a coin flip per request, a rare event. (The step-0 input digest hook did not fire in this
+round; since 2026-10-30 it fires once per window (`h3_tp2 step0 sha256 ...` in the head journal, seven times on
+2026-10-30), so the step-0 input can now be compared across renders when the loop variation is revisited.)
 
 | S1 ref 1024, stock CUTLASS | 3, first | 37b0266c | 45ad333f | **591e4c0d** (= two-pass I1/I2/G/H) | 734.6 s wall |
 | S2 ref 1024, stock CUTLASS | 3, second | 37b0266c | 45ad333f | 591e4c0d | 922.4 s wall |

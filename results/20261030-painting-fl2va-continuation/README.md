@@ -31,3 +31,25 @@ ratios 0.98 / 0.98, no cut, motion 0.3-1.4, light 115 -> 135 in the first (longe
 hand-over was already invisible with 0.9 s of history, so the extra history buys nothing visible here and costs
 2.6x; the default stays 22 frames. (On a moving camera the longer history can only help what was in the frame within
 those 5 s.)
+
+## The 60 s render runs at 120 s/step instead of 86-88 (`koninck60-fl2va`, 14:38-, investigation in progress)
+
+Window 1 (277 frames, the same shape as the 30 s windows of 11:23 and 11:52 at 88.4 / 87.0 s/step) took 122.7 s/step,
+window 2 120.0 s/step, every step within 0.4 s of the next: a deterministic slowdown of 36-40 %, not interference.
+Ruled out on the live pair (read-only checks): GPU clocks (2164 MHz on both, cap 2200, no throttle flag, 67 / 79 C),
+the fabric (both RoCE ports ACTIVE 200 Gb/s, the render's 2 x 258 MB/s on them, nothing on the management links),
+CPU (performance governor, 3.35 GHz, worker at 230 % on both ranks, no cgroup limits), disk (0 MB/s), the plugin
+configuration (the init lines of the 10:07 boot and the 14:31 boot are identical except ports), the host's page cache
+(the head had 880 MB free, 2 GB swapped and 46 GB of cache; `drop_caches` at 15:24 during step 2 of window 2 freed
+45 GB and changed nothing: 120.8 s/step before, 120.0 after), and fragmentation at boot (the compaction before the
+14:31 boot left thousands of order-9..13 blocks on both hosts).
+
+What the power draw says: spark-05 (rank 1) pulses 28-90 W, spark-06 (rank 0, the head) holds 53-58 W, whereas the
+head drew 72-78 W in the evening renders; the head is the slow rank and the agent waits for it. The UVM bottom-half
+thread (host-side GPU page-fault service) runs at 0.6 core on the head and 1.8 cores on the agent during the render.
+The slowdown is also progressive on the 10:07 boot: the 283-frame window at 14:25 was 104 s/step (18 % over the
+277-frame rate), the 345-frame windows 136-138. Open: whether it is the head's boot state, the agent's (up since
+10:07, compacted while running at 14:30) or the 3.8-day host uptime. `queue41.sh` runs after the 60 s render:
+a 5 s 1344x768 T2VA calibration (reference `cmp-t2va-1344`: 23.2 s/step) on the current boot, then after a head
+restart, then after an agent + head restart; if the current boot is already fast, a 16 s continuation instead
+(window 1 reference 85.4 s/step).
