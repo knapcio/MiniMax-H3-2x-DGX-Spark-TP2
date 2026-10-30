@@ -301,3 +301,6 @@
   CPU plans for 4–300 s match the upstream planner. 300 s remains unverified; guarded streaming, memory and speed tests
   are queued. A local spatial deflicker experiment looks better to the owner, who also reports figures move too fast;
   a matched slower-figures prompt is queued. See `results/20261030-300s-readiness/`.
+- 2026-10-30 18:27: exact-duration copies on the 24 fps frame grid are now available via `scripts/exact_duration.py`.
+  It verifies every retained decoded video frame and copied AAC packet/timestamp; audio can finish one packet early.
+  Separate 10, 15, 16, 30 and 60 s sample copies verified, originals preserved (`results/20261030-exact-duration/`).

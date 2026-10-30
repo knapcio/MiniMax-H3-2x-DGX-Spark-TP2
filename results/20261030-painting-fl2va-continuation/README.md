@@ -22,6 +22,26 @@ the locks have little to correct. The owner later judged the 16 s and default 30
 drifting, both hand-overs are invisible in the numbers, audio -39..-40 dB flat. At 1344x768 a window costs ~25 min
 (84 min for 30 s); 960x576 would be about half.
 
+## 60 s painting render (18:22)
+
+`koninck60-fl2va` completed HTTP 200 / curl 0 in 13,444.6 s at 1344x768, seed 1101, 20 steps; full decode and the
+audio check passed. Native video is 1,450 frames, 60.4167 s. All five latent seam ratios were 0.98–0.99; decoded
+luma steps at frames 277 / 532 / 787 / 1042 / 1297 were -0.3 / -0.5 / -0.3 / -0.1 / +0.3, with no cut at scene-score
+0.1. Per-second luma ranges 115–131; generated audio averaged -41.6 to -45.8 dB across the six ten-second bands.
+These metrics do not settle whether the clouds, shadows and figures look natural, and the owner has not reviewed this
+60 s clip. It is at `~/Downloads/h3-prod-smoke/d60_koninck_painting_fl2va_static.mp4`; the 60.000 s copy is
+`d60_koninck_painting_EXACT60s.mp4` in the same directory.
+
+Unlike the accepted 16/30 s examples at the same global threshold, this clip has repeated 17-frame global luma drops
+at 23.38–24.79 s (three, median -2.85 YAVG) and 44.62–48.17 s (six, median -2.10). The more sensitive regional screen
+also flags longer stretches; it flags accepted controls too, so neither screen alone is a visual verdict. A separate
+`d60_koninck_painting_regional_deflicker_EXPERIMENT.mp4` applies the same spatial correction the owner preferred on
+the 30 s history sample to 38 of 1,450 frames: all other decoded frames, chroma and AAC packets are identical to
+the original, and the global >=2 YAVG repeated-drop screen no longer finds a run. Regional candidates remain and this
+new copy has not been reviewed by eye. Its exact-60 s variant is
+`d60_koninck_painting_regional_EXACT60s_EXPERIMENT.mp4`. The regional screen's raw outputs are
+`koninck60-regional.txt` and `koninck60-regional-experiment.txt`.
+
 ## A 5 s pinned history (`koninck30-hist5s`, window 345 / overlap 124, 12:18-14:30)
 
 The owner asked whether a sliding window with more history would help. With 124 frames (5.2 s) of the previous

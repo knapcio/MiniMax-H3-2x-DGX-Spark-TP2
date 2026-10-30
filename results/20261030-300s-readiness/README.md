@@ -2,8 +2,9 @@
 
 The owner wants good videos at 10, 15, 30, 60 and up to 300 seconds, and faster generation. Existing 10/15 s renders
 and the owner's approved 16/30 s painting samples establish useful shorter controls; they do not establish quality
-for every image or duration. The current 60 s painting request is still running, with a four-hour timeout risk. A
-300 s render has **not yet been completed or visually assessed**.
+for every image or duration. The 60 s painting request completed in 13,444.6 s and passed media validation, but the
+global luma screen detected two repeated-drop intervals and owner review is pending. A 300 s render has **not yet
+been completed or visually assessed**.
 
 For the current 24 fps, 277-frame/22-frame-overlap configuration, 300 requested seconds align to **7,213 frames**:
 28 full windows and a short 73-frame last window, 29 windows total. At the recent 120 s/step (20 steps) on full
