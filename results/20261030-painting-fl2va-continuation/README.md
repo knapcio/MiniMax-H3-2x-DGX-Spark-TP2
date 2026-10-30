@@ -55,6 +55,14 @@ YUV frame comparison finds 42 changed luma frames, unchanged chroma throughout a
 The remaining signal and the user's motion feedback call for further visual and model-side testing. A separate
 16 s comparison changes only the wording for the figures to very slow small steps; it is queued, not yet rendered.
 
+The broader `scripts/regional_flicker.py` screen compares six regions' frame-to-frame changes against their nearby
+baseline, looking for three or more same-phase spikes every 17 frames. In the history5s source, all three lower
+regions show a candidate run at frames 357..731 (14.88–30.46 s), extending beyond the 23.38 s global-luma run;
+the spatially repaired copy still has a weaker run in those regions. The owner-approved default 16 s and 30 s
+painting clips also trigger this sensitive screen in some regions. Thus a flag is **not evidence of an objectionable
+flicker**: real scene motion and harmless periodic changes can qualify. It is a way to choose segments for inspection,
+not an automatic acceptance threshold, and it cannot establish the source of the periodicity.
+
 The 17-frame period matches the checkpoint's `vae_clip_length=17` and the decoder's 17-frame chunk geometry; that
 alignment suggests a temporal decode boundary artifact, but the cause is not established. Crossfade was OFF. The
 look-lock is one possible contributor: it adjusts latent mean/std, not decoded luma, so the earlier claim that it

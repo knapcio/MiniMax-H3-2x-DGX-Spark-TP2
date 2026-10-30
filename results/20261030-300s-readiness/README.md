@@ -36,7 +36,10 @@ test, not an end-to-end 300 s render.
 
 ## Deferred follow-up on the pair
 
-`~/h3-tp2-results/queue-quality-20261030.sh` (hash and process recorded in the workspace `SETUP.md`) waits for the
+[`queue-quality.sh`](queue-quality.sh) is the exact script running on Spark_06 as
+`~/h3-tp2-results/queue-quality-20261030.sh` (SHA-256 `8abffafb7d2a7b0d1d77cd4bc7a334a96b6152f58cc451158607264565fd2f8a`,
+process recorded in the workspace `SETUP.md`). Its fake-host tests cover failed guards, predecessor verification,
+no-overwrite, stopping on failure, and the conditional 300 s decision. The queue waits for the
 earlier 60 s chain to finish **with a verified MP4**. It verifies both services and memory guards, API request gauges,
 GPU idleness and available memory on both hosts before every experiment; it stops on failures and never restarts a
 service or overwrites an output. The planned controls on the same boot are: the original 16 s painting request, the
