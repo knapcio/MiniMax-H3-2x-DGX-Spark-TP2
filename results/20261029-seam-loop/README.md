@@ -101,3 +101,22 @@ detail metric 70 -> 1000+ (grain / sparkle in the second half, visible in the sh
 camera). Each window is a fresh sample that starts exactly from the previous tail and then drifts toward the model's
 brighter, sharper prior; the drift compounds. Next lever: a per-channel latent look-lock of every window's free frames
 to the first window's statistics (`H3_TP2_CONT_LOCK=first`), tested at 30 s.
+
+## Look-lock at 30 s (`lock30-edit1`, 02:43-03:27): the wash-out is gone, a whole-window correction steps at seam 2
+
+`H3_TP2_CONT_LOCK=first` (per-channel affine of every later window's free frames to the first window's latent
+mean/std, strength 1.0), pinned prefix, seam retries; 2660 s, no cut, seam ratios 0.88 / 0.93.
+
+| | without lock (`edit30-guide`) | with lock |
+|---|---|---|
+| light per second | 46 .. 69 (+23 over 30 s) | 44 .. 58, ends at 52: **flat** |
+| detail per second | 59 .. 232 | 50 .. 300 (same range) |
+| motion per second | 6-9 | 4-10 |
+| seam 277 luma step | +4.6 (cut) | -0.2 |
+| seam 532 luma step | +1.0 | **-8.5** |
+
+The lock holds the exposure over the clip (`lock30-sheet.png`), but a correction applied uniformly to a whole window
+steps the brightness at the next hand-over: the pinned tail of window 2 carries window 2's end-of-window brightness
+while window 3's free frames start at the window-1 level. Fix (a9cfe12): the correction ramps from zero at the first
+free frame to full at the window's end, so the hand-over stays continuous and the drift is still pulled back within
+the window. Rendered again at 30 s (`lockr30-edit1`) and 60 s with edit=2 (`lockr60-edit2`).

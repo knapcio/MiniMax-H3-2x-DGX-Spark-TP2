@@ -242,3 +242,6 @@
   slower). The rare per-request variation at 1344 is in the shared denoising loop, not in our kernels.
 - 2026-10-30 02:35: NVlabs gb10_kernel calibration on one Spark (lossless tier, T2VA): 15.2 s per DiT eval at 960x576
   and 41.6 s at 1344x768 (requests 333 / 863 s, decode 37 / 69 s, peak 74-75 GB). Pair comparison renders queued.
+- 2026-10-30 03:35: look-lock at 30 s: light per second stays 44-58 (46 -> 69 without it), no cut, but the uniform
+  per-window correction steps -8.5 luma at the second seam; the correction is now ramped across the window's free
+  frames (a9cfe12), rendered again at 30 s and 60 s.
