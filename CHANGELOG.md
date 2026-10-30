@@ -254,3 +254,8 @@
 - 2026-10-30 06:00: the pair at the calibration cells (T2VA): 8.65-9.0 s/step at 960x576 and 23.2 s/step at 1344x768
   on two GPUs = 17.3-18 / 46.4 GPU-s per step against NVlabs' 15.2 / 41.6 on one: their lossless fusions are worth
   10-14 % per GPU over our current stack; TP2 scaling is near ideal.
+- 2026-10-30 07:20: 60 s with the pinned prefix (no guide), seam check, video look-lock (ramp 0.25), audio look-lock
+  and the default later-window wording: five seams +0.3..+0.8 with no spike, no cut, light 43-62, detail <= 442,
+  motion 5-9 throughout, audio flat -48..-52 dB, 4023 s. The continuation defaults in code are now these
+  (`H3_TP2_CONT_EDIT=2`, `RETRY=2`, `LOCK=first`, `LOCK_RAMP=0.25`, `LOCK_AUDIO=1`); `H3_TP2_CONT_EDIT=0` etc. restore
+  upstream's behaviour.

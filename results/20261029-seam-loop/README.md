@@ -161,3 +161,22 @@ Audio mean level per 5 s (dB): without lock -51.6 -51.4 -52.1 -52.7 -51.8 -52.3 
 with the video lock -51.4 -51.2 -51.8 -52.5 -50.7 -50.7 -47.3 -47.5 -39.8 -42.4 -29.2 -28.1. The generated ambience
 drifts louder from the fourth window on in both; the audio latents get the same ramped lock to the first window
 (`H3_TP2_CONT_LOCK_AUDIO=1`, 2026-10-30 05:40) in the next 60 s render.
+
+## The night's result: 60 s with everything on (`lockq60-edit2-defaultprompt`, 06:08-07:15)
+
+Pinned prefix without the guide block (edit=2), seam check with retries (none needed: ratios 0.91 / 0.93 / 0.94 / 0.95 /
+1.07), video look-lock to window 1 with a 0.25 ramp, audio look-lock, the DEFAULT later-window wording (the prompt
+repeated after "the same continuous shot goes on"); 4023 s, peak 65.8 GB.
+
+| | 60 s plain (yesterday evening) | 60 s, this |
+|---|---|---|
+| cuts | none (but a duplicated subject and a looping walk by eye) | none |
+| seam luma steps | +0.7 .. +1.6 | **+0.3 .. +0.8**, no inter-frame spike at any seam |
+| light per second | 47 .. 88 | **43 .. 62**, ends at 49 |
+| detail per second | 70 .. 1084 | **55 .. 442** |
+| motion per second | 7 .. 17 (shimmer) | **5 .. 9 throughout**, no dying, no shimmer |
+| audio per 5 s | -52 .. -37 dB (rising) | **-48 .. -52 dB flat** |
+
+Every axis the owner rejected yesterday (light step and texture change at the seams, duplicated subject, wash-out,
+looping, grain, shimmer) is now held by a measurement over a full minute; `lockq60-final-sheet.png` shows one woman by
+the stream through six windows. Owner's eye pending (morning). These settings become the continuation defaults.
