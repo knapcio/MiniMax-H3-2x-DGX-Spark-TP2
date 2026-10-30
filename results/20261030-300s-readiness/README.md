@@ -45,6 +45,9 @@ GPU idleness and available memory on both hosts before every experiment; it stop
 service or overwrites an output. The planned controls on the same boot are: the original 16 s painting request, the
 same request with 175-frame windows, the original request with only the figures told to move very slowly, and 5/16 s
 tests of the chunked MP4 path. A 16 s 960x576 chunked test combines the soft-light and slow-figures prompts.
+`compare_speed.py` waits on Spark_06 for both verified 16 s window controls, checks that prompt, seed, image and
+other request fields match, and writes `quality-speed-comparison-20261030.json` with wall time, per-window times,
+memory minima and diagnostic quality signals. A single comparison does not justify changing the default.
 
 Only if those tests succeed, the 960 test has no detected hard cut or repeated global luma drops, both memory traces
 stay above 8 GiB, and 29 first-window times plus a 35% margin and 30 minutes for decode fit within 95% of the active
