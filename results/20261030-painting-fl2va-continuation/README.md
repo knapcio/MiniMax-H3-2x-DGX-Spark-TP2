@@ -70,7 +70,23 @@ At frame 408, full-resolution Y changed by -6.14 on average and 98.8% of pixels 
 same frame transition averages -0.14 and 41.6% darken (10th/50th/90th percentiles -3/0/+3). These measurements
 include real scene motion and do not establish visual acceptability.
 Full decode succeeds. This is a one-clip experiment, not a default or proof of the decoder cause; owner playback review
-is pending. Local copy: `~/Downloads/h3-prod-smoke/d30_koninck_history5s_deflicker_EXPERIMENT.mp4`.
+at 17:07: "Jest lepiej, ale miganie zostało" (better, but flicker remains). Local copy:
+`~/Downloads/h3-prod-smoke/d30_koninck_history5s_deflicker_EXPERIMENT.mp4`. Global luma correction is therefore not
+an adequate fix; the residual may be spatial or textural, and requires further diagnosis. At the 13 original dip
+frames, mean absolute pixel change at 336x192 falls from a median 7.11 to 1.62 gray levels, still above the 0.35
+median away from the boundary. This difference also includes actual motion, so it is not a separate visual verdict.
+
+### Owner feedback: cloud shadows
+
+The owner reports that the cloud shadows on the ground in the reviewed clips look wrong: possibly too strong or not
+moving consistently with the clouds. This is a subjective observation; the exact cause is unknown. The current prompt
+explicitly asks the shadows to glide over the plain. Next controlled test: keep the painting, seed, 16 s duration,
+1344x768 resolution, 20 steps, and all other prompt wording, but replace that clause with soft, nearly constant
+landscape lighting without strong moving cloud shadows. Compare against the original 16 s clip by eye; prompt wording
+alone cannot guarantee physically aligned shadows. In the original 16 s clip, mean Y in the bottom 35% of the image
+rises from 56.2 to 67.6 over the first 5 s. This confirms a lighting change in that region but does not establish
+whether the ground shadows follow the clouds. The A/B is queued after the current render and calibration; on the
+timeout-recovery path it runs before the 60 s retry. No result is available yet.
 
 ## The 60 s render runs at 120 s/step instead of 86-88 (`koninck60-fl2va`, 14:38-, investigation in progress)
 

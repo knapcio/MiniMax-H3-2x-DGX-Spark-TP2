@@ -294,3 +294,6 @@
 - 2026-10-30 16:56: 25 saved H3 clips screened with the >=2 YAVG/three-period detector: the history5s clip and the
   last 5 s of `d60_seedstep_per_window` contain repeated 17-frame drops; no such runs in the other 23. Other visual
   defects, local flicker and shorter/lower-amplitude sequences are outside this screen.
+- 2026-10-30 17:08: owner on the experimental deflickered history5s copy: improved, but flicker remains. Owner also
+  reports the cloud shadows on the ground look too strong or misaligned with the clouds; exact cause unknown. Next
+  painting A/B removes the explicit moving-shadow request while keeping the rest of the 16 s request matched.
