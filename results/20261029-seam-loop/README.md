@@ -189,3 +189,11 @@ goes on ..., the camera keeps moving the same way: <prompt>") makes every window
 wording of the X renders did not re-stage but let the motion die late; a drift wording ("the camera drifts very
 slowly in the same direction and never comes back to what it already showed, the woman simply continues what she was
 doing, nothing new enters the frame") is in `drift30-rest`.
+
+## Another prompt and seed with the defaults (`gen30-deer-s2202`, 07:17-07:57): seams continuous, the scene freezes
+
+The same still, "a deer walks to the water and drinks, birds flit ...", seed 2202, 30 s, 2407 s. Seam ratios 1.03 /
+1.06, seam luma steps +0.2 / -0.0 with no inter-frame spike, no cut, light flat at 82, detail 88-212, audio -42..-58 dB.
+But motion per second 3.6 .. 0.5 from 10 s on: with this seed the first window itself goes nearly static (3.2 -> 1.7
+by 9 s) and the continuation keeps it so (0.3-0.7 for the last 20 s). The hand-over machinery holds on a different
+prompt; what the windows contain is the model's sample, and a window that ends still continues still.
