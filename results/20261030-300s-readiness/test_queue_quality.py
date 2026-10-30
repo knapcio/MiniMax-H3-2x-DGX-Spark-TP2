@@ -70,9 +70,9 @@ printf '%s ok\\n' "$tag" > "$OUT/STATUS"
 printf 'fake mp4' > "$OUT/$tag.mp4"
 printf '1,%s,0,0\\n2,%s,0,0\\n' "${H3_TEST_MIN_MEM:-15000}" "${H3_TEST_MIN_MEM:-15000}" > "$OUT/$tag.mem-head.csv"
 cp "$OUT/$tag.mem-head.csv" "$OUT/$tag.mem-worker.csv"
-python3 - "$OUT/args.json" "$PROMPT" "$EXTRA_JSON" <<'PY'
+python3 - "$OUT/args.json" "$PROMPT" "$EXTRA_JSON" "$steps" <<'PY'
 import json,sys
-open(sys.argv[1], 'w').write(json.dumps({'prompt':sys.argv[2], 'extra':json.loads(sys.argv[3])}))
+open(sys.argv[1], 'w').write(json.dumps({'prompt':sys.argv[2], 'extra':json.loads(sys.argv[3]), 'steps':int(sys.argv[4])}))
 PY
 ''')
         self.metrics = self.root / "metrics.sh"
@@ -134,7 +134,7 @@ else echo 'cuts (scene score > 0.1): none'; fi
         self.ready()
         result = self.run_queue()
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
-        self.assertEqual(self.calls(), ["quality16-base", "quality16-win175", "quality16-slowfig", "quality5-stream",
+        self.assertEqual(self.calls(), ["quality16-base", "quality16-steps10", "quality16-win175", "quality16-slowfig", "quality5-stream",
                                         "quality16-stream", "quality16-960-stream", "quality300-960-stream"])
         def args(name):
             return json.loads((self.results / name / "args.json").read_text())
@@ -142,6 +142,10 @@ else echo 'cuts (scene score > 0.1): none'; fi
                                           "quality16-slowfig", "quality16-stream", "quality300-960-stream"))
         self.assertEqual(base["prompt"], short["prompt"])
         self.assertEqual(base["prompt"], stream["prompt"])
+        self.assertEqual(args("quality16-steps10")["prompt"], base["prompt"])
+        self.assertEqual(args("quality16-steps10")["extra"], base["extra"])
+        self.assertEqual(args("quality16-steps10")["steps"], 10)
+        self.assertEqual(base["steps"], 20)
         self.assertEqual(short["extra"]["continuation_window_frames"], 175)
         self.assertTrue(stream["extra"]["preencode_mp4"])
         self.assertIn("move very slowly", slow["prompt"])

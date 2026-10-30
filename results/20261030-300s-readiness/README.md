@@ -45,17 +45,19 @@ test, not an end-to-end 300 s render.
 ## Deferred follow-up on the pair
 
 [`queue-quality.sh`](queue-quality.sh) is the exact script running on Spark_06 as
-`~/h3-tp2-results/queue-quality-20261030-v2.sh` (SHA-256 `9ad3210fe3e0c70bccafc477d17d500c618042faba9a36ee72b0ddae49845168`,
+`~/h3-tp2-results/queue-quality-20261030-v3.sh` (SHA-256 `c34cd7e21aecd7a526f4c0f4d047be11143d429de624d54c4cb334fedd1b0204`,
 process recorded in the workspace `SETUP.md`). Its fake-host tests cover failed guards, predecessor verification,
 no-overwrite, stopping on failure, and the conditional 300 s decision. The queue waits for the
 earlier 60 s chain to finish **with a verified MP4**. It verifies both services and memory guards, API request gauges,
 GPU idleness and available memory on both hosts before every experiment; it stops on failures and never restarts a
 service or overwrites an output. The planned controls on the same boot are: the original 16 s painting request, the
-same request with 175-frame windows, the original request with only the figures told to move very slowly, and 5/16 s
+same request with 10 rather than 20 denoising steps, the same request with 175-frame windows, the original request
+with only the figures told to move very slowly, and 5/16 s
 tests of the chunked MP4 path. A 16 s 960x576 chunked test combines the soft-light and slow-figures prompts.
-`compare_speed.py` waits on Spark_06 for both verified 16 s window controls, checks that prompt, seed, image and
-other request fields match, and writes `quality-speed-comparison-20261030.json` with wall time, per-window times,
-memory minima and diagnostic quality signals. A single comparison does not justify changing the default.
+`compare_speed.py` has two waiting processes on Spark_06 for the matched window-size and step-count controls. They
+check that prompt, seed, image and other request fields match, and write `quality-speed-comparison-20261030.json`
+and `quality-steps-comparison-20261030.json` with wall time, per-window times, memory minima and diagnostic quality
+signals. Ten steps might be faster but may degrade the image; neither single comparison justifies changing a default.
 
 Only if those tests succeed, the 960 test has no detected hard cut or repeated global luma drops, both memory traces
 stay above 8 GiB, and 29 first-window times plus a 35% margin and 30 minutes for decode fit within 95% of the active
@@ -73,6 +75,10 @@ clean frames, two repeated drops, a failed decoder and a missing detector; the o
 global screen does not prove that regional flicker or cloud shadows look right.
 On the already completed 60 s original, the standalone detector with this two-drop threshold found an additional
 short interval at 34.71–35.42 s, in addition to the two intervals reported with the original three-drop threshold.
+Before it started any quality request, v2 was replaced by v3 to add the matched 10-step control. The first
+speed-comparison watcher had the same missing-luma-report assumption; the v2 comparator instead runs the pinned
+standalone detector itself on both verified clips. It was checked against the real 60 s clip and the old metrics
+format, and it reports rather than promotes either setting.
 
 ## Staged prompt fix and deferred deployment
 

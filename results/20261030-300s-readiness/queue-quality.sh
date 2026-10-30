@@ -99,7 +99,8 @@ export TASK=fl2va
 
 run_case() {
   local name=$1 duration=$2 width=$3 height=$4 window=$5 prompt=$6 extra=$7 limit=$8
-  local out="$results/$name" tag="d${duration}_${width}x${height}_s20_seed1101_fl2va" start
+  local steps=${9:-20}
+  local out="$results/$name" tag="d${duration}_${width}x${height}_s${steps}_seed1101_fl2va" start
   [ ! -e "$out" ] || { echo "refusing to overwrite $out"; return 1; }
   [ "$(sha256sum "$paint" | awk '{print $1}')" = "$image_sha" ] || { echo 'source image changed'; return 1; }
   wait_idle || return 1
@@ -108,7 +109,7 @@ run_case() {
   mark "H3-AUTO-START $name"
   export PROMPT="$prompt" EXTRA_JSON="$extra"
   OUT="$out" timeout --signal=TERM --kill-after=30s "$limit" bash "$bench" \
-    "$duration:$width:$height:20:1101" "$paint" > "$results/$name.log" 2>&1 || return 1
+    "$duration:$width:$height:$steps:1101" "$paint" > "$results/$name.log" 2>&1 || return 1
   verified "$out" "$tag" || { echo "$name has no verified result"; return 1; }
   printf '%s\n' "$start" > "$out/started.txt"
   PY="$metrics_python" timeout --signal=TERM --kill-after=30s 3600 bash "$metrics_script" \
@@ -122,6 +123,7 @@ base='{"long_video":true,"long_video_mode":"continuation"}'
 smaller='{"long_video":true,"long_video_mode":"continuation","continuation_window_frames":175}'
 stream='{"long_video":true,"long_video_mode":"continuation","preencode_mp4":true}'
 run_case quality16-base 16 1344 768 277 "$original" "$base" 7500
+run_case quality16-steps10 16 1344 768 277 "$original" "$base" 7500 10
 run_case quality16-win175 16 1344 768 175 "$original" "$smaller" 7500
 run_case quality16-slowfig 16 1344 768 277 "$slow_figures" "$base" 7500
 run_case quality5-stream 5 1344 768 277 "$original" "$stream" 3600
