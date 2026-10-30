@@ -468,6 +468,10 @@ def _apply(role: str) -> None:
             _lock_strength = float(os.environ.get("H3_TP2_CONT_LOCK_STRENGTH", "1.0") or 1.0)
             _lock_ramp = float(os.environ.get("H3_TP2_CONT_LOCK_RAMP", "0.25") or 0.25)   # fraction of the free frames
             _lock_audio = os.environ.get("H3_TP2_CONT_LOCK_AUDIO", "1").strip() == "1"   # the same lock for the audio latents
+            # H3_TP2_WINDOW_SEED_STEP=n inside this loop too: window k samples with seed + k*n. Upstream re-creates the
+            # generators from the request seed for every window, so equal-shaped windows restart the SAME noise and tend
+            # to re-stage the same camera move (the owner's "the woman shown 5-6 times", 2026-10-30 07:35).
+            _seed_step = int(os.environ.get("H3_TP2_WINDOW_SEED_STEP", "0").strip() or 0)
 
             if _xfade or _edit:
                 # own copy of upstream's loop (continuation.py, v0.30.0) with the hand-over crossfaded over the overlap
@@ -487,6 +491,8 @@ def _apply(role: str) -> None:
                         frames = window.end - window.start
                         args = {**kwargs, "num_frames": frames, "latent_t": _ct._video_t(frames),
                                 "audio_t": window.audio_end - window.audio_start, "temporal_offset": window.start * (40.0 / 24.0)}
+                        if _seed_step and index and kwargs.get("seed") is not None:
+                            args["seed"] = int(kwargs["seed"]) + index * _seed_step
                         if text_conditioning is not None:
                             args["text_embeddings"], args["text_tags"] = text_conditioning[index]
                             args["media_time_origin"] = media_time_origin
@@ -541,8 +547,8 @@ def _apply(role: str) -> None:
 
             _pp9e.diffuse_continuation = _dc
             _pp9e._h3_tp2_cont_match_patched = True
-            logger.warning("h3_tp2: continuation hand-over diagnostics ON; latent match %s; crossfade %s; edit prefix %s; seam retries %d (ratio > %.1f); look-lock %s (%.2f, ramp %.2f, audio %s)",
-                           "ON" if _apply_match else "off", "ON" if _xfade else "off", _edit or "off", _retries, _max_ratio, _lock or "off", _lock_strength, _lock_ramp, "ON" if _lock_audio else "off")
+            logger.warning("h3_tp2: continuation hand-over diagnostics ON; latent match %s; crossfade %s; edit prefix %s; seam retries %d (ratio > %.1f); look-lock %s (%.2f, ramp %.2f, audio %s); window seed step %d",
+                           "ON" if _apply_match else "off", "ON" if _xfade else "off", _edit or "off", _retries, _max_ratio, _lock or "off", _lock_strength, _lock_ramp, "ON" if _lock_audio else "off", _seed_step)
     except Exception as e:  # noqa: BLE001
         logger.warning("h3_tp2: continuation hand-over hook not installed (%s)", e)
 
