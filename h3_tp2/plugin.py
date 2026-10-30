@@ -436,9 +436,12 @@ def _apply(role: str) -> None:
             _cls9d._h3_tp2_cont_prompts_patched = True
             logger.warning("h3_tp2: server-side per-window continuation prompts ON (H3_TP2_CONT_PROMPTS=off disables)")
 
-    # 9e) continuation hand-over diagnostics (always on, one log line per window) and H3_TP2_CONT_MATCH=1: per-channel
-    #     affine match of each new window's video latents to the previous window's tail over the hidden overlap
-    #     (experiment against the exposure/texture step at the seams; audio untouched).
+    # 9e) continuation: the defaults since 2026-10-30 are the night's result (results/20261029-seam-loop/): the previous
+    #     window's tail pinned as target rows (H3_TP2_CONT_EDIT=2, no guide block), a latent seam check with seed retries
+    #     (H3_TP2_CONT_RETRY=2 at H3_TP2_CONT_SEAM_RATIO=3.0), the video look-lock to the first window ramped over the first
+    #     quarter of each window (H3_TP2_CONT_LOCK=first, H3_TP2_CONT_LOCK_RAMP=0.25) and the audio look-lock
+    #     (H3_TP2_CONT_LOCK_AUDIO=1). H3_TP2_CONT_EDIT=0, CONT_RETRY=0, CONT_LOCK=off restore upstream's behaviour.
+    #     Diagnostics (one log line per window) are always on; H3_TP2_CONT_MATCH=1 and CONT_XFADE=1 stay experiments.
     try:
         import torch
 
@@ -453,18 +456,18 @@ def _apply(role: str) -> None:
             # upstream's latent-edit path (mask 0 = keep the clean rows as the noise-augmented anchor at the condition
             # timestep, like FL2VA keyframes; restore 0 = restore them at the end), video and audio. "2" also drops
             # upstream's latent-guide condition block (the same frames would otherwise be in the sequence twice).
-            _edit = os.environ.get("H3_TP2_CONT_EDIT", "0").strip()
+            _edit = os.environ.get("H3_TP2_CONT_EDIT", "2").strip()
             _edit = int(_edit) if _edit in ("1", "2") else 0
             # H3_TP2_CONT_RETRY=n: re-sample a window (another seed, up to n times) when its latent seam ratio exceeds
             # H3_TP2_CONT_SEAM_RATIO (default 2.0): the model may still cut right after the prefix (a sampling event).
-            _retries = int(os.environ.get("H3_TP2_CONT_RETRY", "0") or 0)
-            _max_ratio = float(os.environ.get("H3_TP2_CONT_SEAM_RATIO", "2.0") or 2.0)
+            _retries = int(os.environ.get("H3_TP2_CONT_RETRY", "2") or 0)
+            _max_ratio = float(os.environ.get("H3_TP2_CONT_SEAM_RATIO", "3.0") or 3.0)
             # H3_TP2_CONT_LOCK=first (+ H3_TP2_CONT_LOCK_STRENGTH, default 1.0): per-channel latent look-lock of every
             # later window's free frames to the first window's statistics, against the compounding drift.
-            _lock = os.environ.get("H3_TP2_CONT_LOCK", "").strip().lower()
+            _lock = os.environ.get("H3_TP2_CONT_LOCK", "first").strip().lower()
             _lock_strength = float(os.environ.get("H3_TP2_CONT_LOCK_STRENGTH", "1.0") or 1.0)
-            _lock_ramp = float(os.environ.get("H3_TP2_CONT_LOCK_RAMP", "1.0") or 1.0)   # fraction of the free frames
-            _lock_audio = os.environ.get("H3_TP2_CONT_LOCK_AUDIO", "0").strip() == "1"   # the same lock for the audio latents
+            _lock_ramp = float(os.environ.get("H3_TP2_CONT_LOCK_RAMP", "0.25") or 0.25)   # fraction of the free frames
+            _lock_audio = os.environ.get("H3_TP2_CONT_LOCK_AUDIO", "1").strip() == "1"   # the same lock for the audio latents
 
             if _xfade or _edit:
                 # own copy of upstream's loop (continuation.py, v0.30.0) with the hand-over crossfaded over the overlap
