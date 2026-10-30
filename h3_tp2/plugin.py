@@ -472,7 +472,7 @@ def _apply(role: str) -> None:
             # H3_TP2_WINDOW_SEED_STEP=n inside this loop too: window k samples with seed + k*n. Upstream re-creates the
             # generators from the request seed for every window, so equal-shaped windows restart the SAME noise and tend
             # to re-stage the same camera move (the owner's "the woman shown 5-6 times", 2026-10-30 07:35).
-            _seed_step = int(os.environ.get("H3_TP2_WINDOW_SEED_STEP", "0").strip() or 0)
+            _seed_step = int(os.environ.get("H3_TP2_WINDOW_SEED_STEP", "1").strip() or 0)   # default 1 since 2026-10-30 10:10
 
             if _edit:
                 # 9f) continuation on the FL2VA partition (the wife's use: the still IS the first frame, static camera,
