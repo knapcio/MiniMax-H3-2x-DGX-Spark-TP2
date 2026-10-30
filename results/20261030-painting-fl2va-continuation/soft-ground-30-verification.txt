@@ -1,0 +1,9 @@
+Source: d30_koninck_history5s_regional_deflicker_EXPERIMENT.mp4 
+Candidate: d30_koninck_history5s_regional_softground_EXPERIMENT.mp4
+Frame-exact decode: 736 frames; changed Y: 734 max per-pixel Y change: 10
+Upper rows 0.. 475 and chroma identical; AAC packet data/timing identical; SHA-256 28994a416ea873e39a0e8632a65ef818c78496b74336cd0522a0a6c7a133ba70
+Video frame count, fps, dimensions, start, duration identical: 24/1 30.666667
+Lower 28% Y: count, min, max, mean |change from first sample|, first, last
+ source (31, 51.11, 84.39, 19.69, 51.87, 79.96) 
+ candidate (31, 52.23, 76.74, 14.28, 52.9, 73.88)
+This is a non-physical adjustment; motion and shadow correspondence need visual review.

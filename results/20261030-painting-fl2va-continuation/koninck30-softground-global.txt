@@ -1,0 +1,1 @@
+periodic luma drops: none >= 2 YAVG for 2 successive 17-frame periods (736 frames checked)

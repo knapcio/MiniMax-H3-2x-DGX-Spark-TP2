@@ -1,0 +1,1 @@
+periodic luma drops: frames 833..850 (34.71..35.42 s), every 17 frames, 2 drops; median -2.43 YAVG, range -2.61..-2.25

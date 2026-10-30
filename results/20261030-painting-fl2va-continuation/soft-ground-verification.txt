@@ -1,0 +1,10 @@
+Source: d60_koninck_painting_regional_deflicker_EXPERIMENT.mp4
+Candidate: d60_koninck_regional_softground_v2_EXPERIMENT.mp4
+Frame-exact decode: 1450 frames; changed luma frames: 1447 maximum per-pixel Y change: 10
+Luma rows 0.. 475 and all chroma: identical on every frame
+AAC packets: data and timing identical; packet-list SHA-256 857932efafb054e9e368ed6a3f5abe87a4c4ab87bdd33ab436d7ceebeaea1657
+Video frame count, fps, dimensions, start and duration identical: 24/1 60.416667 s
+Lower 28% Y, sampled once per second: count, min, max, mean |change from first sample|, first, last
+  source    (60, 56.28, 83.32, 18.24, 56.28, 78.95)
+  candidate (60, 55.98, 76.97, 13.8, 55.98, 73.61)
+This is a non-physical luma adjustment; motion, shadow correspondence and visual quality require review.

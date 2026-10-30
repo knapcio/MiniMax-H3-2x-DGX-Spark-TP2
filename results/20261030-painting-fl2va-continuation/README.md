@@ -150,6 +150,35 @@ rises from 56.2 to 67.6 over the first 5 s. This confirms a lighting change in t
 whether the ground shadows follow the clouds. The A/B is queued after the current render and calibration; on the
 timeout-recovery path it runs before the 60 s retry. No result is available yet.
 
+### Experimental soft-ground copies (19:04)
+
+While that prompt A/B is queued, [`experimental-soft-ground.py`](experimental-soft-ground.py) makes a separate
+postprocessed copy for a locked camera: it estimates spatially smooth luma change from frame 0, damps 35% of it,
+and blends the adjustment below a configurable vertical boundary (62–77% of this image's height), capped at 10
+luma levels. It does not track clouds, infer shadow geometry, fix cloud-shape drift or slow figures. It can suppress
+real lighting changes; it is not a production default or proof that the shadows align with the clouds.
+
+The 30 s input is the regional deflicker copy the owner preferred; the 60 s input is the targeted regional copy,
+which has not been reviewed. At one ground-luma sample per second (bottom 28% of the image), mean absolute change
+from the first sample fell from 19.69 to 14.28 Y in the 30 s pair, and 18.24 to 13.80 Y in the 60 s pair. This
+is a coarse brightness measure, not a shadow-quality or playback verdict. Exhaustive decoded-frame comparisons
+confirm the upper 476 rows and all chroma are identical, luma changes at most 10 levels, and AAC packet content
+and timing are identical to the respective inputs: 734/736 and 1447/1450 luma frames changed. The more sensitive
+two-drop global screen still finds an event at 34.71–35.42 s in the 60 s candidate; regional screening also flags
+changes and can include real motion. Both candidates need visual review, including figures, natural lighting and
+residual flicker.
+
+The native and exact-length copies are in `~/Downloads/h3-prod-smoke/`:
+
+* `d30_koninck_history5s_regional_softground_EXPERIMENT.mp4` and
+  `d30_koninck_history5s_regional_softground_EXACT30s_EXPERIMENT.mp4`;
+* `d60_koninck_regional_softground_v2_EXPERIMENT.mp4` and
+  `d60_koninck_regional_softground_EXACT60s_EXPERIMENT.mp4`.
+
+The exact copies retain 720 and 1,440 verified frames respectively; at 30 s copied AAC ends 16 ms early, at 60 s
+it ends with the video. Raw comparisons are in `soft-ground-30-verification.txt` / `soft-ground-verification.txt`;
+regional screens are in `koninck30-softground-regional.txt` / `koninck60-softground-regional.txt`.
+
 ## The 60 s render runs at 120 s/step instead of 86-88 (`koninck60-fl2va`, 14:38-, investigation in progress)
 
 The first post-render 5 s T2VA calibration on the same boot finished at 18:38: 1344x768 ran at 21.10–21.12 s/step,

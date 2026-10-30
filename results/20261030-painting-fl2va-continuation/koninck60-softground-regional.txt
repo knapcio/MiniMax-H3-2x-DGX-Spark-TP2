@@ -1,0 +1,18 @@
+upper-left: frames 289..340 (12.04..14.17 s), 4 spikes every 17 frames, median change 1.62, nearby 0.28
+upper-left: frames 799..1105 (33.29..46.04 s), 19 spikes every 17 frames, median change 1.15, nearby 0.28
+upper-left: frames 1173..1445 (48.88..60.21 s), 17 spikes every 17 frames, median change 1.80, nearby 0.27
+upper-middle: frames 289..340 (12.04..14.17 s), 4 spikes every 17 frames, median change 2.12, nearby 0.36
+upper-middle: frames 612..1054 (25.50..43.92 s), 27 spikes every 17 frames, median change 2.04, nearby 0.37
+upper-middle: frames 1173..1445 (48.88..60.21 s), 17 spikes every 17 frames, median change 2.53, nearby 0.33
+upper-right: frames 289..340 (12.04..14.17 s), 4 spikes every 17 frames, median change 1.94, nearby 0.27
+upper-right: frames 612..1054 (25.50..43.92 s), 27 spikes every 17 frames, median change 1.82, nearby 0.32
+upper-right: frames 1173..1445 (48.88..60.21 s), 17 spikes every 17 frames, median change 2.28, nearby 0.26
+lower-left: frames 289..340 (12.04..14.17 s), 4 spikes every 17 frames, median change 1.07, nearby 0.12
+lower-left: frames 459..1105 (19.12..46.04 s), 39 spikes every 17 frames, median change 1.71, nearby 0.18
+lower-left: frames 1173..1445 (48.88..60.21 s), 17 spikes every 17 frames, median change 1.97, nearby 0.14
+lower-middle: frames 289..1105 (12.04..46.04 s), 49 spikes every 17 frames, median change 1.59, nearby 0.17
+lower-middle: frames 1173..1445 (48.88..60.21 s), 17 spikes every 17 frames, median change 1.91, nearby 0.13
+lower-right: frames 289..340 (12.04..14.17 s), 4 spikes every 17 frames, median change 1.22, nearby 0.09
+lower-right: frames 442..1105 (18.42..46.04 s), 40 spikes every 17 frames, median change 1.57, nearby 0.14
+lower-right: frames 1173..1445 (48.88..60.21 s), 17 spikes every 17 frames, median change 1.72, nearby 0.13
+screening candidates only; real motion can also trigger this check, and other defects can be missed
