@@ -463,6 +463,7 @@ def _apply(role: str) -> None:
             # later window's free frames to the first window's statistics, against the compounding drift.
             _lock = os.environ.get("H3_TP2_CONT_LOCK", "").strip().lower()
             _lock_strength = float(os.environ.get("H3_TP2_CONT_LOCK_STRENGTH", "1.0") or 1.0)
+            _lock_ramp = float(os.environ.get("H3_TP2_CONT_LOCK_RAMP", "1.0") or 1.0)   # fraction of the free frames
 
             if _xfade or _edit:
                 # own copy of upstream's loop (continuation.py, v0.30.0) with the hand-over crossfaded over the overlap
@@ -470,7 +471,7 @@ def _apply(role: str) -> None:
 
                 def _dc(diffuse, kwargs, *, window_frames, overlap_frames, text_conditioning=None):  # noqa: ANN001
                     diffuse = _cm.wrap_diffuse(diffuse, apply=_apply_match, overlap_v_hint=_ct._video_t(overlap_frames),
-                                               retries=_retries, max_ratio=_max_ratio, lock=_lock, lock_strength=_lock_strength)
+                                               retries=_retries, max_ratio=_max_ratio, lock=_lock, lock_strength=_lock_strength, lock_ramp=_lock_ramp)
                     windows = _ct.plan_continuation_windows(kwargs["num_frames"], window_frames, overlap_frames)
                     if text_conditioning is not None and len(text_conditioning) != len(windows):
                         raise _ct.OmniClientError("MiniMax H3 requires one text conditioning per continuation window")
