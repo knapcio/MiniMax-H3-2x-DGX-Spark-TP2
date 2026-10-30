@@ -459,9 +459,10 @@ def _apply(role: str) -> None:
             _edit = os.environ.get("H3_TP2_CONT_EDIT", "2").strip()
             _edit = int(_edit) if _edit in ("1", "2") else 0
             # H3_TP2_CONT_RETRY=n: re-sample a window (another seed, up to n times) when its latent seam ratio exceeds
-            # H3_TP2_CONT_SEAM_RATIO (default 2.0): the model may still cut right after the prefix (a sampling event).
+            # H3_TP2_CONT_SEAM_RATIO. Calibrated 2026-10-30 08:37: a hard cut right after the prefix measured 1.43,
+            # continued windows 0.81-1.16 (17 seams), so the default is 1.3.
             _retries = int(os.environ.get("H3_TP2_CONT_RETRY", "2") or 0)
-            _max_ratio = float(os.environ.get("H3_TP2_CONT_SEAM_RATIO", "3.0") or 3.0)
+            _max_ratio = float(os.environ.get("H3_TP2_CONT_SEAM_RATIO", "1.3") or 1.3)
             # H3_TP2_CONT_LOCK=first (+ H3_TP2_CONT_LOCK_STRENGTH, default 1.0): per-channel latent look-lock of every
             # later window's free frames to the first window's statistics, against the compounding drift.
             _lock = os.environ.get("H3_TP2_CONT_LOCK", "first").strip().lower()
