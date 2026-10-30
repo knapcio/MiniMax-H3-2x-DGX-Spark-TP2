@@ -53,6 +53,11 @@ for each temporal overlap, from spatially sampled decoded tensors, without inten
 frame index is approximate; compare the trace with the rendered frame-level metrics. The hook is off by default,
 CPU-tested on stand-ins, and not yet qualified in a distributed GPU decode. Run only when the pair is available.
 
+A sweep of all 25 locally saved `h3-prod-smoke` MP4s found a second sequence meeting this specific threshold in
+`d60_seedstep_per_window.mp4`: frames 1326..1445 (55.25..60.21 s), eight drops every 17 frames, median -4.38 YAVG.
+The other 23 clips had no >=2 YAVG run lasting at least three periods. This is a global-luma screen, not proof that
+those clips are flicker-free: smaller, local or shorter events can be visible to the owner and miss this threshold.
+
 ### Experimental repair of the existing 5 s-history clip (not a model fix)
 
 `experimental-deflicker.py` makes a separate, explicitly altered copy: it detects the repeated drops and lifts luma

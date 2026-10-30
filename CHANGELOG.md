@@ -291,3 +291,6 @@
   dip steps -2.22..-6.21 -> -0.02..-0.22 YAVG; no remaining 17-frame run >=2 YAVG. Playback review pending.
 - 2026-10-30 16:55: opt-in `H3_TP2_VAE_BLEND_TRACE=1` logs sampled old/new/blended luma at temporal VAE overlaps to
   investigate the 17-frame flicker. CPU-only checks pass; distributed GPU decode and measurement overhead unverified.
+- 2026-10-30 16:56: 25 saved H3 clips screened with the >=2 YAVG/three-period detector: the history5s clip and the
+  last 5 s of `d60_seedstep_per_window` contain repeated 17-frame drops; no such runs in the other 23. Other visual
+  defects, local flicker and shorter/lower-amplitude sequences are outside this screen.
