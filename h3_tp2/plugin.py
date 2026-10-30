@@ -473,6 +473,36 @@ def _apply(role: str) -> None:
             # to re-stage the same camera move (the owner's "the woman shown 5-6 times", 2026-10-30 07:35).
             _seed_step = int(os.environ.get("H3_TP2_WINDOW_SEED_STEP", "0").strip() or 0)
 
+            if _edit:
+                # 9f) continuation on the FL2VA partition (the wife's use: the still IS the first frame, static camera,
+                #     subtle motion, her own soundscape). Upstream gates the continuation to ref2va because its windows
+                #     need the latent-guide reference block; with the pinned prefix (edit rows) no block is needed:
+                #     window 1 is the FL2VA request as sent (keyframe 0 = the still), windows 2+ run as t2va with the
+                #     previous tail pinned. The three gates that say "requires Ref2VA" are widened to fl2va/t2va.
+                from vllm_omni.model_executor.models.minimax_h3 import long_video as _lv9f
+                from vllm_omni.diffusion.models.minimax_h3 import continuation as _ct9f
+
+                _orig_mode = _lv9f.resolve_long_video_mode
+
+                def _mode(extra, task):  # noqa: ANN001
+                    if task in ("fl2va", "t2va") and extra.get("long_video", False) \
+                            and extra.get("long_video_mode", "continuation") == "continuation":
+                        return "continuation"
+                    return _orig_mode(extra, task)
+
+                _lv9f.resolve_long_video_mode = _mode
+                _ct9f.resolve_long_video_mode = _mode
+                _orig_resolve = _ct9f.resolve_continuation
+
+                def _resolve(extra, *, task, step_execution):  # noqa: ANN001
+                    if task in ("fl2va", "t2va") and not step_execution and _mode(extra, task) == "continuation":
+                        return _orig_resolve(extra, task="ref2va", step_execution=False)
+                    return _orig_resolve(extra, task=task, step_execution=step_execution)
+
+                _ct9f.resolve_continuation = _resolve
+                _pp9e.resolve_continuation = _resolve
+                logger.warning("h3_tp2: continuation allowed on fl2va/t2va requests (pinned prefix, no reference block)")
+
             if _xfade or _edit:
                 # own copy of upstream's loop (continuation.py, v0.30.0) with the hand-over crossfaded over the overlap
                 from vllm_omni.diffusion.models.minimax_h3 import continuation as _ct
@@ -493,6 +523,11 @@ def _apply(role: str) -> None:
                                 "audio_t": window.audio_end - window.audio_start, "temporal_offset": window.start * (40.0 / 24.0)}
                         if _seed_step and index and kwargs.get("seed") is not None:
                             args["seed"] = int(kwargs["seed"]) + index * _seed_step
+                        if index and kwargs.get("task") in ("fl2va", "t2va"):
+                            # later windows: plain t2va + the pinned prefix; the keyframe rows belong to window 1 only
+                            args.update({"task": "t2va", "keyframe_frame_indices": None, "visual_condition": None,
+                                         "visual_condition_shape": None, "visual_condition_shapes": None, "ref_blocks": None,
+                                         "audio_condition": None, "ref_audio_t": None, "audio_condition_lengths": None})
                         if text_conditioning is not None:
                             args["text_embeddings"], args["text_tags"] = text_conditioning[index]
                             args["media_time_origin"] = media_time_origin
