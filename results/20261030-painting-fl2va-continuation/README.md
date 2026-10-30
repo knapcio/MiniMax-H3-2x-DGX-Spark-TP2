@@ -90,7 +90,15 @@ rank or cause. The UVM bottom-half
 thread (host-side GPU page-fault service) runs at 0.6 core on the head and 1.8 cores on the agent during the render.
 The slowdown is also progressive on the 10:07 boot: the 283-frame window at 14:25 was 104 s/step (18 % over the
 277-frame rate), the 345-frame windows 136-138. Open: whether it is the head's boot state, the agent's (up since
-10:07, compacted while running at 14:30) or the 3.8-day host uptime. `queue41.sh` runs after the 60 s render:
-a 5 s 1344x768 T2VA calibration (reference `cmp-t2va-1344`: 23.2 s/step) on the current boot, then after a head
-restart, then after an agent + head restart; if the current boot is already fast, a 16 s continuation instead
-(window 1 reference 85.4 s/step).
+10:07, compacted while running at 14:30) or the 3.8-day host uptime. After a verified 60 s result, the guarded
+calibration uses two 960x576 warm-ups and a 5 s 1344x768 T2VA request (reference `cmp-t2va-1344`: 23.2 s/step). If
+the current boot is slow, repeat after a head restart and an agent + head restart; if it is fast, first run a matched
+16 s continuation (window 1 reference 85.4 s/step), then restart the idle head to activate the longer timeouts. A
+failed benchmark or missing rate is a hold, not a completed calibration.
+
+At 16:39 the third window finished in 2398.1 s and window 4 began. The already running client and API have 14,400 s
+limits (client deadline about 18:37:51); the current rate puts the end of denoising around 18:39, before decode, so
+the clip may time out. Longer limits are staged for the next head restart, not effective in the live processes.
+The timeout recovery queue checks the actual failure, waits for both nodes to be idle, and verifies the effective
+limits before retrying. The 23.2 s/step T2VA reference followed two 960x576 warm-up requests; the recovery queue
+repeats that sequence before each 1344 measurement. Individual runs still cannot establish a root cause on their own.
