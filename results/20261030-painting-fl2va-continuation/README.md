@@ -11,8 +11,13 @@ locked on a tripod and does not move at all".
 | Clip | Wall | Seam (277) | Motion per s | Light per s | Detail per s | Cuts |
 |---|---|---|---|---|---|---|
 | 16 s (`koninck16-fl2va`, 10:14-10:54) | 2410 s (window 1 1712 s: 1344x768 x 277 frames) | luma step -0.0, inter-frame 0.31 vs 0.23 / 0.21 (nothing), seam ratio 1.00, look-lock a no-op (0.0060 vs 0.0060) | 0.2-0.3 (a locked camera on a painting: the motion is the clouds and the figures) | 115 -> 124 in the first 3 s, then flat 122-124 | 137 -> 218 -> 173 | none |
+| 30 s (`koninck30-fl2va`, 10:54-12:18) | 5016 s (three 1344x768 windows of ~25 min) | 277: -0.3, 0.40 vs 0.24 / 0.29; 532: -0.3, 0.40 vs 0.31 / 0.20; ratios 0.98 / 0.98 | 0.2-0.6 | 115 .. 129, a slow sway the lock pulls back (121-129 in windows 2-3) | 137 -> 219 -> 112 | none |
 
 `koninck16-first-last.png`: frame 0 is the painting; frame 380 is the same composition with the clouds moved and the
 light a touch warmer (the model brightens the painting's tone as it animates it, +9 luma in the first 3 s, then holds).
 `koninck16-grid.png`: one frame every 2 s. The hand-over is invisible by every number; the scene barely drifts, so
 the locks have nothing to correct. Owner's eye pending; 30 s, a 5 s pinned history variant and 60 s follow.
+
+30 s (`koninck30-grid.png`, one frame every 3 s): the picture stays the picture across three windows, the clouds keep
+drifting, both hand-overs are invisible in the numbers, audio -39..-40 dB flat. At 1344x768 a window costs ~25 min
+(84 min for 30 s); 960x576 would be about half.

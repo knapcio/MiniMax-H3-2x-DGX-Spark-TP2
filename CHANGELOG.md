@@ -274,3 +274,5 @@
   closed; the locked-camera use is what the FL2VA painting tests check. Mean-only look-lock option added.
 - 2026-10-30 11:00: the painting use (FL2VA, locked camera) with the continuation: 16 s Koninck, seam luma step 0.0,
   no cut, seam ratio 1.00, the clouds move and the picture stays the picture (`results/20261030-painting-fl2va-continuation/`).
+- 2026-10-30 12:20: Koninck 30 s on FL2VA: two invisible hand-overs (-0.3 luma, no spike), no cut, light 115-129, the
+  painting stays the painting; 5016 s at 1344x768.
