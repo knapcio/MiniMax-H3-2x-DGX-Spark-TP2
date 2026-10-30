@@ -189,8 +189,10 @@ At 19:06 its first 277-frame window completed in 1,670.3 s, or 83.5 s/step (jour
 earlier 85.4 s/step 16 s reference and much faster than the 60 s render's first 277-frame window. The head had not
 restarted: systemd still showed the 14:31 boot and the same rank-0 process. Thus a persistent slow head boot alone
 does not explain the difference. The request lengths and intervening work differ, including the 5 s warmups, so this
-observation does not establish whether warmup, total request length or another runtime condition caused it. Window
-2 and the whole 16 s output were still in progress at this observation.
+observation does not establish whether warmup, total request length or another runtime condition caused it. The
+whole control finished at 19:18: HTTP 200, curl 0, full verification and audio check passed; wall 2,357.8 s, second
+141-frame window 542.8 s, VAE decode 137.2 s, seam ratio 1.00, 396 frames / 16.5 s. The previous 16 s painting
+control took 2,410 s; these are single observations, not a demonstrated optimization.
 
 The first-window `step0` digest matches between the 60 s and 16 s requests (`9e7843a1`, 14 tensors), as do the first
 prompt (`583119c1`) and image-conditioning (`2a5ba12d`) tensor digests. The first-window output-latent digests differ
