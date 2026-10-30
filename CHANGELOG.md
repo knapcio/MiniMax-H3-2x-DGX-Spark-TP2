@@ -259,3 +259,6 @@
   motion 5-9 throughout, audio flat -48..-52 dB, 4023 s. The continuation defaults in code are now these
   (`H3_TP2_CONT_EDIT=2`, `RETRY=2`, `LOCK=first`, `LOCK_RAMP=0.25`, `LOCK_AUDIO=1`); `H3_TP2_CONT_EDIT=0` etc. restore
   upstream's behaviour.
+- 2026-10-30 07:40: owner on the 60 s clip: all transitions smooth; the camera re-stages its travelling move every
+  window with the default later-window wording (the woman revealed 5-6 times). A drift wording for the later windows
+  is under test; the subject-free wording avoided it but let the motion die.

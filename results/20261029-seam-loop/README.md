@@ -180,3 +180,12 @@ repeated after "the same continuous shot goes on"); 4023 s, peak 65.8 GB.
 Every axis the owner rejected yesterday (light step and texture change at the seams, duplicated subject, wash-out,
 looping, grain, shimmer) is now held by a measurement over a full minute; `lockq60-final-sheet.png` shows one woman by
 the stream through six windows. Owner's eye pending (morning). These settings become the continuation defaults.
+
+**Owner, 2026-10-30 07:35, on the 60 s clip: "all the transitions are smooth" (the hand-over problem is closed by
+eye), but "it showed the woman 5 or 6 times".** The frame grid every 2 s (`lockq60-final-every2s.png`) shows what
+that is: one woman standing by the stream the whole minute, and the camera repeating the same travelling move once
+per window, passing a trunk and revealing her again. The default later-window wording ("the same continuous shot
+goes on ..., the camera keeps moving the same way: <prompt>") makes every window re-stage the move. The subject-free
+wording of the X renders did not re-stage but let the motion die late; a drift wording ("the camera drifts very
+slowly in the same direction and never comes back to what it already showed, the woman simply continues what she was
+doing, nothing new enters the frame") is in `drift30-rest`.
