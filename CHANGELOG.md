@@ -251,3 +251,6 @@
   (+0.8..+1.2), no cut, light 46-66 (was 47-88), detail max 462 (was 1084), 3857 s. The generated audio climbs 23 dB
   in the last two windows: audio look-lock added (`H3_TP2_CONT_LOCK_AUDIO=1`), in the next 60 s together with the
   0.25 ramp and the default later-window wording.
+- 2026-10-30 06:00: the pair at the calibration cells (T2VA): 8.65-9.0 s/step at 960x576 and 23.2 s/step at 1344x768
+  on two GPUs = 17.3-18 / 46.4 GPU-s per step against NVlabs' 15.2 / 41.6 on one: their lossless fusions are worth
+  10-14 % per GPU over our current stack; TP2 scaling is near ideal.
