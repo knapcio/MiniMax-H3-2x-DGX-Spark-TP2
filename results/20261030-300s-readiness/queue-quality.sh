@@ -129,37 +129,47 @@ run_case quality16-slowfig 16 1344 768 277 "$slow_figures" "$base" 7500
 run_case quality5-stream 5 1344 768 277 "$original" "$stream" 3600
 run_case quality16-stream 16 1344 768 277 "$original" "$stream" 7500
 run_case quality16-960-stream 16 960 576 277 "$combined" "$stream" 7500
+run_case quality60-960-stream 60 960 576 277 "$combined" "$stream" 15000
 
 # A 300 s exploratory run has no per-window checkpoint. Refuse it unless the
-# 960p control passed media checks, detects no hard cut/repeated global flicker,
-# has memory samples with at least 8 GiB free on each host, and the first full window projects safely
-# under the live 8 h executor/wave limits with a 35% margin + 30 min decode.
+# 960 controls passed media checks, have no hard cuts, the 16 s control detects
+# no repeated global flicker, memory stays >=8 GiB on each host, and the slowest
+# measured 60 s window projects under 8 h with a 35% margin + 30 min decode.
 case960=quality16-960-stream
 tag960=d16_960x576_s20_seed1101_fl2va
+case60=quality60-960-stream
+tag60_960=d60_960x576_s20_seed1101_fl2va
 # The live 0ed86ba clip-metrics.sh predates the luma detector. Run a pinned
 # standalone copy explicitly; never infer a clean result from an absent line.
 if [[ ! -f "$flicker_script" ]] || \
-   [[ "$(sha256sum "$flicker_script" | awk '{print $1}')" != "$flicker_sha" ]] || \
-   ! timeout --signal=TERM --kill-after=30s 3600 "$metrics_python" "$flicker_script" \
-       "$case960/$tag960.mp4" --minimum 2 > "$case960/luma-flicker.txt" 2>&1; then
+   [[ "$(sha256sum "$flicker_script" | awk '{print $1}')" != "$flicker_sha" ]]; then
   mark 'H3-AUTO-SKIP-300 standalone flicker detector unavailable or failed'; exit 0
 fi
+for clip in "$case960/$tag960.mp4" "$case60/$tag60_960.mp4"; do
+  if ! timeout --signal=TERM --kill-after=30s 3600 "$metrics_python" "$flicker_script" \
+       "$clip" --minimum 2 > "$(dirname "$clip")/luma-flicker.txt" 2>&1; then
+    mark 'H3-AUTO-SKIP-300 standalone flicker detector unavailable or failed'; exit 0
+  fi
+done
 if ! grep -Fqx 'cuts (scene score > 0.1): none' "$case960/metrics.txt" || \
+   ! grep -Fqx 'cuts (scene score > 0.1): none' "$case60/metrics.txt" || \
    ! grep -q '^periodic luma drops: none .* for 2 successive 17-frame periods ' "$case960/luma-flicker.txt" || \
-   [ ! -s "$case960/$tag960.mem-head.csv" ] || [ ! -s "$case960/$tag960.mem-worker.csv" ]; then
+   [ ! -s "$case960/$tag960.mem-head.csv" ] || [ ! -s "$case960/$tag960.mem-worker.csv" ] || \
+   [ ! -s "$case60/$tag60_960.mem-head.csv" ] || [ ! -s "$case60/$tag60_960.mem-worker.csv" ]; then
   mark 'H3-AUTO-SKIP-300 960 control quality or memory samples did not pass'; exit 0
 fi
-for f in "$case960/$tag960.mem-head.csv" "$case960/$tag960.mem-worker.csv"; do
+for f in "$case960/$tag960.mem-head.csv" "$case960/$tag960.mem-worker.csv" \
+         "$case60/$tag60_960.mem-head.csv" "$case60/$tag60_960.mem-worker.csv"; do
   if ! awk -F, 'NF >= 2 && $2 ~ /^[0-9]+$/ {n++; if ($2 < 8192) low=1} END {exit !(n >= 2 && !low)}' "$f"; then
     mark 'H3-AUTO-SKIP-300 960 control had insufficient memory margin'; exit 0
   fi
 done
-first_phase=$(grep -m1 -oE 'phase diffuse [0-9.]+ s' "$case960/phases.txt" | awk '{print $3}' || true)
-if [[ ! "$first_phase" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
-  mark 'H3-AUTO-SKIP-300 960 first-window time unavailable'; exit 0
+slowest_phase=$(grep -oE 'phase diffuse [0-9.]+ s' "$case60/phases.txt" | awk 'BEGIN {max=0} {if ($3>max) max=$3} END {if (max>0) print max}' || true)
+if [[ ! "$slowest_phase" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+  mark 'H3-AUTO-SKIP-300 960 long-window time unavailable'; exit 0
 fi
 pid=$(systemctl --user show "$head" -p MainPID --value)
-if ! python3 - "$proc_root" "$pid" "$first_phase" <<'PY'
+if ! python3 - "$proc_root" "$pid" "$slowest_phase" <<'PY'
 from pathlib import Path
 import sys
 root, pid, phase = Path(sys.argv[1]), int(sys.argv[2]), float(sys.argv[3])
@@ -168,7 +178,7 @@ names = (b'H3_TP2_REQUEST_TIMEOUT_S', b'VLLM_OMNI_DLO_DP_WAVE_TIMEOUT')
 limits = [float(env.get(name, b'0')) for name in names]
 api = float(env.get(b'VLLM_OMNI_VIDEO_SYNC_TIMEOUT', b'0'))
 # 7213 frames = 28 full 277-frame windows and one shorter window. The
-# first-window time substitutes for that shorter window conservatively.
+# slowest 60 s window time substitutes for every window conservatively.
 projected = 29 * phase * 1.35 + 1800
 print(f'300s projected guard: {projected:.0f}s, executor/wave {limits}, API {api:.0f}s')
 if min(limits) < 28800 or api <= min(limits) or projected >= min(limits) * 0.95:

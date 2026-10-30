@@ -42,19 +42,25 @@ class Long300QueueTests(unittest.TestCase):
             "H3-AUTO-SKIP-300 timeout or speed margin insufficient 2026-10-31 02:00 CET\n"
             "H3-AUTO-PATCH-DONE fc14580 2026-10-31 03:00 CET\n")
         tag960 = "d16_960x576_s20_seed1101_fl2va"
+        tag60 = "d60_960x576_s20_seed1101_fl2va"
         self.t.output_case("quality16-960-stream", tag960)
+        self.t.output_case("quality60-960-stream", tag60)
         self.t.output_case("quality5-stream", "d5_1344x768_s20_seed1101_fl2va")
         self.t.output_case("quality16-stream", "d16_1344x768_s20_seed1101_fl2va")
         control = self.results / "quality16-960-stream"
         (control / "metrics.txt").write_text("cuts (scene score > 0.1): none\n")
         (control / "luma-flicker.txt").write_text("periodic luma drops: none >= 2 YAVG for 2 successive 17-frame periods (400 frames checked)\n")
-        (control / "phases.txt").write_text("phase diffuse 900.0 s\n")
-        for rank in ("head", "worker"):
-            (control / f"{tag960}.mem-{rank}.csv").write_text("1,15000,0,0\n2,14000,0,0\n")
+        long_control = self.results / "quality60-960-stream"
+        (long_control / "metrics.txt").write_text("cuts (scene score > 0.1): none\n")
+        (long_control / "phases.txt").write_text("phase diffuse 900.0 s\nphase diffuse 1000.0 s\n")
+        for folder, tag in ((control, tag960), (long_control, tag60)):
+            for rank in ("head", "worker"):
+                (folder / f"{tag}.mem-{rank}.csv").write_text("1,15000,0,0\n2,14000,0,0\n")
         timing = {"http": "200", "curl_rc": 0, "size": "960x576", "steps": 20, "seed": 1101,
                   "task": "fl2va", "prompt": COMBINED, "image": str(self.results / "koninck.png"),
                   "extra_params": {"long_video": True, "long_video_mode": "continuation", "preencode_mp4": True}}
-        (control / f"{tag960}.mp4.timing.json").write_text(json.dumps(timing))
+        for folder, tag, duration in ((control, tag960, 16), (long_control, tag60, 60)):
+            (folder / f"{tag}.mp4.timing.json").write_text(json.dumps(dict(timing, duration=duration)))
         self.t.env.update(H3_LONG300_RESULTS=str(self.results), H3_LONG300_BENCH=str(self.t.bench),
                           H3_LONG300_METRICS=str(self.t.metrics), H3_LONG300_PYTHON="python3",
                           H3_LONG300_FLICKER=str(trace.FLICKER), H3_LONG300_TXN=str(TXN),
@@ -121,13 +127,13 @@ class Long300QueueTests(unittest.TestCase):
                     test.doCleanups()
 
     def test_too_slow_projection_skips_without_changing_config(self):
-        (self.results / "quality16-960-stream/phases.txt").write_text("phase diffuse 2000.0 s\n")
+        (self.results / "quality60-960-stream/phases.txt").write_text("phase diffuse 2000.0 s\n")
         self.assertEqual(self.run_queue().returncode, 0)
         self.assertEqual(self.envfile.read_text(), self.original_env)
         self.assertNotIn("stop h3-tp2-head.service", self.t.systemctl())
 
     def test_quality_memory_or_request_mismatch_prevents_restart(self):
-        for mutation in ("flicker", "cuts", "memory", "prompt"):
+        for mutation in ("flicker", "cuts", "memory", "prompt", "cuts60", "memory60", "prompt60"):
             with self.subTest(mutation=mutation):
                 test = Long300QueueTests(); test.setUp()
                 try:
@@ -138,6 +144,13 @@ class Long300QueueTests(unittest.TestCase):
                         (p / "d16_960x576_s20_seed1101_fl2va.mem-head.csv").write_text("1,5000\n2,5000\n")
                     if mutation == "prompt":
                         path = p / "d16_960x576_s20_seed1101_fl2va.mp4.timing.json"
+                        item = json.loads(path.read_text()); item["prompt"] = "different"; path.write_text(json.dumps(item))
+                    q = test.results / "quality60-960-stream"
+                    if mutation == "cuts60": (q / "metrics.txt").write_text("cuts (scene score > 0.1): frame 1\n")
+                    if mutation == "memory60":
+                        (q / "d60_960x576_s20_seed1101_fl2va.mem-head.csv").write_text("1,5000\n2,5000\n")
+                    if mutation == "prompt60":
+                        path = q / "d60_960x576_s20_seed1101_fl2va.mp4.timing.json"
                         item = json.loads(path.read_text()); item["prompt"] = "different"; path.write_text(json.dumps(item))
                     result = test.run_queue(PYTHONOPTIMIZE="1")
                     self.assertNotEqual(result.returncode, 0)

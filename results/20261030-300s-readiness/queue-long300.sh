@@ -172,18 +172,23 @@ fi
 
 case960=quality16-960-stream
 tag960=d16_960x576_s20_seed1101_fl2va
+case60=quality60-960-stream
+tag60=d60_960x576_s20_seed1101_fl2va
 tag300=d300_960x576_s20_seed1101_fl2va
 valid_case "$case960" "$tag960"
+valid_case "$case60" "$tag60"
 valid_case quality5-stream d5_1344x768_s20_seed1101_fl2va
 valid_case quality16-stream d16_1344x768_s20_seed1101_fl2va
 grep -Fqx 'cuts (scene score > 0.1): none' "$case960/metrics.txt"
+grep -Fqx 'cuts (scene score > 0.1): none' "$case60/metrics.txt"
 grep -q '^periodic luma drops: none .* for 2 successive 17-frame periods ' "$case960/luma-flicker.txt"
-for f in "$case960/$tag960.mem-head.csv" "$case960/$tag960.mem-worker.csv"; do
+for f in "$case960/$tag960.mem-head.csv" "$case960/$tag960.mem-worker.csv" \
+         "$case60/$tag60.mem-head.csv" "$case60/$tag60.mem-worker.csv"; do
   awk -F, 'NF >= 2 && $2 ~ /^[0-9]+$/ {n++; if ($2 < 8192) low=1} END {exit !(n >= 2 && !low)}' "$f"
 done
-first_phase=$(grep -m1 -oE 'phase diffuse [0-9.]+ s' "$case960/phases.txt" | awk '{print $3}' || true)
-[[ "$first_phase" =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo 'first-window phase unavailable'; exit 1; }
-if ! python3 - "$first_phase" <<'PY'
+slowest_phase=$(grep -oE 'phase diffuse [0-9.]+ s' "$case60/phases.txt" | awk 'BEGIN {max=0} {if ($3>max) max=$3} END {if (max>0) print max}' || true)
+[[ "$slowest_phase" =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo '60 s window phase unavailable'; exit 1; }
+if ! python3 - "$slowest_phase" <<'PY'
 import sys
 phase=float(sys.argv[1])
 projected=29*phase*1.35+1800
@@ -198,19 +203,20 @@ fi
 original='The painting comes alive: a wide Dutch landscape under a huge sky. The clouds drift slowly across the sky, their shadows glide over the plain, the river and the pond in the distance glint and ripple, leaves on the trees tremble in a light breeze, a few birds fly across the sky, the tiny figures on the road walk on. The camera is locked on a tripod and does not move at all; one continuous take; soft natural ambience.'
 slow=${original/'the tiny figures on the road walk on'/'the tiny figures on the road move very slowly, taking small natural steps without sudden movements'}
 combined=${slow/'their shadows glide over the plain'/'the light on the landscape stays soft and nearly constant, without strong moving cloud shadows'}
-python3 - "$case960/$tag960.mp4.timing.json" "$combined" "$results/koninck.png" <<'PY'
+python3 - "$case960/$tag960.mp4.timing.json" "$case60/$tag60.mp4.timing.json" "$combined" "$results/koninck.png" <<'PY'
 import json,sys
 from pathlib import Path
-x=json.loads(Path(sys.argv[1]).read_text())
-if x['http'] not in (200, '200') or x['curl_rc'] != 0:
-    raise SystemExit('control request did not complete successfully')
-if (x['size'], x['steps'], x['seed'], x['task']) != ('960x576', 20, 1101, 'fl2va'):
-    raise SystemExit('control shape or task changed')
-if x['prompt'] != sys.argv[2] or x['image'] != sys.argv[3]:
-    raise SystemExit('control prompt or source image changed')
-extra=x['extra_params']
-if extra.get('long_video') is not True or extra.get('long_video_mode') != 'continuation' or extra.get('preencode_mp4') is not True:
-    raise SystemExit('control did not use the expected streaming settings')
+for path, duration in ((sys.argv[1],16), (sys.argv[2],60)):
+    x=json.loads(Path(path).read_text())
+    if x['http'] not in (200, '200') or x['curl_rc'] != 0:
+        raise SystemExit('control request did not complete successfully')
+    if (x['duration'], x['size'], x['steps'], x['seed'], x['task']) != (duration, '960x576', 20, 1101, 'fl2va'):
+        raise SystemExit('control shape or task changed')
+    if x['prompt'] != sys.argv[3] or x['image'] != sys.argv[4]:
+        raise SystemExit('control prompt or source image changed')
+    extra=x['extra_params']
+    if extra.get('long_video') is not True or extra.get('long_video_mode') != 'continuation' or extra.get('preencode_mp4') is not True:
+        raise SystemExit('control did not use the expected streaming settings')
 PY
 [[ ! -e "$results/long300-960-stream" && ! -e "$meta" && -s "$results/koninck.png" ]] || { echo 'output or transaction exists, or image missing'; exit 1; }
 [[ "$(sha256sum "$txn" | awk '{print $1}')" = ecec61db53f32f5bba18a3804cd6749f75b48890300f243ea72031b10966c009 ]] || { echo 'timeout transaction helper changed'; exit 1; }

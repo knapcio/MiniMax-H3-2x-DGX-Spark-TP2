@@ -68,7 +68,9 @@ tag="d${dur}_${w}x${h}_s${steps}_seed${seed}_fl2va"
 mkdir -p "$OUT"
 printf '%s ok\\n' "$tag" > "$OUT/STATUS"
 printf 'fake mp4' > "$OUT/$tag.mp4"
-printf '1,%s,0,0\\n2,%s,0,0\\n' "${H3_TEST_MIN_MEM:-15000}" "${H3_TEST_MIN_MEM:-15000}" > "$OUT/$tag.mem-head.csv"
+memory=${H3_TEST_MIN_MEM:-15000}
+if [ "$name" = quality60-960-stream ]; then memory=${H3_TEST_MIN_MEM60:-$memory}; fi
+printf '1,%s,0,0\\n2,%s,0,0\\n' "$memory" "$memory" > "$OUT/$tag.mem-head.csv"
 cp "$OUT/$tag.mem-head.csv" "$OUT/$tag.mem-worker.csv"
 python3 - "$OUT/args.json" "$PROMPT" "$EXTRA_JSON" "$steps" <<'PY'
 import json,sys
@@ -77,7 +79,7 @@ PY
 ''')
         self.metrics = self.root / "metrics.sh"
         self.metrics.write_text('''#!/bin/bash
-if [ "${H3_TEST_CUT:-0}" = 1 ]; then echo 'cuts (scene score > 0.1): frame 1';
+if [ "${H3_TEST_CUT:-0}" = 1 ] || { [ "${H3_TEST_CUT60:-0}" = 1 ] && [[ "$1" = *quality60-960-stream/* ]]; }; then echo 'cuts (scene score > 0.1): frame 1';
 else echo 'cuts (scene score > 0.1): none'; fi
 ''')
         self.env = os.environ.copy()
@@ -135,7 +137,7 @@ else echo 'cuts (scene score > 0.1): none'; fi
         result = self.run_queue()
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         self.assertEqual(self.calls(), ["quality16-base", "quality16-steps10", "quality16-win175", "quality16-slowfig", "quality5-stream",
-                                        "quality16-stream", "quality16-960-stream", "quality300-960-stream"])
+                                        "quality16-stream", "quality16-960-stream", "quality60-960-stream", "quality300-960-stream"])
         def args(name):
             return json.loads((self.results / name / "args.json").read_text())
         base, short, slow, stream, long = (args(name) for name in ("quality16-base", "quality16-win175",
@@ -150,12 +152,14 @@ else echo 'cuts (scene score > 0.1): none'; fi
         self.assertTrue(stream["extra"]["preencode_mp4"])
         self.assertIn("move very slowly", slow["prompt"])
         self.assertIn("without strong moving cloud shadows", long["prompt"])
+        self.assertEqual(args("quality60-960-stream")["prompt"], long["prompt"])
         report = (self.results / "quality16-960-stream/luma-flicker.txt").read_text()
         self.assertIn("for 2 successive 17-frame periods", report)
         self.assertNotIn("periodic luma drops", (self.results / "quality16-960-stream/metrics.txt").read_text())
 
     def test_300_skipped_when_quality_speed_memory_or_timeouts_fail(self):
-        for override in ({"H3_TEST_CUT": "1"}, {"H3_TEST_PHASE": "1000"}, {"H3_TEST_MIN_MEM": "5000"},
+        for override in ({"H3_TEST_CUT": "1"}, {"H3_TEST_CUT60": "1"}, {"H3_TEST_PHASE": "1000"},
+                         {"H3_TEST_MIN_MEM": "5000"}, {"H3_TEST_MIN_MEM60": "5000"},
                          {"H3_TEST_FLICKER": "1"}, {"H3_TEST_FLICKER_FAIL": "1"},
                          {"H3_QUALITY_FLICKER": "/nonexistent/detector.py"}):
             with self.subTest(override=override):
