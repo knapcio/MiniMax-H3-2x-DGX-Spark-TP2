@@ -28,6 +28,14 @@ class RegionalLumaTests(unittest.TestCase):
         out = regional.correct_luma(original, original, original, 0.5)
         self.assertEqual(out.tobytes(), original.tobytes())
 
+    def test_local_periodic_mode_uses_dominant_phase_and_valid_endpoints(self):
+        primary = [(5, 1.0, 0.1), (22, 1.0, 0.1), (39, 1.0, 0.1)]
+        other = [(6, 1.0, 0.1), (23, 1.0, 0.1)]
+        events = regional.regional_events_from_series(40, [primary, other], lambda x: [x])
+        self.assertEqual(set(events), set(range(5, 10)) | set(range(22, 27)))
+        self.assertEqual(events[5], (4, 10, 1 / 6))
+        self.assertEqual(regional.regional_events_from_series(40, [], lambda x: [x]), {})
+
 
 if __name__ == "__main__":
     unittest.main()

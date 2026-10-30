@@ -23,6 +23,7 @@ The following separate files were created under `~/Downloads/h3-prod-smoke/` and
 | owner-reviewed regional deflicker experiment | `d30_koninck_history5s_regional_EXACT30s_EXPERIMENT.mp4` | 720 frames, 30.000 s | 16 ms |
 | 60 s Koninck, original | `d60_koninck_painting_EXACT60s.mp4` | 1440 frames, 60.000 s | 0 ms |
 | 60 s Koninck, regional deflicker experiment | `d60_koninck_painting_regional_EXACT60s_EXPERIMENT.mp4` | 1440 frames, 60.000 s | 0 ms |
+| 60 s Koninck, broader regional experiment | `d60_koninck_allregional_EXACT60s_EXPERIMENT.mp4` | 1440 frames, 60.000 s | 0 ms |
 
 In each copy, every retained decoded frame and every retained AAC packet including its timestamp matches the source;
 only the end is removed. This does not make model motion or flicker better. The audio may already have been shorter

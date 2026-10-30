@@ -42,6 +42,17 @@ new copy has not been reviewed by eye. Its exact-60 s variant is
 `d60_koninck_painting_regional_EXACT60s_EXPERIMENT.mp4`. The regional screen's raw outputs are
 `koninck60-regional.txt` and `koninck60-regional-experiment.txt`.
 
+A more invasive, separate `--local-periodic` experiment on this 60 s source follows the dominant regional 17-frame
+phase across the clip, applying the same bounded spatial adjustment to five frames at each detected boundary. It
+changes 340/1,450 luma frames (289..1432), preserves all chroma and copied AAC, and decodes fully. Over the 69 phase-0
+boundaries from frames 289..1445, median frame change in the lower-left/middle/right regions falls from 1.99 / 1.87 /
+2.01 to 0.67 / 0.63 / 0.64 at the 336x192 grayscale screen. Some shorter regional spike runs remain; real motion can
+also contribute. This may smooth natural motion or details and has **not** been reviewed visually, so it is not a
+default or a claim that flicker is fixed. The copy is `d60_koninck_allregional_deflicker_EXPERIMENT.mp4`; its exact
+60 s version is `d60_koninck_allregional_EXACT60s_EXPERIMENT.mp4`. The full screen is
+`koninck60-allregional-experiment.txt`. The refactored streaming implementation produced the same decoded video and
+AAC hashes as the previously reviewed 30 s regional experiment when run in the default mode.
+
 ## A 5 s pinned history (`koninck30-hist5s`, window 345 / overlap 124, 12:18-14:30)
 
 The owner asked whether a sliding window with more history would help. With 124 frames (5.2 s) of the previous
