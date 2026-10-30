@@ -46,8 +46,14 @@ remote_txn() {
 }
 restore_local() { local_txn verify >/dev/null 2>&1 || { local_txn restore && local_txn verify; }; }
 restore_worker() { remote_txn verify >/dev/null 2>&1 || { remote_txn restore && remote_txn verify; }; }
+ensure_stopped() {
+  local state pid
+  state=$(systemctl --user show "$head" -p ActiveState --value) || return 1
+  pid=$(systemctl --user show "$head" -p MainPID --value) || return 1
+  [[ "$state" = inactive || "$state" = failed ]] && [[ "$pid" = 0 ]]
+}
 on_exit() {
-  local rc=$?
+  local rc=$? state
   ((rc)) || return 0
   mark "H3-AUTO-HOLD prompt-patch-fc14580 phase=$phase rc=$rc" || true
   case "$phase" in
@@ -56,14 +62,23 @@ on_exit() {
       # process may already have accepted a request, so it must be verifiably
       # idle and have no async jobs before any second stop.
       if [ "$phase" = starting ]; then
-        if systemctl --user is-active --quiet "$head"; then
-          if ! wait_idle || ! no_jobs; then
-            echo 'rollback: new head is active but not verifiably idle; leaving it untouched'
-            return
-          fi
-          systemctl --user stop "$head" || { echo 'rollback: cannot stop new head'; return; }
-        fi
+        state=$(systemctl --user show "$head" -p ActiveState --value) || return
+        case "$state" in
+          active)
+            if ! wait_idle || ! no_jobs; then
+              echo 'rollback: new head is active but not verifiably idle; leaving it untouched'
+              return
+            fi
+            systemctl --user stop "$head" || { echo 'rollback: cannot stop new head'; return; }
+            ;;
+          inactive|failed)
+            # Cancel any queued systemd auto-restart before touching files.
+            systemctl --user stop "$head" || { echo 'rollback: cannot quiesce stopped head'; return; }
+            ;;
+          *) echo "rollback: head state $state is not safely stopped; leaving it untouched"; return;;
+        esac
       fi
+      ensure_stopped || { echo 'rollback: head is not safely stopped; leaving files untouched'; return; }
       if restore_worker && restore_local; then
         if post_stop_idle && systemctl --user start "$head" && wait_ready; then
           mark 'H3-AUTO-PATCH-ROLLBACK-OK' || true
@@ -76,7 +91,8 @@ on_exit() {
       ;;
     stopping)
       # No files were changed; restore service if the stop partially succeeded.
-      systemctl --user is-active --quiet "$head" || systemctl --user start "$head" || true
+      state=$(systemctl --user show "$head" -p ActiveState --value) || return
+      case "$state" in inactive|failed) systemctl --user start "$head" || true;; esac
       ;;
     healthy)
       # A smoke failure can leave an active request. Do not interrupt it or
@@ -168,8 +184,11 @@ mark 'H3-AUTO-PATCH-START fc14580'
 phase=stopping
 systemctl --user stop "$head"
 phase=stopped
+ensure_stopped
 post_stop_idle
+ensure_stopped
 remote_txn apply
+ensure_stopped
 local_txn apply
 remote_txn verify-new
 local_txn verify-new

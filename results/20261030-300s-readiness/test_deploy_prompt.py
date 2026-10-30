@@ -47,13 +47,18 @@ class PromptDeploymentTests(unittest.TestCase):
         (self.root / "proc/123/environ").write_bytes(
             b"H3_TP2_REQUEST_TIMEOUT_S=28800\0VLLM_OMNI_DLO_DP_WAVE_TIMEOUT=28800\0VLLM_OMNI_VIDEO_SYNC_TIMEOUT=29400\0")
         self.command("flock", "exit 0")
-        self.command("nvidia-smi", "printf '%s\\n' \"${H3_TEST_GPU:-0}\"")
+        self.command("nvidia-smi", '''
+if [ "${H3_TEST_GPU_AFTER_STOP:-0}" = 1 ] && [ "$(cat "$H3_TEST_STATE")" = stopped ]; then printf '50\\n';
+else printf '%s\\n' "${H3_TEST_GPU:-0}"; fi''')
         self.command("systemctl", '''
 printf '%s\\n' "$*" >> "$H3_TEST_SYSTEMCTL"
 case " $* " in
-  *" show "*) printf '123\\n'; exit 0;;
-  *" stop h3-tp2-head.service "*) printf stopped > "$H3_TEST_STATE"; exit 0;;
+  *" show "*" ActiveState "*) state=$(cat "$H3_TEST_STATE"); [ "$state" = stopped ] && state=inactive; printf '%s\\n' "$state"; exit 0;;
+  *" show "*) if [ "$(cat "$H3_TEST_STATE")" = stopped ]; then printf '0\\n'; else printf '123\\n'; fi; exit 0;;
+  *" stop h3-tp2-head.service "*)
+    if [ "${H3_TEST_STOP_NOT_QUIESCENT:-0}" = 1 ]; then printf activating > "$H3_TEST_STATE"; else printf stopped > "$H3_TEST_STATE"; fi; exit 0;;
   *" start h3-tp2-head.service "*)
+    if [ "${H3_TEST_START_ACTIVATING:-0}" = 1 ]; then printf activating > "$H3_TEST_STATE"; exit 1; fi
     if [ "${H3_TEST_FAIL_START_ONCE:-0}" = 1 ] && [ ! -e "$H3_TEST_FAIL_MARKER" ]; then touch "$H3_TEST_FAIL_MARKER"; exit 1; fi
     printf active > "$H3_TEST_STATE"; exit 0;;
   *" is-active "*" h3-tp2-head.service "*) [ "$(cat "$H3_TEST_STATE")" = active ]; exit $?;;
@@ -188,6 +193,27 @@ fi
         self.assertEqual((self.root / "state").read_text(), "active")
         self.assertIn("not verifiably idle", result.stdout)
         self.assertNotIn("H3-AUTO-PATCH-ROLLBACK-OK", (self.results / "gen.log").read_text())
+
+    def test_activating_head_is_not_treated_as_stopped(self):
+        result = self.run_deploy(H3_TEST_START_ACTIVATING="1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((self.root / "state").read_text(), "activating")
+        self.assertIn("not safely stopped", result.stdout)
+        self.assertTrue((self.live / "h3_tp2/vae_trace.py").is_file())
+
+    def test_gpu_busy_after_stop_prevents_automatic_restart(self):
+        result = self.run_deploy(H3_TEST_GPU_AFTER_STOP="1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((self.root / "state").read_text(), "stopped")
+        self.assertFalse((self.live / "h3_tp2/vae_trace.py").exists())
+        self.assertIn("GPU did not become idle", result.stdout)
+
+    def test_nonquiescent_head_after_stop_is_not_modified(self):
+        result = self.run_deploy(H3_TEST_STOP_NOT_QUIESCENT="1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((self.root / "state").read_text(), "activating")
+        self.assertFalse(self.backup.exists())
+        self.assertIn("not safely stopped", result.stdout)
 
     def test_unfinished_predecessor_does_not_stop_head(self):
         (self.results / "gen.log").write_text("")

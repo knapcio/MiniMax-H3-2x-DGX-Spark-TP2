@@ -147,6 +147,11 @@ shorter final window. At 18:11 the journal showed step 11/20 at 42.48 s/step, bu
 window 6 actually finished at 18:13:07 in 850.0 s, seam ratio 0.99. The earlier ~18:18 projection from the stale
 progress was also too late. Decode and delivery remain pending; there are about 24.7 minutes until the client
 deadline. Longer limits are staged for the next head restart, not effective in the live processes.
+The same request provides a useful, **uncontrolled** size indication: denoising window 5 (277 frames, 255 new after
+overlap) took 2397.4 s, while window 6 (175 frames, 153 new) took 850.0 s. That is 9.40 versus 5.56 seconds per new frame,
+about 41% less for this pair of windows. They have different seeds, temporal positions and run order; this is not a
+whole-video speedup measurement and excludes decode, retries and quality effects from additional seams. The queued
+same-boot 16 s comparison holds the request and seed fixed while changing the window size.
 The timeout recovery queue checks the actual failure, waits for both nodes to be idle, and verifies the effective
 limits before retrying. The 23.2 s/step T2VA reference followed two 960x576 warm-up requests; the recovery queue
 repeats that sequence before each 1344 measurement. Individual runs still cannot establish a root cause on their own.
