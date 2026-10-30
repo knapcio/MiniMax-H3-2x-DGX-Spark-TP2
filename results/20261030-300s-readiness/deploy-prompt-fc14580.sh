@@ -52,10 +52,17 @@ on_exit() {
   mark "H3-AUTO-HOLD prompt-patch-fc14580 phase=$phase rc=$rc" || true
   case "$phase" in
     stopped|starting)
-      # Before the new head becomes healthy, all work here belongs to this
-      # deployment. Restore both filesets before starting the old head.
+      # Restore both filesets before starting the old head. A newly started
+      # process may already have accepted a request, so it must be verifiably
+      # idle and have no async jobs before any second stop.
       if [ "$phase" = starting ]; then
-        systemctl --user stop "$head" || { echo 'rollback: cannot stop new head'; return; }
+        if systemctl --user is-active --quiet "$head"; then
+          if ! wait_idle || ! no_jobs; then
+            echo 'rollback: new head is active but not verifiably idle; leaving it untouched'
+            return
+          fi
+          systemctl --user stop "$head" || { echo 'rollback: cannot stop new head'; return; }
+        fi
       fi
       if restore_worker && restore_local; then
         if post_stop_idle && systemctl --user start "$head" && wait_ready; then

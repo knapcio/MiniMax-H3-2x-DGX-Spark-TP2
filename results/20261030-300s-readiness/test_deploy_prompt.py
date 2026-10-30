@@ -78,7 +78,7 @@ esac
 exit 1''')
         self.command("curl", '''
 case "$*" in
-  */health*) if [ "$(cat "$H3_TEST_STATE")" = active ]; then printf 200; else printf 000; fi;;
+  */health*) if [ "$(cat "$H3_TEST_STATE")" = active ] && [ "${H3_TEST_BAD_HEALTH:-0}" != 1 ]; then printf 200; else printf 000; fi;;
   */metrics*) printf 'vllm_omni:num_requests_running{x="0"} 0\\nvllm_omni:num_requests_waiting{x="0"} 0\\n';;
   */v1/videos*) if [ "${H3_TEST_JOBS:-0}" = 1 ]; then printf '{"data":[{}],"has_more":false}'; else printf '{"data":[],"has_more":false}'; fi;;
   *) exit 1;;
@@ -171,6 +171,23 @@ fi
         self.assertEqual((self.root / "state").read_text(), "active")
         self.assertTrue((self.live / "h3_tp2/vae_trace.py").is_file())
         self.assertIn("H3-AUTO-HOLD prompt-patch-fc14580 phase=healthy", (self.results / "gen.log").read_text())
+
+    def test_new_head_that_cannot_be_proven_idle_is_not_stopped_again(self):
+        # Break health only after the first stop, so preflight can pass.
+        curl = self.bin / "curl"
+        code = curl.read_text().replace('[ "${H3_TEST_BAD_HEALTH:-0}" != 1 ]',
+                                        '[ "${H3_TEST_BAD_HEALTH:-0}" != 1 ] || [ ! -e "$H3_TEST_FAIL_MARKER" ]')
+        curl.write_text(code)
+        # Fake systemctl touches the marker on start while still starting successfully.
+        systemctl = self.bin / "systemctl"
+        code = systemctl.read_text().replace('printf active > "$H3_TEST_STATE"; exit 0;;',
+                                             'touch "$H3_TEST_FAIL_MARKER"; printf active > "$H3_TEST_STATE"; exit 0;;')
+        systemctl.write_text(code)
+        result = self.run_deploy(H3_TEST_BAD_HEALTH="1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((self.root / "state").read_text(), "active")
+        self.assertIn("not verifiably idle", result.stdout)
+        self.assertNotIn("H3-AUTO-PATCH-ROLLBACK-OK", (self.results / "gen.log").read_text())
 
     def test_unfinished_predecessor_does_not_stop_head(self):
         (self.results / "gen.log").write_text("")

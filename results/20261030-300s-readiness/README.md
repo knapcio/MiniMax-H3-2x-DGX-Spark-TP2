@@ -71,12 +71,14 @@ each node with CUDA hidden (11/11 per node). `file_txn.py` checks old and staged
 affected files, performs atomic file replacements and refuses to overwrite unexpected changes during rollback. Its
 tests cover a partial failure, bytecode-cache invalidation, damaged inputs and rollback refusal.
 
-`deploy-prompt-fc14580.sh` is queued separately on Spark_06 after the quality chain. It requires a verified 960
+`deploy-prompt-fc14580.sh` is queued separately on Spark_06 as `deploy-prompt-fc14580-v2.sh` after the quality chain.
+It requires a verified 960
 control, a completed or safely skipped 300 s experiment, release of the quality queue's lock, healthy/idle services
 and memory guards on both nodes, and an empty async-video job store before stopping the head. It installs the five
 staged files on both nodes, leaves the trace off, restarts the head and performs a 5 s smoke plus a real 16 s request
 whose `target.duration_seconds=16` overrides `duration_seconds=30`. That request must produce the two expected
-window prompts. Startup failures trigger a verified rollback before the old head is restarted; a failure after the
-head becomes healthy leaves the service untouched on HOLD. The serving tree's `.synced-rev` remains `0ed86ba` because
+window prompts. Startup failures trigger a verified rollback only if the new head is stopped or verifiably idle with
+an empty async job store; otherwise it is left untouched on HOLD. A failure after the head becomes healthy also
+leaves the service untouched on HOLD. The serving tree's `.synced-rev` remains `0ed86ba` because
 this is a five-file patch, not a full-tree sync. The deployment is **queued, not yet performed or GPU-qualified**.
 The idleness checks cannot reserve the API against an unrelated client arriving between the final check and stop.
