@@ -100,3 +100,13 @@ variation at 1344x768 sits in the denoising loop (DiT forward + sampler), not in
 (S1/S2) says whether the two-pass GEMM is involved. Four of the five ref-1024 renders with the digest gave 591e4c0d,
 one gave e474c9ac: not a coin flip per request, a rare event. (The step-0 input digest hook never fired: the DiT
 forward is not reached through the class attribute; to be fixed before the noise can be separated from the loop.)
+
+| S1 ref 1024, stock CUTLASS | 3, first | 37b0266c | 45ad333f | **591e4c0d** (= two-pass I1/I2/G/H) | 734.6 s wall |
+| S2 ref 1024, stock CUTLASS | 3, second | 37b0266c | 45ad333f | 591e4c0d | 922.4 s wall |
+
+Stock and two-pass give the same latents and the same frames (framemd5 7b9e4c16) at 1344x768 with reference 1024,
+as they do at 960x576: the two-pass GEMM is bit-identical to the CUTLASS kernel on these renders, and it is 22-40 %
+faster here (two-pass 553-576 s, stock 735-922 s wall). The per-request variation seen in F/G and K1/K2 is a property
+of the denoising loop that both kernels share; with reference 1024 it occurred once in seven renders, with reference
+2048 in one of two. Nothing in the serving configuration causes it, and it does not degrade a clip; it only means
+two identical requests may sometimes give two valid samples.

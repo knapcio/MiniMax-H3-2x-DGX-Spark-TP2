@@ -238,3 +238,5 @@
 - 2026-10-30 01:00: 1344x768 stage attribution: prompt embeddings and reference encoding identical within a boot,
   latents sometimes not (K1 != K2 at ref 2048, I1 == I2 at ref 1024): the per-request variation is inside the
   denoising loop; stock pair pending.
+- 2026-10-30 01:35: stock CUTLASS pair at 1344x768: identical latents and frames to the two-pass GEMM (and 22-40 %
+  slower). The rare per-request variation at 1344 is in the shared denoising loop, not in our kernels.
