@@ -66,6 +66,9 @@ decoded frames, all inside the affected interval; their chroma bytes are identic
 and all other decoded video frames and the copied AAC packets are byte-identical. The video was encoded losslessly
 after the brightness edits; the edits themselves change the picture. At the 13 original dip frames, the luma step
 changes from -2.22..-6.21 YAVG to -0.02..-0.22, and the 17-frame detector finds no remaining run above 2 YAVG.
+At frame 408, full-resolution Y changed by -6.14 on average and 98.8% of pixels darkened; in the repaired copy the
+same frame transition averages -0.14 and 41.6% darken (10th/50th/90th percentiles -3/0/+3). These measurements
+include real scene motion and do not establish visual acceptability.
 Full decode succeeds. This is a one-clip experiment, not a default or proof of the decoder cause; owner playback review
 is pending. Local copy: `~/Downloads/h3-prod-smoke/d30_koninck_history5s_deflicker_EXPERIMENT.mp4`.
 
