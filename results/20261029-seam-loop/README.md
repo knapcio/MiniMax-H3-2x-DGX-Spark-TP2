@@ -202,3 +202,17 @@ The grid every 2 s (`deer30-grid.png`) shows what this sample is: the model rend
 (a pale mat around the picture from the first frame), the deer walks in the first 8 s, then the camera moves into a
 dark painted forest and stops. A sample-level failure of the reference + prompt pairing (the still read as a painting),
 nothing the continuation machinery can or should fix; a re-roll (another seed) is the answer for such a window 1.
+
+## Drift wording at 30 s (`drift30-rest`, 08:04-08:37) and the seam-check calibration
+
+Later-window wording "the camera drifts very slowly in the same direction and never comes back to what it already
+showed, the woman simply continues what she was doing, nothing new enters the frame". Motion holds 6-9 for most of the
+clip (the subject-free wording let it die), light 45-63, detail up to 501. But the first hand-over is a **hard cut**
+(scene score 0.194, inter-frame 27.2 at neighbours 3.4 / 7.2, luma +12.8) and its latent seam ratio was **1.43**: below
+the provisional 3.0, so no retry fired. Continued windows measured 0.81-1.16 over 17 seams; the threshold is now 1.3
+(`H3_TP2_CONT_SEAM_RATIO`, default). The second seam, 0.90, is clean (+0.4).
+
+Owner, 08:25: the real use is a painting as the FIRST frame with a locked camera and subtle motion (clouds, water,
+birds), the soundscape added by hand. That is FL2VA, where upstream has no continuation; the pinned prefix needs no
+reference block, so the continuation now runs on the FL2VA partition too (window 1 as sent, later windows as t2va with
+the pinned prefix; plugin 9f). Tests on a Koninck landscape follow.

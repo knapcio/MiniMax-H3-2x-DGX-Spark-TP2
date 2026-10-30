@@ -262,3 +262,6 @@
 - 2026-10-30 07:40: owner on the 60 s clip: all transitions smooth; the camera re-stages its travelling move every
   window with the default later-window wording (the woman revealed 5-6 times). A drift wording for the later windows
   is under test; the subject-free wording avoided it but let the motion die.
+- 2026-10-30 08:40: seam-check calibration: a hard cut right after the prefix measured a latent ratio of 1.43
+  (continued windows 0.81-1.16), threshold now 1.3. Continuation enabled on FL2VA requests (the still as the first
+  frame, static camera: the wife's use) through the pinned prefix; Koninck painting tests queued.
