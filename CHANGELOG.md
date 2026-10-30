@@ -245,3 +245,5 @@
 - 2026-10-30 03:35: look-lock at 30 s: light per second stays 44-58 (46 -> 69 without it), no cut, but the uniform
   per-window correction steps -8.5 luma at the second seam; the correction is now ramped across the window's free
   frames (a9cfe12), rendered again at 30 s and 60 s.
+- 2026-10-30 04:25: ramped look-lock at 30 s: both seams +0.3 luma, no cut, exposure pulled back by each window's end
+  (max 65 instead of 69/58); the shot calms in window 3. Ramp fraction parameter added for a faster hold.

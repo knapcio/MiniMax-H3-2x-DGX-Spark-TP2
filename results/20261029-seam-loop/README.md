@@ -120,3 +120,21 @@ steps the brightness at the next hand-over: the pinned tail of window 2 carries 
 while window 3's free frames start at the window-1 level. Fix (a9cfe12): the correction ramps from zero at the first
 free frame to full at the window's end, so the hand-over stays continuous and the drift is still pulled back within
 the window. Rendered again at 30 s (`lockr30-edit1`) and 60 s with edit=2 (`lockr60-edit2`).
+
+## Ramped look-lock at 30 s (`lockr30-edit1`, 03:36-04:18)
+
+| | no lock | uniform lock | ramped lock (full by the window's end) |
+|---|---|---|---|
+| light per second | 46 .. 69 | 44 .. 58 | 47 .. 65, back to 51 at the end |
+| detail max | 232 | 300 | 567 (window 3) |
+| motion in the last 8 s | 6-9 | 4-8 | **1.8-3.5 (the shot calms down)** |
+| seam 277 / 532 luma step | +4.6 (cut) / +1.0 | -0.2 / **-8.5** | **+0.3 / +0.3** |
+| seam ratios | - | 0.88 / 0.93 | 0.81 / 1.16 |
+| cuts | 1 | none | none |
+
+The ramp keeps both hand-overs continuous (the owner's test), and still pulls the exposure back by the end of each
+window, but a correction that reaches full strength only at the window's end lets the drift run for most of the
+window (light 65 at 22 s). A ramp fraction (`H3_TP2_CONT_LOCK_RAMP`, full strength after that fraction of the free
+frames, then held; 0.25 = about 2 s) is the next setting. The calmed motion in window 3 is the subject-free
+later-window prompt letting the scene settle; with the pinned prefix the original wording (the prompt repeated with
+"the same continuous shot goes on") may no longer duplicate the subject, to be tested at 60 s.
