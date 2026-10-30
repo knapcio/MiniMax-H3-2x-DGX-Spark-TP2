@@ -269,3 +269,6 @@
   check re-sampled one window (ratio 1.80 -> 0.85), light 41-65, audio flat. Owner's report on the drift clip: window 2
   replayed the first 12 s (same seed = same noise per window) and the subject re-entered; seed step is the answer
   under test by eye.
+- 2026-10-30 10:20: owner on the seed-step 60 s: no replay, but whatever leaves the frame comes back different (no
+  object permanence across windows), some pixelation, a look change in the last window. A moving-camera 60 s is
+  closed; the locked-camera use is what the FL2VA painting tests check. Mean-only look-lock option added.

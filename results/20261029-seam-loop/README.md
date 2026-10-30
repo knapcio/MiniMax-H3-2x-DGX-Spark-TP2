@@ -235,3 +235,14 @@ seed + k per window (subject-free later-window wording, all other defaults):
 | wall | 4573 s (one window re-sampled) |
 
 Owner's eye on the camera replay pending (`seedstep60-grid.png`: one frame every 2 s).
+
+**Owner, 10:15, on the seed-step clip:** no replay of the camera move, but at 34 s the woman comes back after a shot
+of a branch looking completely different (another dress), the quality drops with some pixelation, at 44-46 s the
+frame leaves her and shows her elsewhere again, at 54 s the colour of the picture changes, at 14 s she walks into the
+water and seems to float over it. "Whatever leaves the frame comes back different." That is the model's lack of
+object permanence across windows: the pinned prefix carries what is IN the frame, nothing more. For a camera that
+follows a subject this closes the 60 s question; for a locked camera where nothing leaves the frame (the owner's
+wife's use) it does not apply, which the FL2VA Koninck tests check. The 54 s colour change is not at the seam itself
+(frames 1280-1316: U 119-120, V 133-134, luma 46 -> 50 gradually); it is window 6's look drifting after window 5 was
+re-sampled with another seed. Pixelation: the std part of the look-lock can amplify noise; `H3_TP2_CONT_LOCK_STD=0`
+(mean-only) is available for the next renders.
