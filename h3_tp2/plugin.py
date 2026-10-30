@@ -422,12 +422,14 @@ def _apply(role: str) -> None:
                     if (isinstance(ea, dict) and ea.get("long_video") and ea.get("long_video_mode", "continuation") == "continuation"
                             and not ea.get("continuation_prompts")):
                         dur = _cp.request_duration(ea)
+                        requested_frames = getattr(sampling, "num_frames", None)
                         base, _ = self._extract_prompt(raw_prompt)
-                        if dur is not None and isinstance(base, str) and base.strip():
-                            n = _cp.window_count(dur, int(ea.get("continuation_window_frames", 277)), int(ea.get("continuation_overlap_frames", 22)))
-                            if n > 1:
+                        if isinstance(base, str) and base.strip():
+                            n = _cp.request_window_count(ea, requested_frames)
+                            if n is not None and n > 1:
                                 ea["continuation_prompts"] = _cp.continuation_prompts(base, n, _extra_words, _rest_template)
-                                logger.info("h3_tp2: continuation prompts generated for %d windows (%.1f s); window 2: %s", n, dur, ea["continuation_prompts"][1][:160])
+                                requested = f"{dur:.1f} s" if dur is not None else f"{requested_frames} frames"
+                                logger.info("h3_tp2: continuation prompts generated for %d windows (%s); window 2: %s", n, requested, ea["continuation_prompts"][1][:160])
                 except Exception as e:  # noqa: BLE001  (never break a request over the prompt helper)
                     logger.warning("h3_tp2: continuation prompt helper skipped (%s)", e)
                 return _orig_plc(self, raw_prompt, sampling, *a, **kw)

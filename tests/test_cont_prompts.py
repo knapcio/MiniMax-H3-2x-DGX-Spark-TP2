@@ -31,6 +31,16 @@ def test_request_duration():
     assert cp.request_duration({}) is None
 
 
+def test_frame_count_when_duration_is_null_or_missing():
+    assert cp.request_window_count({"duration": None}, 7200) == 29
+    assert cp.request_window_count({"duration": 30, "target": {"duration_seconds": None}}, 7200) == 29
+    assert cp.request_window_count({"duration": 30}, 7200) == 3  # duration overrides num_frames
+    assert cp.request_window_count({}, 7200) == 29
+    assert cp.request_window_count({}, 1) is None
+    assert cp.request_window_count({}, None) is None
+    assert cp.request_window_count({"continuation_window_frames": 175}, 7200) == 47
+
+
 def test_rest_template_override():
     ps = cp.continuation_prompts("A forest.", 3, "", "Keep going. {base} Nothing new enters.")
     assert ps[1] == "Keep going. A forest. Nothing new enters." and ps[2] == ps[1]

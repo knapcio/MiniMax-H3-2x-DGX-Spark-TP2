@@ -8,6 +8,7 @@ request asks for continuation and sends no prompts of its own, so a plain agent 
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 import math
 
 FIRST_SUFFIX = ". One single continuous take from a steady camera, no cuts, no transitions."
@@ -16,7 +17,11 @@ REST_PREFIX = "The same continuous shot goes on without any cut or transition, t
 
 def window_count(duration_s: float, window_frames: int = 277, overlap_frames: int = 22, fps: int = 24) -> int:
     """Number of continuation windows upstream will render for ``duration_s`` (frames rounded to 17k+5 as upstream)."""
-    frames = int(round(float(duration_s) * fps))
+    return window_count_from_frames(int(round(float(duration_s) * fps)), window_frames, overlap_frames)
+
+
+def window_count_from_frames(frames: int, window_frames: int = 277, overlap_frames: int = 22) -> int:
+    """Count windows from the requested, not yet grid-aligned, frame count."""
     frames = ((frames - 5 + 16) // 17) * 17 + 5
     if frames <= window_frames:
         return 1
@@ -43,8 +48,24 @@ def request_duration(extra_args: dict) -> float | None:
     not silently fall through to a lower-priority duration.
     """
     target = extra_args.get("target")
-    if target is not None and not isinstance(target, dict):
+    if target is not None and not isinstance(target, Mapping):
         raise ValueError("target must be an object")
     target = target if target is not None else {}
     value = target.get("duration_seconds", extra_args.get("duration_seconds", extra_args.get("duration")))
     return None if value is None else float(value)
+
+
+def request_window_count(extra_args: dict, num_frames: int | None = None) -> int | None:
+    """Count from the encoder's effective duration or, when null, its explicit frame count.
+
+    None means the encoder chooses its task-specific short default; no per-window
+    prompts are necessary in that case.
+    """
+    duration = request_duration(extra_args)
+    window = int(extra_args.get("continuation_window_frames", 277))
+    overlap = int(extra_args.get("continuation_overlap_frames", 22))
+    if duration is not None:
+        return window_count(duration, window, overlap)
+    if int(num_frames or 1) > 1:
+        return window_count_from_frames(int(num_frames), window, overlap)
+    return None

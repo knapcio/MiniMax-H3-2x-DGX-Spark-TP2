@@ -28,8 +28,15 @@ The running stack's `resolve_minimax_h3_shape` selects `target.duration_seconds`
 The local fix matches upstream precedence and does not invent a duration for explicit nulls. The script's timing JSON
 also records `effective_duration: null` in that case. No change is loaded into the live serving processes yet.
 
+When a request supplies `num_frames` without an effective duration, upstream uses that frame count rather than a
+duration. The local plugin now generates the matching number of continuation prompts in this case too: for example,
+7,200 requested frames require 29 prompts. Without an explicit duration or frame count, the encoder's short default
+is left alone. Caller-supplied continuation prompts remain intact.
+
 Verification: 17,766 plans covering 4.0–300.0 s at 0.1 s increments, three window sizes and two overlaps matched the
-upstream planner copied from Spark_06; 80 duration-field combinations, including nulls, matched its source expression.
+upstream planner copied from Spark_06; 42,630 direct-frame plans and 80 duration-field combinations, including nulls,
+also matched its source. An isolated test of the plugin's actual prompt wrapper checks 7,200 frames, duration
+precedence and supplied prompts.
 The actual `render.sh` was also exercised with fake `curl`: 300 s produces 29 prompts, explicit null produces no
 wrong-length list, invalid target is rejected before submission, and supplied prompts remain intact. This is a CPU
 test, not an end-to-end 300 s render.
