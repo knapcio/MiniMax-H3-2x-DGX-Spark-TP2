@@ -62,3 +62,21 @@ executor/wave limit, the queue attempts an **experimental** 300 s 960x576 chunke
 shadows can look wrong, and the guard does not predict all memory peaks or guarantee completion. It does not create
 restart checkpoints. All outputs need visual review, especially the final minute and motion of figures. Quality
 metrics are diagnostic, not an automatic promotion criterion.
+
+## Staged prompt fix and deferred deployment
+
+The files at `fc14580` are staged outside the live trees in `~/h3-tp2-next-fc14580` on both nodes; the live trees
+still report `0ed86ba`. The prompt-wrapper, reference-lock and disabled-by-default VAE trace tests passed on CPU on
+each node with CUDA hidden (11/11 per node). `file_txn.py` checks old and staged SHA-256s, backs up only the five
+affected files, performs atomic file replacements and refuses to overwrite unexpected changes during rollback. Its
+tests cover a partial failure, bytecode-cache invalidation, damaged inputs and rollback refusal.
+
+`deploy-prompt-fc14580.sh` is queued separately on Spark_06 after the quality chain. It requires a verified 960
+control, a completed or safely skipped 300 s experiment, release of the quality queue's lock, healthy/idle services
+and memory guards on both nodes, and an empty async-video job store before stopping the head. It installs the five
+staged files on both nodes, leaves the trace off, restarts the head and performs a 5 s smoke plus a real 16 s request
+whose `target.duration_seconds=16` overrides `duration_seconds=30`. That request must produce the two expected
+window prompts. Startup failures trigger a verified rollback before the old head is restarted; a failure after the
+head becomes healthy leaves the service untouched on HOLD. The serving tree's `.synced-rev` remains `0ed86ba` because
+this is a five-file patch, not a full-tree sync. The deployment is **queued, not yet performed or GPU-qualified**.
+The idleness checks cannot reserve the API against an unrelated client arriving between the final check and stop.
