@@ -272,3 +272,5 @@
 - 2026-10-30 10:20: owner on the seed-step 60 s: no replay, but whatever leaves the frame comes back different (no
   object permanence across windows), some pixelation, a look change in the last window. A moving-camera 60 s is
   closed; the locked-camera use is what the FL2VA painting tests check. Mean-only look-lock option added.
+- 2026-10-30 11:00: the painting use (FL2VA, locked camera) with the continuation: 16 s Koninck, seam luma step 0.0,
+  no cut, seam ratio 1.00, the clouds move and the picture stays the picture (`results/20261030-painting-fl2va-continuation/`).
