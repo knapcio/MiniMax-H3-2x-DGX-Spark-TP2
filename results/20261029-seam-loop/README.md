@@ -216,3 +216,22 @@ Owner, 08:25: the real use is a painting as the FIRST frame with a locked camera
 birds), the soundscape added by hand. That is FL2VA, where upstream has no continuation; the pinned prefix needs no
 reference block, so the continuation now runs on the FL2VA partition too (window 1 as sent, later windows as t2va with
 the pinned prefix; plugin 9f). Tests on a Koninck landscape follow.
+
+## A different seed per window (`seedstep60`, 08:51-10:07, `H3_TP2_WINDOW_SEED_STEP=1`)
+
+Owner, 09:50, on the drift clip: "at 12 s there is a transition and it practically repeats the first 12 s again",
+then the woman again in another framing at 28 s, and a frame with her dress at the left edge and a second one
+entering at the right. Upstream re-creates the generators from the request seed for every window, so equal-shaped
+windows start from the SAME noise and the model replays the same camera move and re-introduces the subject. With
+seed + k per window (subject-free later-window wording, all other defaults):
+
+| | value |
+|---|---|
+| seams (luma step) | +0.3 / -0.8 / -1.8 / -1.0 / +0.1, no inter-frame spike, no cut |
+| seam check | window 5 attempt 1 ratio 1.80 -> re-sampled (seed 9024) -> 0.85: the first retry in production, 11 min |
+| light per second | 41 .. 65, ends 52 |
+| motion per second | 3-9 with a burst 11-16 at 42-48 s |
+| audio per 10 s | -50.8 .. -51.5 dB flat |
+| wall | 4573 s (one window re-sampled) |
+
+Owner's eye on the camera replay pending (`seedstep60-grid.png`: one frame every 2 s).

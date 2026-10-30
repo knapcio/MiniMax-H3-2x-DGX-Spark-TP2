@@ -265,3 +265,7 @@
 - 2026-10-30 08:40: seam-check calibration: a hard cut right after the prefix measured a latent ratio of 1.43
   (continued windows 0.81-1.16), threshold now 1.3. Continuation enabled on FL2VA requests (the still as the first
   frame, static camera: the wife's use) through the pinned prefix; Koninck painting tests queued.
+- 2026-10-30 10:10: a different seed per window (`H3_TP2_WINDOW_SEED_STEP=1`) at 60 s: five clean seams, the seam
+  check re-sampled one window (ratio 1.80 -> 0.85), light 41-65, audio flat. Owner's report on the drift clip: window 2
+  replayed the first 12 s (same seed = same noise per window) and the subject re-entered; seed step is the answer
+  under test by eye.
