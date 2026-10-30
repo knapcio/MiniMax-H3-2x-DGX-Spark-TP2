@@ -60,13 +60,22 @@ def seam_ratio(video: torch.Tensor, overlap_v: int) -> tuple[float, float, float
 
 
 def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, retries: int = 0, max_ratio: float = 2.0,
-                 lock: str = "", lock_strength: float = 1.0, lock_ramp: float = 1.0):  # noqa: ANN001
+                 lock: str = "", lock_strength: float = 1.0, lock_ramp: float = 1.0, lock_audio: bool = False):  # noqa: ANN001
     """Return a ``diffuse`` replacement for one continuation request (state: the previous window's video latents).
 
     With ``retries`` > 0 a window whose latent seam ratio exceeds ``max_ratio`` is sampled again with another seed
     (up to ``retries`` times); the attempt with the lowest ratio is kept.
     """
-    state = {"prev": None, "index": 0, "ref": None}
+    state = {"prev": None, "index": 0, "ref": None, "ref_audio": None}
+
+    def _overlap_audio(args):  # noqa: ANN001
+        lengths = args.get("audio_condition_lengths") or []
+        if lengths:
+            return int(lengths[-1])
+        mask = args.get("audio_edit_mask_rows")
+        if mask is not None:
+            return int((mask == 0).sum().item() // 2)
+        return None
 
     def _overlap(args):  # noqa: ANN001
         blocks = args.get("ref_blocks") or []
@@ -109,10 +118,16 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
                 video = match_window(state["prev"][:, :, -ov:], video, ov, apply=apply, index=state["index"])
                 if lock == "first" and state["ref"] is not None:
                     video = lock_to_reference(state["ref"], video, ov, lock_strength, index=state["index"], ramp=lock_ramp)
+                if lock == "first" and lock_audio and state["ref_audio"] is not None and isinstance(audio, torch.Tensor) and audio.dim() == 3:
+                    ov_a = _overlap_audio(args)
+                    if ov_a:
+                        audio = lock_audio_to_reference(state["ref_audio"], audio, ov_a, lock_strength, index=state["index"], ramp=lock_ramp)
             except Exception as e:  # noqa: BLE001  (diagnostics never break a render)
                 logger.warning("h3_tp2 hand-over diagnostics skipped (%s)", e)
         elif state["ref"] is None and isinstance(video, torch.Tensor) and video.dim() == 5:
             state["ref"] = _stats(video)
+            if isinstance(audio, torch.Tensor) and audio.dim() == 3:
+                state["ref_audio"] = audio_stats(audio)
         state["prev"] = video
         return video, audio
 
@@ -170,3 +185,31 @@ def lock_to_reference(ref_stats: tuple[torch.Tensor, torch.Tensor], new_window: 
     locked = new_window.clone()
     locked[:, :, overlap_v:] = out.to(new_window.dtype)
     return locked
+
+
+def lock_audio_to_reference(ref_stats: tuple[torch.Tensor, torch.Tensor], new_audio: torch.Tensor, overlap_t: int,
+                            strength: float, *, index: int, ramp: float = 1.0) -> torch.Tensor:
+    """The audio analogue of ``lock_to_reference``: audio latents [C, D, T]; per-(channel, dim) mean/std over time of
+    the free steps (after the pinned overlap) pulled toward the first window's, ramped along time.  The generated
+    ambience climbed 23 dB over the last two windows of a 60 s clip (2026-10-30 05:30) while the video lock held."""
+    m_ref, s_ref = ref_stats
+    free = new_audio[..., overlap_t:].float()
+    m, sd = free.mean(dim=-1, keepdim=True), free.std(dim=-1, keepdim=True)
+    gain = (s_ref / sd.clamp_min(1e-6)).clamp(0.5, 2.0)
+    gain = 1.0 + strength * (gain - 1.0)
+    shift = strength * (m_ref - m)
+    n_free = free.shape[-1]
+    n_ramp = max(1, int(round(n_free * max(0.05, min(1.0, ramp)))))
+    w = torch.clamp(torch.arange(1, n_free + 1, device=free.device, dtype=torch.float32) / n_ramp, max=1.0)
+    gain_t = 1.0 + w * (gain - 1.0)
+    out = (free - m) * gain_t + m + w * shift
+    logger.info("h3_tp2 audio look-lock window %d: free steps std %.4f -> %.4f (reference %.4f), mean %.4f -> %.4f", index,
+                sd.mean().item(), out.std(dim=-1).mean().item(), s_ref.mean().item(), m.mean().item(), out.mean().item())
+    locked = new_audio.clone()
+    locked[..., overlap_t:] = out.to(new_audio.dtype)
+    return locked
+
+
+def audio_stats(audio: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    a = audio.float()
+    return a.mean(dim=-1, keepdim=True), a.std(dim=-1, keepdim=True)

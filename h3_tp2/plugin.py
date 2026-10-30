@@ -464,6 +464,7 @@ def _apply(role: str) -> None:
             _lock = os.environ.get("H3_TP2_CONT_LOCK", "").strip().lower()
             _lock_strength = float(os.environ.get("H3_TP2_CONT_LOCK_STRENGTH", "1.0") or 1.0)
             _lock_ramp = float(os.environ.get("H3_TP2_CONT_LOCK_RAMP", "1.0") or 1.0)   # fraction of the free frames
+            _lock_audio = os.environ.get("H3_TP2_CONT_LOCK_AUDIO", "0").strip() == "1"   # the same lock for the audio latents
 
             if _xfade or _edit:
                 # own copy of upstream's loop (continuation.py, v0.30.0) with the hand-over crossfaded over the overlap
@@ -471,7 +472,7 @@ def _apply(role: str) -> None:
 
                 def _dc(diffuse, kwargs, *, window_frames, overlap_frames, text_conditioning=None):  # noqa: ANN001
                     diffuse = _cm.wrap_diffuse(diffuse, apply=_apply_match, overlap_v_hint=_ct._video_t(overlap_frames),
-                                               retries=_retries, max_ratio=_max_ratio, lock=_lock, lock_strength=_lock_strength, lock_ramp=_lock_ramp)
+                                               retries=_retries, max_ratio=_max_ratio, lock=_lock, lock_strength=_lock_strength, lock_ramp=_lock_ramp, lock_audio=_lock_audio)
                     windows = _ct.plan_continuation_windows(kwargs["num_frames"], window_frames, overlap_frames)
                     if text_conditioning is not None and len(text_conditioning) != len(windows):
                         raise _ct.OmniClientError("MiniMax H3 requires one text conditioning per continuation window")
@@ -537,8 +538,8 @@ def _apply(role: str) -> None:
 
             _pp9e.diffuse_continuation = _dc
             _pp9e._h3_tp2_cont_match_patched = True
-            logger.warning("h3_tp2: continuation hand-over diagnostics ON; latent match %s; crossfade %s; edit prefix %s; seam retries %d (ratio > %.1f); look-lock %s (%.2f)",
-                           "ON" if _apply_match else "off", "ON" if _xfade else "off", _edit or "off", _retries, _max_ratio, _lock or "off", _lock_strength)
+            logger.warning("h3_tp2: continuation hand-over diagnostics ON; latent match %s; crossfade %s; edit prefix %s; seam retries %d (ratio > %.1f); look-lock %s (%.2f, ramp %.2f, audio %s)",
+                           "ON" if _apply_match else "off", "ON" if _xfade else "off", _edit or "off", _retries, _max_ratio, _lock or "off", _lock_strength, _lock_ramp, "ON" if _lock_audio else "off")
     except Exception as e:  # noqa: BLE001
         logger.warning("h3_tp2: continuation hand-over hook not installed (%s)", e)
 
