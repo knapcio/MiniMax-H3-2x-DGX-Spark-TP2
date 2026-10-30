@@ -493,6 +493,13 @@ def _apply(role: str) -> None:
 
                 _lv9f.resolve_long_video_mode = _mode
                 _ct9f.resolve_long_video_mode = _mode
+                try:   # the encoder-side validation imported the gates by name before this plugin ran
+                    from vllm_omni.model_executor.models.minimax_h3 import encoder_processing as _ep9f
+
+                    _ep9f.resolve_long_video_mode = _mode
+                    _ep9f.max_output_seconds = _lv9f.max_output_seconds
+                except Exception as e:  # noqa: BLE001
+                    logger.warning("h3_tp2: encoder_processing gate not patched (%s)", e)
                 _orig_resolve = _ct9f.resolve_continuation
 
                 def _resolve(extra, *, task, step_execution):  # noqa: ANN001
