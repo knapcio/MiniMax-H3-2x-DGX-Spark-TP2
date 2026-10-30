@@ -7,6 +7,7 @@ import unittest
 
 
 SCRIPT = Path(__file__).with_name("queue-quality.sh")
+DETECTOR = Path(__file__).resolve().parents[2] / "scripts/luma_flicker.py"
 
 
 class QueueQualityTests(unittest.TestCase):
@@ -45,6 +46,16 @@ case "$*" in
   *) exit 1;;
 esac''')
         self.command("journalctl", "printf 'phase diffuse %s s\\n' \"${H3_TEST_PHASE:-300}\"")
+        self.command("ffprobe", "printf '24/1\\n'")
+        self.command("ffmpeg", '''
+[ "${H3_TEST_FLICKER_FAIL:-0}" != 1 ] || exit 1
+for i in $(seq 0 39); do
+  value=100
+  if [ "${H3_TEST_FLICKER:-0}" = 1 ]; then
+    if ((i >= 34)); then value=94; elif ((i >= 17)); then value=97; fi
+  fi
+  printf 'lavfi.signalstats.YAVG=%s\\n' "$value"
+done''')
         self.command("timeout", "shift 3; exec \"$@\"")
         self.bench = self.root / "bench.sh"
         self.bench.write_text('''#!/bin/bash
@@ -68,12 +79,12 @@ PY
         self.metrics.write_text('''#!/bin/bash
 if [ "${H3_TEST_CUT:-0}" = 1 ]; then echo 'cuts (scene score > 0.1): frame 1';
 else echo 'cuts (scene score > 0.1): none'; fi
-echo 'periodic luma drops: none'
 ''')
         self.env = os.environ.copy()
         self.env.update(PATH=str(self.bin) + os.pathsep + self.env["PATH"], H3_QUALITY_RESULTS=str(self.results),
                         H3_QUALITY_BENCH=str(self.bench), H3_QUALITY_METRICS=str(self.metrics),
-                        H3_QUALITY_PYTHON="python3", H3_QUALITY_MEMINFO=str(self.root / "meminfo"),
+                        H3_QUALITY_PYTHON="python3", H3_QUALITY_FLICKER=str(DETECTOR),
+                        H3_QUALITY_MEMINFO=str(self.root / "meminfo"),
                         H3_QUALITY_PROC_ROOT=str(self.root / "proc"), H3_QUALITY_SLEEP_S="0",
                         H3_QUALITY_IDLE_SLEEP_S="0", H3_QUALITY_WAIT_ATTEMPTS="1", H3_QUALITY_IDLE_ATTEMPTS="3",
                         H3_TEST_CALLS=str(self.root / "calls"))
@@ -135,9 +146,14 @@ echo 'periodic luma drops: none'
         self.assertTrue(stream["extra"]["preencode_mp4"])
         self.assertIn("move very slowly", slow["prompt"])
         self.assertIn("without strong moving cloud shadows", long["prompt"])
+        report = (self.results / "quality16-960-stream/luma-flicker.txt").read_text()
+        self.assertIn("for 2 successive 17-frame periods", report)
+        self.assertNotIn("periodic luma drops", (self.results / "quality16-960-stream/metrics.txt").read_text())
 
     def test_300_skipped_when_quality_speed_memory_or_timeouts_fail(self):
-        for override in ({"H3_TEST_CUT": "1"}, {"H3_TEST_PHASE": "1000"}, {"H3_TEST_MIN_MEM": "5000"}):
+        for override in ({"H3_TEST_CUT": "1"}, {"H3_TEST_PHASE": "1000"}, {"H3_TEST_MIN_MEM": "5000"},
+                         {"H3_TEST_FLICKER": "1"}, {"H3_TEST_FLICKER_FAIL": "1"},
+                         {"H3_QUALITY_FLICKER": "/nonexistent/detector.py"}):
             with self.subTest(override=override):
                 with tempfile.TemporaryDirectory() as nested:
                     # Use a new fixture per scenario to keep the no-overwrite check meaningful.

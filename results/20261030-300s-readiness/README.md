@@ -45,7 +45,7 @@ test, not an end-to-end 300 s render.
 ## Deferred follow-up on the pair
 
 [`queue-quality.sh`](queue-quality.sh) is the exact script running on Spark_06 as
-`~/h3-tp2-results/queue-quality-20261030.sh` (SHA-256 `8abffafb7d2a7b0d1d77cd4bc7a334a96b6152f58cc451158607264565fd2f8a`,
+`~/h3-tp2-results/queue-quality-20261030-v2.sh` (SHA-256 `9ad3210fe3e0c70bccafc477d17d500c618042faba9a36ee72b0ddae49845168`,
 process recorded in the workspace `SETUP.md`). Its fake-host tests cover failed guards, predecessor verification,
 no-overwrite, stopping on failure, and the conditional 300 s decision. The queue waits for the
 earlier 60 s chain to finish **with a verified MP4**. It verifies both services and memory guards, API request gauges,
@@ -63,6 +63,14 @@ executor/wave limit, the queue attempts an **experimental** 300 s 960x576 chunke
 shadows can look wrong, and the guard does not predict all memory peaks or guarantee completion. It does not create
 restart checkpoints. All outputs need visual review, especially the final minute and motion of figures. Quality
 metrics are diagnostic, not an automatic promotion criterion.
+
+The first queued version had a guard bug: the live `0ed86ba` `clip-metrics.sh` does not produce the newer periodic
+luma report, so its 300 s test would always have been skipped. Before the quality queue started any request, the
+waiting process was replaced by v2. That version runs the separately staged, SHA-256-pinned `luma_flicker.py` on
+the 960 control with `--minimum 2`, records `luma-flicker.txt` and permits the attempt only on a confirmed clean
+report. Missing, modified or failed detector means skip, not pass. Fake-host tests exercise the actual detector with
+clean frames, two repeated drops, a failed decoder and a missing detector; the other limits still apply. A clean
+global screen does not prove that regional flicker or cloud shadows look right.
 
 ## Staged prompt fix and deferred deployment
 

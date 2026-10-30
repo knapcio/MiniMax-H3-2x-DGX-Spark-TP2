@@ -8,6 +8,8 @@ results=${H3_QUALITY_RESULTS:-"$HOME/h3-tp2-results"}
 bench=${H3_QUALITY_BENCH:-"$HOME/h3-tp2/scripts/bench-matrix.sh"}
 metrics_script=${H3_QUALITY_METRICS:-"$HOME/h3-tp2/scripts/clip-metrics.sh"}
 metrics_python=${H3_QUALITY_PYTHON:-"$HOME/h3-long/.venv/bin/python"}
+flicker_script=${H3_QUALITY_FLICKER:-"$results/luma-flicker-20261030.py"}
+flicker_sha=15f6267530a8e6051a2f5d27400798adc99d0fe8fe1f115cfd9319d2934c5a63
 worker=${H3_QUALITY_WORKER:-10.100.96.5}
 sleep_s=${H3_QUALITY_SLEEP_S:-60}
 idle_sleep_s=${H3_QUALITY_IDLE_SLEEP_S:-10}
@@ -132,8 +134,16 @@ run_case quality16-960-stream 16 960 576 277 "$combined" "$stream" 7500
 # under the live 8 h executor/wave limits with a 35% margin + 30 min decode.
 case960=quality16-960-stream
 tag960=d16_960x576_s20_seed1101_fl2va
+# The live 0ed86ba clip-metrics.sh predates the luma detector. Run a pinned
+# standalone copy explicitly; never infer a clean result from an absent line.
+if [[ ! -f "$flicker_script" ]] || \
+   [[ "$(sha256sum "$flicker_script" | awk '{print $1}')" != "$flicker_sha" ]] || \
+   ! timeout --signal=TERM --kill-after=30s 3600 "$metrics_python" "$flicker_script" \
+       "$case960/$tag960.mp4" --minimum 2 > "$case960/luma-flicker.txt" 2>&1; then
+  mark 'H3-AUTO-SKIP-300 standalone flicker detector unavailable or failed'; exit 0
+fi
 if ! grep -Fqx 'cuts (scene score > 0.1): none' "$case960/metrics.txt" || \
-   ! grep -Fq 'periodic luma drops: none' "$case960/metrics.txt" || \
+   ! grep -q '^periodic luma drops: none .* for 2 successive 17-frame periods ' "$case960/luma-flicker.txt" || \
    [ ! -s "$case960/$tag960.mem-head.csv" ] || [ ! -s "$case960/$tag960.mem-worker.csv" ]; then
   mark 'H3-AUTO-SKIP-300 960 control quality or memory samples did not pass'; exit 0
 fi

@@ -145,6 +145,11 @@ timeout-recovery path it runs before the 60 s retry. No result is available yet.
 
 ## The 60 s render runs at 120 s/step instead of 86-88 (`koninck60-fl2va`, 14:38-, investigation in progress)
 
+The first post-render 5 s T2VA calibration on the same boot finished at 18:38: 1344x768 ran at 21.10–21.12 s/step,
+versus the earlier short-request reference of 23.2 s/step; two 960x576 warmups were 8.51–8.56 s/step versus 8.65.
+These short shapes were not slow. They do not prove why the 277-frame FL2VA windows slowed: the tasks, frame counts
+and conditioning differ. A matched 16 s continuation control (`calib-safe-l16`) began at 18:38 to investigate.
+
 Window 1 (277 frames, the same shape as the 30 s windows of 11:23 and 11:52 at 88.4 / 87.0 s/step) took 122.7 s/step,
 window 2 120.0 s/step, every step within 0.4 s of the next: a steady 36-40 % slowdown on these samples. Stable
 step times alone do not rule out a constant source of interference.
