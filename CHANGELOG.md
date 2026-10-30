@@ -278,3 +278,7 @@
   painting stays the painting; 5016 s at 1344x768.
 - 2026-10-30 14:35: 5 s pinned history on the painting (window 345 / overlap 124): seams as clean as with 0.9 s,
   2.6x the time; default overlap stays 22. Memory compacted again before the 60 s painting render.
+- 2026-10-30 16:25: owner's eye on the painting clips: 16 s and 30 s good; the 5 s history clip flickers a little at
+  15-22 s = the look-lock pulling window 2 toward the WHOLE-window-1 mean after a first window that brightened 115 ->
+  135 (light per second 135 -> 125 in four seconds). New option `H3_TP2_CONT_LOCK_REF=tail` (reference = the last
+  quarter of window 1; default `window` unchanged until measured).

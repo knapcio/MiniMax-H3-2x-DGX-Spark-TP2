@@ -61,7 +61,7 @@ def seam_ratio(video: torch.Tensor, overlap_v: int) -> tuple[float, float, float
 
 def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, retries: int = 0, max_ratio: float = 2.0,
                  lock: str = "", lock_strength: float = 1.0, lock_ramp: float = 1.0, lock_audio: bool = False,
-                 lock_std: float | None = None):  # noqa: ANN001
+                 lock_std: float | None = None, lock_ref: str = "window"):  # noqa: ANN001
     """Return a ``diffuse`` replacement for one continuation request (state: the previous window's video latents).
 
     With ``retries`` > 0 a window whose latent seam ratio exceeds ``max_ratio`` is sampled again with another seed
@@ -126,9 +126,9 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
             except Exception as e:  # noqa: BLE001  (diagnostics never break a render)
                 logger.warning("h3_tp2 hand-over diagnostics skipped (%s)", e)
         elif state["ref"] is None and isinstance(video, torch.Tensor) and video.dim() == 5:
-            state["ref"] = _stats(video)
+            state["ref"] = _stats(ref_slice(video, lock_ref, dim=2))
             if isinstance(audio, torch.Tensor) and audio.dim() == 3:
-                state["ref_audio"] = audio_stats(audio)
+                state["ref_audio"] = audio_stats(ref_slice(audio, lock_ref, dim=2))
         state["prev"] = video
         return video, audio
 
@@ -155,6 +155,18 @@ def crossfade_tail(video: torch.Tensor, new_window: torch.Tensor, overlap_v: int
     m_b, s_b = blended.mean(dim=dims, keepdim=True), blended.std(dim=dims, keepdim=True)
     blended = (blended - m_b) * (s_target / s_b.clamp_min(1e-6)) + m_target
     return torch.cat((video[:, :, :-overlap_v], blended.to(video.dtype), new_window[:, :, overlap_v:]), dim=2)
+
+
+def ref_slice(x: torch.Tensor, mode: str, *, dim: int) -> torch.Tensor:
+    """The frames of the first window that define the look-lock reference.  ``window``: all of them (the first
+    behaviour).  ``tail``: the last quarter (at least one frame): a first window that drifts (the painting brightened
+    115 -> 135 luma over 345 frames on 2026-10-30) has a whole-window mean well below the tail every later window is
+    pinned to, and the lock then pulled the free frames down by ~10 luma right after the hand-over (owner's eye:
+    a flicker at 15-22 s); the tail is the look the clip actually hands over."""
+    if mode != "tail":
+        return x
+    n = x.shape[dim]
+    return x.narrow(dim, n - max(1, n // 4), max(1, n // 4))
 
 
 def lock_to_reference(ref_stats: tuple[torch.Tensor, torch.Tensor], new_window: torch.Tensor, overlap_v: int,

@@ -32,6 +32,16 @@ hand-over was already invisible with 0.9 s of history, so the extra history buys
 2.6x; the default stays 22 frames. (On a moving camera the longer history can only help what was in the frame within
 those 5 s.)
 
+Owner's eye (16:20): the default 16 s and 30 s clips are good ("all good"); in this 5 s history clip the picture
+flickered a little between 15 and 22 s. The metric had it: light per second 135 135 132 128 129 125 129 129 right
+after the hand-over at 14.4 s, a 10-luma drop in four seconds and a wobble, where the default 30 s clip moves 124 ->
+117 -> 129 over the same stretch. Cause, read from the code: the look-lock's reference is the per-channel mean/std of
+the WHOLE first window; the painting brightens through window 1 (115 -> 135 here, 345 frames), so the reference mean
+sits ~8 luma below the tail that window 2 is pinned to, and the ramped lock pulls the free frames down over its 55
+frames. The longer the first window drifts, the larger the pull-back. Candidate (not measured yet, fleet busy):
+reference = the tail of window 1 (`H3_TP2_CONT_LOCK_REF=tail`, the last quarter of its frames), so the lock holds the
+look the clip actually hands over instead of the window's average; A/B on the 30 s default after the calibration.
+
 ## The 60 s render runs at 120 s/step instead of 86-88 (`koninck60-fl2va`, 14:38-, investigation in progress)
 
 Window 1 (277 frames, the same shape as the 30 s windows of 11:23 and 11:52 at 88.4 / 87.0 s/step) took 122.7 s/step,
