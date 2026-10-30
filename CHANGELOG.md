@@ -240,3 +240,5 @@
   denoising loop; stock pair pending.
 - 2026-10-30 01:35: stock CUTLASS pair at 1344x768: identical latents and frames to the two-pass GEMM (and 22-40 %
   slower). The rare per-request variation at 1344 is in the shared denoising loop, not in our kernels.
+- 2026-10-30 02:35: NVlabs gb10_kernel calibration on one Spark (lossless tier, T2VA): 15.2 s per DiT eval at 960x576
+  and 41.6 s at 1344x768 (requests 333 / 863 s, decode 37 / 69 s, peak 74-75 GB). Pair comparison renders queued.
