@@ -286,3 +286,6 @@
 - 2026-10-30 16:34: per-frame check found 13 periodic luma drops in the 5 s-history clip, frames 357..561, every
   17 frames, median -6.10 YAVG; none in the default 16/30 s clips at the same threshold. This matches the VAE's
   17-frame chunk geometry but does not establish causation. `scripts/luma_flicker.py` detects this pattern.
+- 2026-10-30 16:48: experimental brightness-only repair of the saved history5s clip (separate file; no runtime
+  change): 42/736 decoded frames altered, chroma and copied audio identical, no newly clipped luma at 255, original
+  dip steps -2.22..-6.21 -> -0.02..-0.22 YAVG; no remaining 17-frame run >=2 YAVG. Playback review pending.

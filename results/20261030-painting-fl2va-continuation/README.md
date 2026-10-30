@@ -47,6 +47,17 @@ for both video and audio, but is unmeasured. A matched A/B against the 345-frame
 17-frame drops, audio, and the owner's eye; separate decode-only tests would help distinguish the decoder from the
 latents. Default overlap and lock reference remain unchanged.
 
+### Experimental repair of the existing 5 s-history clip (not a model fix)
+
+`experimental-deflicker.py` makes a separate, explicitly altered copy: it detects the repeated drops and lifts luma
+over the affected frames toward a short interpolation between neighboring frames. On this sample it changes 42 of 736
+decoded frames, all inside the affected interval; their chroma bytes are identical, no luma pixels newly clip at 255,
+and all other decoded video frames and the copied AAC packets are byte-identical. The video was encoded losslessly
+after the brightness edits; the edits themselves change the picture. At the 13 original dip frames, the luma step
+changes from -2.22..-6.21 YAVG to -0.02..-0.22, and the 17-frame detector finds no remaining run above 2 YAVG.
+Full decode succeeds. This is a one-clip experiment, not a default or proof of the decoder cause; owner playback review
+is pending. Local copy: `~/Downloads/h3-prod-smoke/d30_koninck_history5s_deflicker_EXPERIMENT.mp4`.
+
 ## The 60 s render runs at 120 s/step instead of 86-88 (`koninck60-fl2va`, 14:38-, investigation in progress)
 
 Window 1 (277 frames, the same shape as the 30 s windows of 11:23 and 11:52 at 88.4 / 87.0 s/step) took 122.7 s/step,
