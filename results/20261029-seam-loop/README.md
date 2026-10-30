@@ -138,3 +138,26 @@ window (light 65 at 22 s). A ramp fraction (`H3_TP2_CONT_LOCK_RAMP`, full streng
 frames, then held; 0.25 = about 2 s) is the next setting. The calmed motion in window 3 is the subject-free
 later-window prompt letting the scene settle; with the pinned prefix the original wording (the prompt repeated with
 "the same continuous shot goes on") may no longer duplicate the subject, to be tested at 60 s.
+
+## 60 s, pinned prefix without the guide block, seam check, ramped look-lock (`lockr60-edit2`, 04:26-05:30, compacted boot)
+
+3857 s (edit=2 saves a window's worth over edit=1's 4319 s), peak 65.7 GB, seam ratios 0.84 / 0.87 / 0.88 / 0.89 / 1.12
+(no retry), no cut.
+
+| | 60 s without lock (`edit60-guide`) | 60 s ramped lock (`lockr60-edit2`) |
+|---|---|---|
+| light per second | 47 .. 88, rising all the way | 46 .. 66 as a sawtooth per window, ends at 54 |
+| detail per second | 70 .. 1084 | 70 .. 462 |
+| motion per second | 7 .. 17 (shimmer) | 5 .. 10, the last 5 s calm (2-3) |
+| seam luma steps | +0.7 .. +1.6 | +0.8 .. +1.2 |
+| audio per 10 s | -51.5 / -52.0 / -46.5 | -51.3 / -50.7 / -40.9 / **-28.6** (the last 20 s loud) |
+
+The look holds over the minute (`lockr60-sheet.png`), the seams are continuous, the grain stays in the first clip's
+range. Two open points: the sawtooth (each window drifts up for ~6 s before the ramp pulls it back: a faster ramp,
+`H3_TP2_CONT_LOCK_RAMP=0.25`, is in the next 60 s), and the audio level climbing 23 dB over the last two windows,
+which the video lock does not touch (the audio rows are pinned at the hand-over only); per-5 s levels below.
+
+Audio mean level per 5 s (dB): without lock -51.6 -51.4 -52.1 -52.7 -51.8 -52.3 -50.3 -50.0 -46.7 -46.4 -39.6 -36.8;
+with the video lock -51.4 -51.2 -51.8 -52.5 -50.7 -50.7 -47.3 -47.5 -39.8 -42.4 -29.2 -28.1. The generated ambience
+drifts louder from the fourth window on in both; the audio latents get the same ramped lock to the first window
+(`H3_TP2_CONT_LOCK_AUDIO=1`, 2026-10-30 05:40) in the next 60 s render.

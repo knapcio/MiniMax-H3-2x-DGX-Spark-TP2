@@ -247,3 +247,7 @@
   frames (a9cfe12), rendered again at 30 s and 60 s.
 - 2026-10-30 04:25: ramped look-lock at 30 s: both seams +0.3 luma, no cut, exposure pulled back by each window's end
   (max 65 instead of 69/58); the shot calms in window 3. Ramp fraction parameter added for a faster hold.
+- 2026-10-30 05:40: 60 s with the pinned prefix (no guide), seam check and ramped look-lock: five continuous seams
+  (+0.8..+1.2), no cut, light 46-66 (was 47-88), detail max 462 (was 1084), 3857 s. The generated audio climbs 23 dB
+  in the last two windows: audio look-lock added (`H3_TP2_CONT_LOCK_AUDIO=1`), in the next 60 s together with the
+  0.25 ramp and the default later-window wording.
