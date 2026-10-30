@@ -201,6 +201,11 @@ arguments, all object state, tensor shape metadata or the model/backend state. T
 but does not prove the complete requests or runtime states identical, and the different output does not by itself
 identify the cause of the slowdown.
 
+The earlier 10:14 16 s render also has the same first-step tensor digest and another first-window latent digest
+(`89163e97`). Compared with the newly verified 16 s control, all 396 decoded frames have mean SSIM 0.966 (Y 0.954),
+and a still at 15 s has a similar locked composition. That is neither bitwise reproducibility nor a playback-quality
+verdict; details and hash limitations are in `sameboot-l16-comparison.txt`.
+
 Window 1 (277 frames, the same shape as the 30 s windows of 11:23 and 11:52 at 88.4 / 87.0 s/step) took 122.7 s/step,
 window 2 120.0 s/step, every step within 0.4 s of the next: a steady 36-40 % slowdown on these samples. Stable
 step times alone do not rule out a constant source of interference.

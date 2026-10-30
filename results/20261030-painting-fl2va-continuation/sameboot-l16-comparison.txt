@@ -1,0 +1,14 @@
+2026-10-30 19:20 Europe/Warsaw; 1344x768, 24 fps, 20 steps, seed 1101, same painting and prompt.
+
+The 10:14 original 16 s painting render and 18:38 calib-safe-l16 both have 396 decoded frames.
+Their first prompt, media and step-0 tensor digest prefixes match: 583119c1, 2a5ba12d, 9e7843a1.
+Their first-window output-latent digest prefixes differ: 89163e97 vs 1aadfdbe. The intermediate
+60 s render has the same first input tensor digests and a third output-latent prefix, 56fb4303.
+These hashes omit non-tensor arguments, tensor shape metadata and runtime/model state; the inputs
+cannot be treated as completely proven identical from the digest alone.
+
+Decoded-video ffmpeg SSIM over all 396 frames (original 16 s vs calib-safe-l16):
+Y 0.953617, U 0.988935, V 0.993122, all 0.966087. This is an image similarity summary, not a
+temporal-quality verdict. At a sampled frame at 15 s the locked composition appears similar.
+The comparison clip was downloaded into diagnostics after remote/local SHA-256 verification:
+55a50fb4c5d456068e525f5f136c3876badc030b374b5b35b14dba802d41d585.
