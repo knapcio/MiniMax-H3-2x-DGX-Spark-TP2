@@ -29,7 +29,8 @@ class VaeTraceQueueTests(unittest.TestCase):
         (self.results / "koninck.png").write_bytes(b"painting")
         self.output_case("patch-smoke5", "d5_960x576_s10_seed0")
         self.output_case("patch-duration16", "d16_1344x768_s20_seed1101_fl2va")
-        (self.results / "gen.log").write_text("H3-AUTO-PATCH-DONE fc14580 2026-10-31 09:00 CET\n")
+        (self.results / "gen.log").write_text("H3-AUTO-PATCH-DONE fc14580 2026-10-31 09:00 CET\n"
+                                               "H3-AUTO-LONG300-SKIPPED prior success 2026-10-31 09:01 CET\n")
         self.command("flock", "exit 0")
         self.command("python3", '''
 if [ "$1" = "$H3_TRACE_TXN" ]; then [ "${H3_TEST_BAD_TXN:-0}" != 1 ]; exit $?; fi
@@ -151,6 +152,14 @@ printf '%s\\n' "${EXTRA_JSON:-}" > "$OUT/extra.json"
         self.assertNotEqual(self.run_queue().returncode, 0)
         self.assertNotIn("stop h3-tp2-head.service", self.systemctl())
 
+    def test_long300_must_finish_and_holds_propagate(self):
+        (self.results / "gen.log").write_text("H3-AUTO-PATCH-DONE fc14580 2026-10-31 09:00 CET\n")
+        self.assertNotEqual(self.run_queue().returncode, 0)
+        self.assertNotIn("stop h3-tp2-head.service", self.systemctl())
+        (self.results / "gen.log").write_text("H3-AUTO-HOLD long300 phase=healthy rc=1\n")
+        self.assertNotEqual(self.run_queue().returncode, 0)
+        self.assertNotIn("stop h3-tp2-head.service", self.systemctl())
+
     def test_busy_guards_jobs_and_bad_remote_all_prevent_stop(self):
         for override in ({"H3_TEST_GPU": "40"}, {"H3_TEST_GUARD": "bad"}, {"H3_TEST_WORKER": "bad"},
                          {"H3_TEST_JOBS": "1"}, {"H3_TEST_REMOTE_BAD": "1"}, {"H3_TEST_REMOTE_HASH_BAD": "1"}):
@@ -234,7 +243,7 @@ printf '%s\\n' "${EXTRA_JSON:-}" > "$OUT/extra.json"
         self.assertIn("H3-AUTO-HOLD vae-trace", (self.results / "gen.log").read_text())
 
     def test_changed_dropin_leaves_active_head_untouched(self):
-        result = self.run_queue(H3_TEST_FAIL_CASE="trace-smoke5", H3_TEST_CHANGE_DROPIN="1")
+        result = self.run_queue(H3_TEST_FAIL_CASE="trace-smoke5", H3_TEST_CHANGE_DROPIN="1", PYTHONOPTIMIZE="1")
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(self.state.read_text(), "active")
         self.assertEqual(self.dropin.read_text(), "foreign\n")

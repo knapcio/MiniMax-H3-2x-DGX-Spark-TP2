@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Deferred, scoped diagnostic only. Wait for the prompt patch, temporarily turn
+# Deferred, scoped diagnostic only. Wait for the prompt patch and the long-300
+# decision, temporarily turn
 # on its VAE blend trace for a smoke and the reported 30 s history case, then
 # restore the normal head. Never touch the model or the persistent env file.
 set -Eeuo pipefail
@@ -103,7 +104,8 @@ from pathlib import Path
 import sys
 env = dict(x.split(b'=', 1) for x in (Path(sys.argv[1]) / sys.argv[2] / 'environ').read_bytes().split(b'\0') if b'=' in x)
 value = env.get(b'H3_TP2_VAE_BLEND_TRACE', b'0')
-assert (value == b'1') == (sys.argv[3] == 'on'), 'unexpected VAE trace environment'
+if (value == b'1') != (sys.argv[3] == 'on'):
+    raise SystemExit('unexpected VAE trace environment')
 PY
 }
 check_own_dropin() {
@@ -111,7 +113,8 @@ check_own_dropin() {
 import sys
 from pathlib import Path
 p = Path(sys.argv[1])
-assert not p.is_symlink() and p.read_bytes() == b'[Service]\nEnvironment=H3_TP2_VAE_BLEND_TRACE=1\n', 'trace drop-in changed'
+if p.is_symlink() or p.read_bytes() != b'[Service]\nEnvironment=H3_TP2_VAE_BLEND_TRACE=1\n':
+    raise SystemExit('trace drop-in changed')
 PY
 }
 remove_own_dropin() {
@@ -119,7 +122,8 @@ remove_own_dropin() {
 import os, sys
 from pathlib import Path
 p = Path(sys.argv[1])
-assert not p.is_symlink() and p.read_bytes() == b'[Service]\nEnvironment=H3_TP2_VAE_BLEND_TRACE=1\n', 'trace drop-in changed'
+if p.is_symlink() or p.read_bytes() != b'[Service]\nEnvironment=H3_TP2_VAE_BLEND_TRACE=1\n':
+    raise SystemExit('trace drop-in changed')
 os.unlink(p)
 PY
 }
@@ -166,16 +170,18 @@ trap 'exit 130' INT
 
 gate=0
 for ((i=0; i<wait_attempts; i++)); do
-  if grep -qE '^H3-AUTO-HOLD (quality-20261030|prompt-patch-fc14580) ' gen.log 2>/dev/null; then
+  if grep -qE '^H3-AUTO-HOLD (quality-20261030|prompt-patch-fc14580|long300) ' gen.log 2>/dev/null; then
     echo 'predecessor held; no trace'; exit 1
   fi
   if grep -q '^H3-AUTO-PATCH-DONE fc14580 ' gen.log 2>/dev/null && \
+     grep -qE '^H3-AUTO-LONG300-(DONE|SKIPPED) ' gen.log 2>/dev/null && \
      valid_case patch-smoke5 d5_960x576_s10_seed0 && \
      valid_case patch-duration16 d16_1344x768_s20_seed1101_fl2va && \
-     flock -n "$results/prompt-patch-fc14580.lock" true; then gate=1; break; fi
+     flock -n "$results/prompt-patch-fc14580.lock" true && \
+     flock -n "$results/long300-20261030.lock" true; then gate=1; break; fi
   sleep "$wait_s"
 done
-((gate)) || { echo 'patch did not complete with verified smokes'; exit 1; }
+((gate)) || { echo 'patch or long300 predecessor did not finish'; exit 1; }
 
 # Check deployed source, detector, outputs and config before even stopping the head.
 for path in "$txn" "$live" "$stage" "$backup"; do

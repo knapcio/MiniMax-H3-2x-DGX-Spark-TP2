@@ -95,11 +95,33 @@ leaves the service untouched on HOLD. The serving tree's `.synced-rev` remains `
 this is a five-file patch, not a full-tree sync. The deployment is **queued, not yet performed or GPU-qualified**.
 The idleness checks cannot reserve the API against an unrelated client arriving between the final check and stop.
 
+## Deferred 16-hour fallback for a 300 s test
+
+[`queue-long300.sh`](queue-long300.sh) is waiting as `queue-long300-20261030.sh` on Spark_06 (SHA-256
+`300850c68ad02f4e792ac64cf059b022672406713e85b30ae41a9b307e811e37`). If the first 300 s experiment succeeds,
+it does nothing. If that experiment is skipped for quality, memory or a missing detector, it also does nothing.
+Only when it was skipped for insufficient time does the fallback recheck the verified 5/16 s streaming controls,
+the 960x576 control's exact prompt/settings, no hard cuts, no two successive large global luma drops and the memory
+traces. It requires `29 * first-window time * 1.35 + 1800 s` to fit within 95% of a 16-hour limit. This is an
+estimate, not a guarantee against slowdown, drift or memory exhaustion.
+
+After the prompt patch succeeds and both nodes are verified idle with an empty async job store, the fallback uses
+[`timeout_env_txn.py`](timeout_env_txn.py) to change only four numeric timeouts from 8 h to 16 h plus staggered
+API/client margins. It restarts the head, verifies the effective limits and tries the 960x576 300 s chunked request.
+The transaction metadata contains only timeouts and environment-file hashes, not the other configuration contents;
+it refuses unknown changes and can reconstruct the original file byte-for-byte. On render or startup failure the
+old timeouts are restored only when safely possible; on an uncertain or busy head it holds without stopping it.
+After a verified 300 s render and diagnostic reports, it retains the 16 h timeouts for subsequent long requests.
+The 12 fake-host queue tests and 6 transaction tests cover quality/time gates, no-overwrite, busy jobs, rollback,
+changed configuration/helper and nonquiescent startup. The actual 300 s test is still conditional, has no restart
+checkpoint, and neither a completed file nor a clean global screen proves the long-term image looks good.
+
 ## Deferred VAE diagnostic
 
-[`queue-vae-trace.sh`](queue-vae-trace.sh) is waiting on Spark_06 as `queue-vae-trace-20261030.sh` (SHA-256
-`8c47c49ca09a180383922c84b66b41ea4621bf6ee2bfee55447ab98966876968`). It runs only after the patch and both of
-its verified smoke clips finish and the patch lock is released. It validates the deployed files on both hosts,
+[`queue-vae-trace.sh`](queue-vae-trace.sh) is waiting on Spark_06 as `queue-vae-trace-20261030-v2.sh` (SHA-256
+`8c86b948eb62836b26b971866596fce9780ba2d471f9e2be43fd66428db6de43`). It runs only after the patch and both of
+its verified smoke clips finish, and after the 300 s fallback finishes or is skipped and both queue locks are released.
+It validates the deployed files on both hosts,
 requires an empty async-job store plus healthy, idle, sufficiently free nodes, and temporarily enables the trace via
 a runtime-only systemd drop-in. A 5 s smoke must actually emit usable blend logs before it runs the user's 30 s,
 345/124-frame history case. It saves decoded video, luma and trace reports. The sampled tile luma and approximate
@@ -109,6 +131,6 @@ On success the queue removes its own verified drop-in and restarts the normal he
 attempts the same restoration only if the head is stopped or verifiably idle and no async jobs exist; a changed
 drop-in, busy/uncertain head or failed restoration is left untouched on HOLD. The temporary systemd setting does
 not survive host reboot. An uncontrolled termination at the wrong moment can still require manual recovery, and
-no idle check can reserve the API against a new unrelated request. The 12 fake-host tests cover those guards,
+no idle check can reserve the API against a new unrelated request. The 13 fake-host tests cover those guards,
 restoration, startup failure and missing trace; they do not verify the GPU hook. The Mac collector watches for the
 verified diagnostic video and reports while it is online. The trace and diagnostic render are not new quality defaults.

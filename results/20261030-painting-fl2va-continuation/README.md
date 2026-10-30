@@ -32,6 +32,13 @@ These metrics do not settle whether the clouds, shadows and figures look natural
 60 s clip. It is at `~/Downloads/h3-prod-smoke/d60_koninck_painting_fl2va_static.mp4`; the 60.000 s copy is
 `d60_koninck_painting_EXACT60s.mp4` in the same directory.
 
+An inspection of six stills at 0, 10, 20, 30, 40 and 50 s found a separate long-term drift: the clouds progressively
+stretch into pronounced diagonal wisps and the road/foreground becomes much brighter than at the start. The locked
+composition persists, but the cloud shapes and lighting do not stay faithful to the original painting. These stills
+cannot establish whether ground shadows follow the clouds or how the motion looks in playback; the owner has not
+reviewed this clip. Reproduce the still sheet with `ffmpeg -i INPUT -vf
+'select=not(mod(n\,240)),scale=672:384,tile=3x2' -frames:v 1 SHEET.png` (24 fps).
+
 Unlike the accepted 16/30 s examples at the same global threshold, this clip has repeated 17-frame global luma drops
 at 23.38–24.79 s (three, median -2.85 YAVG) and 44.62–48.17 s (six, median -2.10). The more sensitive regional screen
 also flags longer stretches; it flags accepted controls too, so neither screen alone is a visual verdict. A separate
