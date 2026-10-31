@@ -501,6 +501,16 @@ A rank-1 file with a valid checksum but inconsistent video tail was rejected by 
 fell back, resumed synthetic AV identically to their uninterrupted counterparts and saved under a new run ID. This
 does not demonstrate actual H3 GPU/NCCL restart, reproducibility or safe production integration.
 
+`cont_checkpoint_session.py` joins those building blocks into an opt-in prototype session. Ranks agree on the
+request fingerprint and explicit output geometry/rates/encoding settings, capture cumulative AV and match state
+only after a window, and refuse an inconsistent local snapshot collectively. Restore selects the newest common
+validated state, publishes it under a new run ID and restores the match wrapper and AV tensors. Each rank must call
+the same methods in the same order, and a checkpoint failure must abort the request. A two-Spark Gloo/CPU stand-in
+rejected different seeds and output settings, rejected a rank-local invalid tail, recovered the prior common window,
+matched uninterrupted synthetic AV and saved/restored the next window under fresh IDs. These tests do not invoke the
+H3 serving loop, real model weights, GPU/NCCL or an actual process restart; complete deployment identity, memory
+headroom, cancellation and durable job semantics remain unresolved. The current render is still non-resumable.
+
 ## Window-size planning from existing 960x544 samples (2026-10-31)
 
 `scripts/estimate_continuation.py` reproduces the deployed 17n+5 frame alignment and window plan. For a 300 s request

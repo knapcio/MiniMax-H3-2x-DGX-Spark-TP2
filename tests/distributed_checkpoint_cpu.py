@@ -50,6 +50,7 @@ def main():
     parser.add_argument('--package-root', type=Path, help='also test the staged checkpoint coordinator')
     parser.add_argument('--match-module', type=Path, help='also test continuation match-state restoration')
     parser.add_argument('--state-module', type=Path, help='also validate H3-shaped continuation state')
+    parser.add_argument('--session', action='store_true', help='also exercise the staged checkpoint session')
     parser.add_argument('--crash-test', action='store_true', help='terminate rank 1 during a CPU collective')
     args = parser.parse_args()
     if torch.cuda.is_available() or not dist.is_gloo_available():
@@ -69,8 +70,13 @@ def main():
         raise ValueError('match-state test requires the staged coordinator package')
     if args.state_module is not None and args.match_module is None:
         raise ValueError('shape test requires match-state restoration')
+    if args.session and args.state_module is None:
+        raise ValueError('session test requires the state-shape test')
     match = load_checkpoint(args.match_module) if args.match_module is not None else None
     state_check = load_checkpoint(args.state_module) if args.state_module is not None else None
+    session_module = None
+    if args.session:
+        from h3_tp2 import cont_checkpoint_session as session_module
     timeout = timedelta(seconds=45)
     store = dist.TCPStore(args.host, 0 if args.rank == 0 else args.port, 2, args.rank == 0,
                           timeout=timeout, wait_for_workers=False)
@@ -131,12 +137,15 @@ def main():
                 match_state_smoke(coordinator, match, args.rank, root)
             if state_check is not None:
                 realistic_state_smoke(coordinator, match, state_check, args.rank, root)
+            if session_module is not None:
+                session_smoke(coordinator, session_module, match, state_check, args.rank, root)
             dist.barrier()
             print(json.dumps({'host': socket.gethostname(), 'rank': args.rank, 'backend': 'gloo',
                               'common_before_corruption': 1, 'common_after_corruption': None,
                               'coordinator_checked': coordinator is not None,
                               'match_state_checked': match is not None,
                               'h3_shape_checked': state_check is not None,
+                              'session_checked': session_module is not None,
                               'cuda_available': torch.cuda.is_available()}), flush=True)
     finally:
         dist.destroy_process_group()
@@ -327,6 +336,77 @@ def realistic_state_smoke(coordinator, match, checker, rank, root):
     final = coordinator.restore_latest(root, validate=validate, **fork)
     if final is None or final[0] != 2:
         raise AssertionError('validated resumed H3-shaped checkpoint was not selected')
+
+
+def session_smoke(coordinator, sessions, match, checker, rank, root):
+    """Exercise request agreement, partial-save rollback and fresh-session restoration."""
+    options = {key: None for key in coordinator.storage.REQUEST_OPTIONS}
+    options.update({'window_frames': 107, 'overlap_frames': 22, 'seed_step': 1, 'lock_audio': True})
+    kwargs = {'seed': 1101, 'num_frames': 192, 'latent_h': 2, 'latent_w': 2,
+              'text_embeddings': torch.tensor([[1., 2.]])}
+    conditioning = [(torch.tensor([[1.]]), torch.tensor([2]))]
+    output = {'height': 32, 'width': 32, 'fps': 24, 'audio_sample_rate': 32000, 'preencode_mp4': True,
+              'preencode_batch_frames': 17, 'video_codec_options': {'preset': 'ultrafast'}, 'num_outputs': 1}
+    common = {'kwargs': kwargs, 'text_conditioning': conditioning, 'options': options,
+              'output': output, 'deployment_sha256': 'a' * 64, 'max_bytes': 1024 * 1024,
+              'channels': 2, 'audio_channels': 2, 'audio_dims': 6}
+    differing = {**common, 'kwargs': {**kwargs, 'seed': 1101 if rank == 0 else 1102}}
+    try:
+        sessions.Session.begin(root, run_id='8' * 32, **differing)
+    except coordinator.CheckpointCoordinationError:
+        pass
+    else:
+        raise AssertionError('different request fingerprints were accepted by the session')
+    differing_output = {**common, 'output': {**output, 'preencode_batch_frames': 17 if rank == 0 else 34}}
+    try:
+        sessions.Session.begin(root, run_id='a' * 32, **differing_output)
+    except coordinator.CheckpointCoordinationError:
+        pass
+    else:
+        raise AssertionError('different output settings were accepted by the session')
+    first_t, audio_first = checker.video_t(107), checker.audio_t(107)
+    overlap_t = checker.video_t(22); audio_overlap = checker.audio_t(107) - checker.audio_t(85)
+    first_v = torch.arange(2 * first_t * 2 * 2, dtype=torch.float32).reshape(1, 2, first_t, 2, 2) / 100 + rank
+    next_v = first_v + 2; next_v[:, :, :overlap_t] = first_v[:, :, -overlap_t:]
+    first_a = torch.arange(2 * 6 * audio_first, dtype=torch.float32).reshape(2, 6, audio_first) / 100 + rank
+    next_a = first_a + 2; next_a[..., :audio_overlap] = first_a[..., -audio_overlap:]
+    def wrapper(samples):
+        values = iter(samples)
+        return match.wrap_diffuse(lambda **_kw: tuple(x.clone() for x in next(values)), apply=False,
+                                  lock='first', lock_audio=True, lock_ramp=.25, max_ratio=100)
+    session = sessions.Session.begin(root, run_id='6' * 32, **common)
+    run = wrapper(((first_v, first_a), (next_v, next_a)))
+    first = run(seed=1101)
+    session.save_window(1, first[0], first[1], run)
+    args = {'seed': 1102, 'ref_blocks': [{'kind': 'latent_guide', 'latent_t': overlap_t}],
+            'audio_condition_lengths': [audio_overlap]}
+    second = run(**args)
+    total_v = torch.cat((first[0], second[0][:, :, overlap_t:]), dim=2)
+    total_a = torch.cat((first[1], second[1][..., audio_overlap:]), dim=-1)
+    bad_v = total_v.clone()
+    if rank == 1: bad_v[:, :, -1, 0, 0] += 1
+    try:
+        session.save_window(2, bad_v, total_a, run)
+    except coordinator.CheckpointCoordinationError:
+        pass
+    else:
+        raise AssertionError('invalid rank-local cumulative state was accepted')
+    fork = sessions.Session.begin(root, run_id='7' * 32, **common)
+    resumed = wrapper(((next_v, next_a),))
+    window, saved_v, saved_a = fork.restore('6' * 32, resumed, tensor_device='cpu')
+    if window != 1:
+        raise AssertionError('session did not restore the last common valid window')
+    again = resumed(**args)
+    out_v = torch.cat((saved_v, again[0][:, :, overlap_t:]), dim=2)
+    out_a = torch.cat((saved_a, again[1][..., audio_overlap:]), dim=-1)
+    if not torch.equal(total_v, out_v) or not torch.equal(total_a, out_a):
+        raise AssertionError('session recovery differs from uninterrupted synthetic AV')
+    fork.save_window(2, out_v, out_a, resumed)
+    fork2 = sessions.Session.begin(root, run_id='9' * 32, **common)
+    fresh = wrapper(())
+    final, final_v, final_a = fork2.restore('7' * 32, fresh, tensor_device='cpu')
+    if final != 2 or not torch.equal(total_v, final_v) or not torch.equal(total_a, final_a):
+        raise AssertionError('session could not recover its completed synthetic window')
 
 
 if __name__ == '__main__':
