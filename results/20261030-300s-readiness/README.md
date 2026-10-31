@@ -46,6 +46,15 @@ names are separate; the 960x576 jobs must not be resumed. The aspect controller,
 7 fake-host tests respectively; these do not establish GPU validity or visual quality. A separate Mac collector and
 duration comparator will verify and copy successful outputs while the Mac is online.
 
+After the aspect queue and its 300 s fallback finish or safely skip, the independent
+[`deploy-aspect-prompt-20261031.sh`](deploy-aspect-prompt-20261031.sh) can install the staged duration/prompt fix on
+both nodes. It requires verified 16/60 s outputs, released queue locks, matching staged/live hashes, healthy idle
+nodes, no asynchronous jobs and the expected 8 h or verified 16 h server limits. It then restarts the head and runs
+two smokes, including a real 16 s request where `target.duration_seconds=16` must take precedence over
+`duration_seconds=30`. Failure handling restores files only in a safely stopped or idle state; an uncertain or
+active head is left on HOLD. Sixteen fake-host tests cover the gate, both timeout configurations, busy jobs,
+nonquiescent service and rollback. The queue is waiting; the patch and GPU precedence test are not yet complete.
+
 ## 2026-10-31: resume after the owner's stop
 
 The owner asked to stop the experiments on October 30 and to continue on October 31. The stopped queues and their
