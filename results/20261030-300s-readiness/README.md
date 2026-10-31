@@ -556,3 +556,19 @@ an incoming request. Its JIT cache is isolated and compilation limited to two jo
 configuration, numeric error accounting, the predecessor gate and child cleanup; node snapshots and busy detection
 were checked on the live pair. As of 23:05 the watcher was waiting, so there is no GPU result or speedup claim.
 Synthetic kernel timing does not establish whole-render speed or visual/audio quality, and no serving default changes.
+
+## Faster exact-duration export (2026-10-31)
+
+The model aligns frame counts to its internal grid: the native 15 s and 60 s outputs had 362 and 1,450 frames
+respectively. `scripts/exact_duration.py` now first attempts to stream-copy H.264 with no B-frames; it publishes
+the copy only after the existing frame, timing and AAC-prefix verification, and falls back to verified lossless
+video re-encoding when stream-copy fails or the input uses B-frames. The input is never overwritten. Direct 10, 15,
+30 and 60 s clips were trimmed on the Mac: every retained decoded video frame matched its source, as did the decoded
+audio prefix. The 30 s copy also retained all 720 original compressed video packets. AAC packet boundaries left
+16/24/16/0 ms audio gaps at 10/15/30/60 s respectively. A synthetic 300.5→300 s test checked 7,200 frames and
+verified the original compressed video packet prefix; failure and B-frame fallback tests also passed.
+
+For one 60 s 960x544 sample, copying took 0.12 s and its separate complete audio/video verification took 2.8 s on
+the Mac; the copy was 28.8 MB versus 80.2 MB for the earlier lossless-reencoded exact copy. These are export-only
+observations, not faster model generation. The in-flight Spark follow-up bundle is pinned to the earlier exporter;
+the Mac collector invokes the updated local exporter for future exact-length copies.

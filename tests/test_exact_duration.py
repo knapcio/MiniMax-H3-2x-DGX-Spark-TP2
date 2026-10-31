@@ -1,5 +1,6 @@
 import hashlib
 import importlib.util
+import json
 from pathlib import Path
 import subprocess
 import tempfile
@@ -11,6 +12,13 @@ SCRIPT = Path(__file__).resolve().parents[1] / "scripts/exact_duration.py"
 spec = importlib.util.spec_from_file_location("exact_duration", SCRIPT)
 exact = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(exact)
+
+
+def video_packets(path):
+    result = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_packets",
+                             "-show_entries", "packet=data_hash", "-show_data_hash", "sha256", "-of", "json", str(path)],
+                            check=True, capture_output=True, text=True)
+    return [p['data_hash'] for p in json.loads(result.stdout)['packets']]
 
 
 class ExactDurationTests(unittest.TestCase):
@@ -47,6 +55,9 @@ class ExactDurationTests(unittest.TestCase):
         self.assertLess(gap, 0.04)
         self.assertEqual(hashlib.sha256(self.source.read_bytes()).digest(), before)
         self.assertEqual(exact.frame_hashes(self.source, frames), exact.frame_hashes(output, frames))
+        source_packets, output_packets = video_packets(self.source), video_packets(output)
+        self.assertEqual(len(output_packets), frames)
+        self.assertEqual(output_packets, source_packets[:frames])  # stream-copy, not a second encode
 
     def test_silent_video_and_fractional_frame_rounding(self):
         output = self.root / "exact-silent.mp4"
@@ -89,10 +100,34 @@ class ExactDurationTests(unittest.TestCase):
         self.assertGreaterEqual(gap, 0)
         self.assertLess(gap, 0.033)
         self.assertEqual(hashlib.sha256(source.read_bytes()).digest(), before)
+        self.assertEqual(video_packets(output), video_packets(source)[:7200])
+
+    def test_b_frames_use_lossless_fallback(self):
+        source = self.root / "bframes.mp4"
+        output = self.root / "bframes-exact.mp4"
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=64x48:rate=24:duration=2",
+                        "-c:v", "libx264", "-preset", "medium", "-bf", "2", "-pix_fmt", "yuv420p", str(source)],
+                       check=True)
+        self.assertGreater(exact.probe(source)['streams'][0]['has_b_frames'], 0)
+        frames, seconds, gap = exact.trim(source, output, "1.5")
+        self.assertEqual((frames, seconds, gap), (36, 1.5, None))
+        self.assertEqual(exact.frame_hashes(source, frames), exact.frame_hashes(output, frames))
+
+    def test_copy_failure_falls_back_to_verified_lossless_export(self):
+        output = self.root / "copy-fallback.mp4"
+        real_run = subprocess.run
+        def fail_copy(command, *args, **kwargs):
+            if '-c:v' in command and command[command.index('-c:v') + 1] == 'copy':
+                raise subprocess.CalledProcessError(1, command)
+            return real_run(command, *args, **kwargs)
+        with patch.object(exact.subprocess, 'run', side_effect=fail_copy):
+            frames, seconds, _ = exact.trim(self.source, output, "1.5")
+        self.assertEqual((frames, seconds), (36, 1.5))
+        self.assertEqual(exact.frame_hashes(self.source, frames), exact.frame_hashes(output, frames))
 
     def test_failed_frame_verification_does_not_publish_partial_output(self):
         output = self.root / "rejected.mp4"
-        with patch.object(exact, "frame_hashes", side_effect=[["source"], ["different"]]):
+        with patch.object(exact, "frame_hashes", side_effect=lambda path, _n: ["source" if path.resolve() == self.source.resolve() else "different"]):
             with self.assertRaisesRegex(ValueError, "frames changed"):
                 exact.trim(self.source, output, "1")
         self.assertFalse(output.exists())

@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Make a separate H3 MP4 ending at the nearest 24 fps frame, preserving retained frames and AAC packets."""
+"""Make an exact-duration H3 MP4, verifying retained frames and AAC packets.
+
+For H.264 without B-frames, try a fast stream copy first. If the copy cannot be
+verified, use lossless video re-encoding. Neither path modifies the source.
+"""
 import argparse
 from decimal import Decimal, InvalidOperation
 from fractions import Fraction
@@ -13,8 +17,8 @@ import tempfile
 
 def probe(path):
     proc = subprocess.run(["ffprobe", "-v", "error", "-show_entries",
-                           "stream=index,codec_type,codec_name,pix_fmt,width,height,r_frame_rate,avg_frame_rate,nb_frames,"
-                           "sample_rate,start_time,duration,sample_aspect_ratio,color_range,color_space,color_transfer,color_primaries:format=duration",
+                           "stream=index,codec_type,codec_name,has_b_frames,pix_fmt,width,height,r_frame_rate,avg_frame_rate,nb_frames,"
+                           "sample_rate,channels,channel_layout,start_time,duration,sample_aspect_ratio,color_range,color_space,color_transfer,color_primaries:format=duration",
                            "-of", "json", str(path)], check=True, capture_output=True, text=True)
     return json.loads(proc.stdout)
 
@@ -70,6 +74,51 @@ def frame_hashes(path, count):
     return hashes
 
 
+def verify_export(source, output, video, audios, packets, count, end):
+    out = probe(output)
+    out_video = [s for s in out["streams"] if s["codec_type"] == "video"]
+    out_audio = [s for s in out["streams"] if s["codec_type"] == "audio"]
+    if len(out_video) != 1 or int(out_video[0].get("nb_frames", 0)) != count or len(out_audio) != len(audios):
+        raise ValueError("output stream/frame count differs from the requested trim")
+    if (out_video[0].get("width"), out_video[0].get("height")) != (video["width"], video["height"]):
+        raise ValueError("output dimensions changed")
+    if (Fraction(out_video[0]["r_frame_rate"]) != 24 or Fraction(out_video[0]["avg_frame_rate"]) != 24
+            or abs(float(out_video[0].get("start_time", 0))) > 0.001):
+        raise ValueError("output frame rate or start time changed")
+    for key in ("pix_fmt", "sample_aspect_ratio", "color_range", "color_space", "color_transfer", "color_primaries"):
+        source_value = video.get(key)
+        if source_value not in (None, "N/A", "unknown", "unspecified") and out_video[0].get(key) != source_value:
+            raise ValueError("output video metadata changed: " + key)
+    if abs(float(out["format"]["duration"]) - float(end)) > 0.001:
+        raise ValueError("container duration is not within 1 ms of the target frame boundary")
+    if frame_hashes(source, count) != frame_hashes(output, count):
+        raise ValueError("retained decoded video frames changed")
+    audio_gap = None
+    if packets:
+        result_packets = audio_packets(output)
+        source_hashes = [p["data_hash"] for p in packets]
+        output_hashes = [p["data_hash"] for p in result_packets]
+        if source_hashes[:len(output_hashes)] != output_hashes:
+            raise ValueError("copied audio packets are not a source prefix")
+        for original, copied in zip(packets, result_packets):
+            if any(Fraction(original[key]) != Fraction(copied[key]) for key in ("pts_time", "duration_time")):
+                raise ValueError("copied audio packet timing changed")
+        if out_audio[0].get("sample_rate") != audios[0].get("sample_rate"):
+            raise ValueError("audio sample rate changed")
+        for key in ("channels", "channel_layout"):
+            if audios[0].get(key) is not None and out_audio[0].get(key) != audios[0][key]:
+                raise ValueError("audio layout changed: " + key)
+        audio_end = float(out_audio[0]["duration"])
+        if audio_end > float(end) + 0.001:
+            raise ValueError("audio extends past the target")
+        audio_gap = max(0.0, float(end) - audio_end)
+        source_end = max(Fraction(p["pts_time"]) + Fraction(p["duration_time"]) for p in packets)
+        max_packet = max(Fraction(p["duration_time"]) for p in packets)
+        if source_end >= end and audio_gap > float(max_packet) + 0.001:
+            raise ValueError("audio was truncated by more than one packet")
+    return audio_gap
+
+
 def trim(source, destination, seconds):
     source = source.expanduser().resolve(strict=True)
     destination = Path(os.path.abspath(destination.expanduser()))
@@ -101,51 +150,32 @@ def trim(source, destination, seconds):
     os.close(fd)
     temp = Path(name)
     try:
-        cmd = ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", str(source)]
+        base = ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", str(source)]
         if cutoff is not None:
-            cmd += ["-t", f"{float(cutoff):.9f}", "-i", str(source)]
-        cmd += ["-map", "0:v:0"]
+            base += ["-t", f"{float(cutoff):.9f}", "-i", str(source)]
+        base += ["-map", "0:v:0"]
         if cutoff is not None:
-            cmd += ["-map", "1:a:0", "-c:a", "copy"]
-        cmd += ["-map_metadata", "0", "-vf", f"trim=end_frame={count},setpts=PTS-STARTPTS",
-                "-fps_mode", "passthrough", "-c:v", "libx264", "-preset", "veryfast", "-crf", "0", "-pix_fmt", "yuv420p"]
+            base += ["-map", "1:a:0", "-c:a", "copy"]
+        base += ["-map_metadata", "0"]
+        if video.get("codec_name") == "h264" and video.get("has_b_frames") == 0:
+            copy = base + ["-t", f"{float(end):.9f}", "-c:v", "copy", "-movflags", "+faststart", str(temp)]
+            try:
+                subprocess.run(copy, check=True)
+                audio_gap = verify_export(source, temp, video, audios, packets, count, end)
+            except (subprocess.CalledProcessError, ValueError, KeyError, ZeroDivisionError, json.JSONDecodeError) as exc:
+                print(f"exact-duration: stream copy could not be verified ({exc}); using lossless re-encoding", file=sys.stderr)
+            else:
+                os.link(temp, destination)
+                return count, float(end), audio_gap
+        cmd = base + ["-vf", f"trim=end_frame={count},setpts=PTS-STARTPTS", "-fps_mode", "passthrough",
+                      "-c:v", "libx264", "-preset", "veryfast", "-crf", "0", "-pix_fmt", "yuv420p"]
         for key, option in (("color_range", "-color_range"), ("color_space", "-colorspace"),
                             ("color_transfer", "-color_trc"), ("color_primaries", "-color_primaries")):
             if video.get(key) and video[key] != "unknown":
                 cmd += [option, video[key]]
         cmd += ["-movflags", "+faststart", str(temp)]
         subprocess.run(cmd, check=True)
-        out = probe(temp)
-        out_video = [s for s in out["streams"] if s["codec_type"] == "video"]
-        out_audio = [s for s in out["streams"] if s["codec_type"] == "audio"]
-        if len(out_video) != 1 or int(out_video[0].get("nb_frames", 0)) != count or len(out_audio) != len(audios):
-            raise ValueError("output stream/frame count differs from the requested trim")
-        if (out_video[0].get("width"), out_video[0].get("height")) != (video["width"], video["height"]):
-            raise ValueError("output dimensions changed")
-        if abs(float(out["format"]["duration"]) - float(end)) > 0.001:
-            raise ValueError("container duration is not within 1 ms of the target frame boundary")
-        if frame_hashes(source, count) != frame_hashes(temp, count):
-            raise ValueError("retained decoded video frames changed")
-        audio_gap = None
-        if packets:
-            result_packets = audio_packets(temp)
-            source_hashes = [p["data_hash"] for p in packets]
-            output_hashes = [p["data_hash"] for p in result_packets]
-            if source_hashes[:len(output_hashes)] != output_hashes:
-                raise ValueError("copied audio packets are not a source prefix")
-            for original, copied in zip(packets, result_packets):
-                if any(Fraction(original[key]) != Fraction(copied[key]) for key in ("pts_time", "duration_time")):
-                    raise ValueError("copied audio packet timing changed")
-            if out_audio[0].get("sample_rate") != audios[0].get("sample_rate"):
-                raise ValueError("audio sample rate changed")
-            audio_end = float(out_audio[0]["duration"])
-            if audio_end > float(end) + 0.001:
-                raise ValueError("audio extends past the target")
-            audio_gap = max(0.0, float(end) - audio_end)
-            source_end = max(Fraction(p["pts_time"]) + Fraction(p["duration_time"]) for p in packets)
-            max_packet = max(Fraction(p["duration_time"]) for p in packets)
-            if source_end >= end and audio_gap > float(max_packet) + 0.001:
-                raise ValueError("audio was truncated by more than one packet")
+        audio_gap = verify_export(source, temp, video, audios, packets, count, end)
         os.link(temp, destination)  # atomic; refuses an output created by another process
         return count, float(end), audio_gap
     finally:
