@@ -122,6 +122,28 @@ failed 300 s first window; the digest does not cover all request or runtime stat
 in 584.9 s at 21:36:11, and window 2/2 started. The full control and long-run reliability remain unverified; no new
 Spark_05 Xid was logged during this control up to 21:36:34.
 
+The control subsequently completed HTTP 200 / curl 0 in 806.5 s; window denoising took 584.9 / 142.9 s, latent seam
+ratio was 0.99, and streamed decode took 77.1 s. The 362-frame native video fully decoded and its separate exact
+360-frame copy retained the original decoded frames and AAC prefix. It still has two >=2 YAVG drops at 12.04–12.75 s
+and regional periodic changes through 14.88 s. A separate regional correction changes 20 frames by at most 4 luma
+levels, preserves all chroma, timestamps and AAC packets, and removes the qualifying global drops; weaker regional
+signals remain. Across five selected transitions in at least three regions, median absolute regional mean change
+falls from 2.464 to 0.680 gray levels. This can include real motion and does not replace playback review.
+
+The same requested 15 s in direct mode took 951.5 s versus 806.5 s with continuation, 15.24% less relative to
+the direct wall time. Both used the same image hash, base prompt, resolution, seed and step count, but different
+boots/service PIDs, continuation mode, streamed decoding and server-injected per-window wording. Correction cost is
+not included. This is a useful lead, not an isolated or equal-quality speedup. The local comparison is
+`~/Downloads/h3-prod-smoke/porownanie_15s_direct_vs_okna_korekcja_20261031.mp4`, and the structured report is
+`h3-direct15-vs-cont15-recovery-20261031.json` (SHA-256
+`30c15d9c32b5d848cc22b77bc2f9d328e0388954adbabee754bc1f5c93533e1f`).
+
+After the 5 s smoke and full 15 s control, with no new worker Xid and the same head PID 973294, a distinct 300 s
+structural retry began at 21:42:04 under `~/h3-tp2-results/retry300-960x544-20261031-2140` on the head. The old
+failure output and logs remain intact. The measured slowest control window projects conservatively to 24,699 s,
+within the checked 28,800 s executor budget with margin. This is an estimate, not a successful render, and the
+known flicker still prevents treating a successful file as a quality pass.
+
 The failed 300 s first window and the earlier successful 16 s 960x544 control used the same 277-frame window and
 seed. Their rank-1 step-0 tensor-byte digests both begin `8a8189fa` (14 tensors), and the four logged FP8 GEMM
 shapes with M=21952 match. This is useful for selecting a short recovery control, but the digest does not cover all
