@@ -162,6 +162,12 @@ seven changes at frames 289..391, 17 frames apart (median 1.14–1.62 gray level
 lower-frame gray range was 27.27. These are screening signals that can include real motion; they are not a visual
 verdict or proof of a cause, and they show why a clean global screen alone is insufficient.
 
+A separate regional-deflicker copy of the exact 16 s control changed 30 of 384 luma frames by at most 5 levels,
+preserving chroma, frame times and AAC. At the detected source boundaries the six regional medians fell from
+1.18–1.64 to 0.68–0.92 gray levels; the regional screen still flags three areas. Neither the source nor this
+experimental copy has a global two-drop run, and playback review remains necessary. File:
+`~/Downloads/h3-prod-smoke/d16_koninck_original_prompt_960x544_regional_deflicker_EXPERIMENT_EXACT16s.mp4`.
+
 The automatic duration check initially stopped on exit 141 even though the expected journal line was present:
 `grep -q` closed its input early and `journalctl` received SIGPIPE under `pipefail`. The output, journal, node
 guards and idle state were independently checked; the full original event log was archived as
