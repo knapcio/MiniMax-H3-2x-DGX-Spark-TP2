@@ -70,7 +70,8 @@ def compare(root):
         'pre_overlap_frames_equal': sum(a == b for a, b in zip(baseline_frames[:255], locked_frames[:255], strict=True)),
         'overlap_frames_compared': 22,
         'overlap_frames_equal': sum(a == b for a, b in zip(baseline_frames[255:], locked_frames[255:], strict=True)),
-        'caveat': ('One set with matching head/agent service PIDs; worker-process continuity is not independently verified. '
+        'caveat': ('One ordered set with matching head/agent service PIDs; worker-process continuity and identical '
+                   'runtime state are not independently verified. '
                    'Prompt and step changes can alter motion, light and audio; '
                    'the final 22 compared frames are the continuation overlap and decode can use temporal context. '
                    'Screens do not establish visual quality. Review playback before changing defaults.'),

@@ -47,7 +47,8 @@ def compare(root):
             'diffuse_seconds_per_window':{'277':base['diffuse_seconds'],'175':small['diffuse_seconds']},
             'memory':{'277':base['memory'],'175':small['memory']},
             'quality_signals':{'277':base['quality_signals'],'175':small['quality_signals']},
-            'caveat':'One matched pair with the same service PIDs; child-worker continuity is not independently verified. '
+            'caveat':'One pair with the same service PIDs; child-worker continuity and identical runtime state are not established. '
+                     'The 10-step request runs between these two controls. '
                      'Smaller windows change temporal context and increase the number of seams; playback quality requires review.'}
 
 
