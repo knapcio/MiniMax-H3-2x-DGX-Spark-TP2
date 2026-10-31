@@ -521,3 +521,9 @@ real lighting and does not establish whether clouds and shadows align. It is
 the unretimed clip are `porownanie_tempa_30s_20proc_20261031.mp4` and
 `porownanie_chodu_30s_20proc_zblizenie_20261031.mp4`; both retain the original left clip's AAC and need playback
 review. The 1.25x-duration and optional blend modes are opt-in; nine retiming and three phase-screen tests pass.
+
+The ground diagnostic also measures spatial spread of the smoothed, signed grayscale difference from frame 0 in the
+lower region, once per second. In this pair its average standard deviation fell from 12.66 to 10.17 levels; no sampled
+pixel reached the diagnostic's signed-difference bounds. This describes less uneven change in that region, not the
+motion or geometry of shadows. Uniform changes, local changes, boundary saturation and sampling are covered by four
+tests for `scripts/ground_light_stats.py`.

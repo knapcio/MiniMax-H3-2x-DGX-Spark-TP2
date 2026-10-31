@@ -8,10 +8,24 @@ import statistics
 import subprocess
 import sys
 
-from PIL import Image, ImageStat
+from PIL import Image, ImageChops, ImageFilter, ImageStat
 
 
 WIDTH, HEIGHT = 336, 192
+
+
+def spatial_change(reference, current, *, radius=8):
+    """Spread of spatially smoothed, signed brightness change from a fixed reference."""
+    if reference.mode != 'L' or current.mode != 'L' or reference.size != current.size or radius < 0:
+        raise ValueError('expected matching grayscale images and a nonnegative blur radius')
+    ref = reference.filter(ImageFilter.GaussianBlur(radius)) if radius else reference
+    cur = current.filter(ImageFilter.GaussianBlur(radius)) if radius else current
+    difference = ImageChops.subtract(cur, ref, offset=128)
+    hist = difference.histogram()
+    stats = ImageStat.Stat(difference)
+    return {'signed_mean': stats.mean[0] - 128,
+            'spatial_std': stats.stddev[0],
+            'boundary_or_clipped_pixels': hist[0] + hist[-1]}
 
 
 def inspect(path: Path, top: float = 0.625) -> dict:
@@ -37,10 +51,16 @@ def inspect(path: Path, top: float = 0.625) -> dict:
     y = int(HEIGHT * top)
     boxes = [(0, y, WIDTH, HEIGHT)] + [(i * WIDTH // 3, y, (i + 1) * WIDTH // 3, HEIGHT) for i in range(3)]
     series = [[] for _ in boxes]
+    spatial = []
+    reference = None
     for offset in range(0, len(result.stdout), frame_bytes):
         image = Image.frombytes('L', (WIDTH, HEIGHT), result.stdout[offset:offset + frame_bytes])
         for values, box in zip(series, boxes, strict=True):
             values.append(round(ImageStat.Stat(image.crop(box)).mean[0], 2))
+        ground = image.crop(boxes[0])
+        if reference is None:
+            reference = ground
+        spatial.append(spatial_change(reference, ground))
     mean = series[0]
     return {
         'sample_seconds': list(range(count)),
@@ -50,8 +70,16 @@ def inspect(path: Path, top: float = 0.625) -> dict:
         'ground_gray_range': round(max(mean) - min(mean), 2),
         'mean_absolute_change_from_first': round(statistics.mean(abs(x - mean[0]) for x in mean), 2),
         'max_absolute_one_second_change': round(max((abs(b - a) for a, b in zip(mean, mean[1:])), default=0), 2),
+        'ground_change_spatial_std': [round(item['spatial_std'], 2) for item in spatial],
+        'mean_ground_change_spatial_std': round(statistics.mean(item['spatial_std'] for item in spatial), 2),
+        'max_ground_change_spatial_std': round(max(item['spatial_std'] for item in spatial), 2),
+        'spatial_difference_boundary_or_clipped_pixels': sum(item['boundary_or_clipped_pixels'] for item in spatial),
+        'spatial_blur_radius_at_336px_width': 8,
         'caveat': ('One grayscale mean per second in a fixed image region; changing content and shadows both affect it. '
-                   'This does not track clouds or establish shadow alignment, motion quality or absence of flicker.'),
+                   'Spatial spread is the standard deviation of smoothed brightness differences from frame 0; '
+                   'large per-pixel differences are clipped; boundary values can also be exact. '
+                   'This does not track clouds or establish shadow alignment, '
+                   'motion quality or absence of flicker.'),
     }
 
 
