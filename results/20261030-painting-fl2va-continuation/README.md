@@ -179,6 +179,11 @@ drop and measured a 0.078-level median absolute difference between its sampled b
 approximate boundary frames. That is a sanity check on this smoke, not a flicker diagnosis. The matched 16 s painting
 trace and analysis are still in progress.
 
+The first 277-frame window of that 960x544 painting trace took 590.5 s, versus 535.9 s for the earlier matched
+16 s combined-prompt control (10.2% longer); the 14-tensor step-0 digests match. The runs used different boots,
+and that digest does not cover all request or runtime state. The trace hook operates during decode, so the timing
+observation does not establish why denoising differed or how repeatable the difference is.
+
 A sweep of all 25 locally saved `h3-prod-smoke` MP4s found a second sequence meeting this specific threshold in
 `d60_seedstep_per_window.mp4`: frames 1326..1445 (55.25..60.21 s), eight drops every 17 frames, median -4.38 YAVG.
 The other 23 clips had no >=2 YAVG run lasting at least three periods. This is a global-luma screen, not proof that
