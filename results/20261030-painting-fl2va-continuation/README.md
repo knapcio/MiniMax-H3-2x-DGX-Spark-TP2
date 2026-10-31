@@ -169,7 +169,7 @@ The indices and sampled luma are approximate; the analyzer also reports explorat
 checking a repeated drop against a boundary. Selecting an offset after observing periodic changes can produce a
 chance match. It also reports the first-to-second-frame changes in the old, incoming and blended samples beside the
 encoded-frame rebound; global averages can miss regional flicker, so the comparison does not prove a cause. Four
-synthetic/unit tests pass; the 16 s painting-trace analysis is still pending.
+synthetic/unit tests pass; the 16 s painting-trace preview is described below.
 
 The 2026-10-31 5 s T2VA trace smoke emitted six temporal-blend records and completed; its decoded video differed
 from the trace-off smoke on a previous boot. Their step-0 tensor digests match (`c2f21d37…`, 14 tensors), but their
@@ -177,8 +177,22 @@ final latent digests differ (`2c63a5fc…` vs `f01d2c13…`, two tensors) before
 different decoded frames cannot isolate any effect of tracing; the tensor digests do not cover all request or runtime
 state. On the trace-on 124-frame smoke itself, the analyzer read all six records, found no qualifying global periodic
 drop and measured a 0.078-level median absolute difference between its sampled blend luma and encoded luma at the
-approximate boundary frames. That is a sanity check on this smoke, not a flicker diagnosis. The matched 16 s painting
-trace and analysis are still in progress.
+approximate boundary frames. That is a sanity check on this smoke, not a flicker diagnosis.
+
+The 960x544 painting trace completed at 16:52 on 2026-10-31. A checksum-verified preview compared all 22 recorded
+overlaps with its 396-frame encoded result. Two global drops at frames 289 and 306 (-2.23 and -3.63 YAVG) align with
+the approximate 17-frame boundaries without an offset. At frame 306, the sampled first-to-second-frame luma rises
+by 1.90 in the old overlap, 1.32 in the incoming overlap, and 1.88 after blending; the encoded rebound is 1.11.
+The checked `blend` implementation constructs a new tensor and does not mutate its inputs, so these samples do
+describe its two inputs. Similar smaller rebounds appear at later sampled boundaries. This is evidence that part of
+the boundary-shaped change is present in both decoder chunks before the blend, not proof that the blend or the VAE
+causes all visible flicker: sampled and encoded luma differ, indices are approximate, only two drops meet this global
+threshold, and real scene changes can contribute. The independent preview report is
+`~/Downloads/h3-prod-smoke/h3-vae-trace-painting-preview-20261031.json` (SHA-256
+`c7338d2d6a62fb4e30e3b92596ea2848fd100d52782bb3417d9130b0a4133293`). Its checked video SHA-256 is
+`fa4153f484132a49dac7149f8b486074d1f2bf34d7d87409befdabb4b0dd1382` and trace SHA-256 is
+`cbe8874889c85f9c714f1bcfd5c6414e6d9df252bd9acfd86ad124c7ca741f80`. The queue still needs to confirm the
+normal head has been restored before it marks the diagnostic complete and permits subsequent renders.
 
 The first 277-frame window of that 960x544 painting trace took 590.5 s, versus 535.9 s for the earlier matched
 16 s combined-prompt control (10.2% longer); the 14-tensor step-0 digests match. The runs used different boots,
