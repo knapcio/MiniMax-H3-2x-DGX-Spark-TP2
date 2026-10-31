@@ -517,6 +517,19 @@ AV equality; it does not establish real model or process-restart recovery.
 The [checkpoint integration audit](checkpoint-integration-audit-20261031.md) records the on-disk two-node hashes,
 the serving-loop boundaries and the remaining identity, cancellation and durable-job work.
 
+An additional `h3_tp2/cont_checkpoint_loop.py` is an **unwired experimental** copy of the custom continuation
+loop with explicit session save/restore points. Its CPU test extracts the actual patched loop body from `plugin.py`
+and compares synthetic input arguments and AV outputs across edit, crossfade, seed, look-lock, retry, task and
+conditioning variants. A separate 29-window synthetic 300 s plan matched the uncheckpointed patched loop; it did
+not perform a 300 s checkpoint recovery. In a three-window single-rank test, interruption after a completed save,
+resume and final-state restore matched uninterrupted synthetic AV; changing the window-seed policy was rejected.
+On both Sparks, a Gloo/CPU test injected a rank-1 save failure in window 2, recovered window 1 on both ranks and
+matched the uninterrupted synthetic AV. Different rank-local conditioning lengths and resume modes were rejected
+at coordinated preflight. All ranks must already agree on checkpoint mode and have a working common process group.
+The prototype refuses the separate upstream-only branch where both edit and crossfade are disabled. These tests use
+synthetic diffusion and a stand-in planner/packing API; they are not real H3 model, GPU/NCCL, process-restart or
+cancellation tests. Serving and the active 300 s render remain unchanged and non-resumable.
+
 ## Window-size planning from existing 960x544 samples (2026-10-31)
 
 `scripts/estimate_continuation.py` reproduces the deployed 17n+5 frame alignment and window plan. For a 300 s request

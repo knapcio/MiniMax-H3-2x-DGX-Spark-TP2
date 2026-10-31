@@ -51,6 +51,7 @@ def main():
     parser.add_argument('--match-module', type=Path, help='also test continuation match-state restoration')
     parser.add_argument('--state-module', type=Path, help='also validate H3-shaped continuation state')
     parser.add_argument('--session', action='store_true', help='also exercise the staged checkpoint session')
+    parser.add_argument('--loop-module', type=Path, help='also test the staged continuation loop against the actual patched loop')
     parser.add_argument('--crash-test', action='store_true', help='terminate rank 1 during a CPU collective')
     args = parser.parse_args()
     if torch.cuda.is_available() or not dist.is_gloo_available():
@@ -72,11 +73,19 @@ def main():
         raise ValueError('shape test requires match-state restoration')
     if args.session and args.state_module is None:
         raise ValueError('session test requires the state-shape test')
+    if args.loop_module is not None and not args.session:
+        raise ValueError('loop test requires the checkpoint session test')
     match = load_checkpoint(args.match_module) if args.match_module is not None else None
     state_check = load_checkpoint(args.state_module) if args.state_module is not None else None
     session_module = None
     if args.session:
         from h3_tp2 import cont_checkpoint_session as session_module
+    loop_test = None
+    if args.loop_module is not None:
+        spec = importlib.util.spec_from_file_location('distributed_h3_loop_test', args.loop_module)
+        loop_test = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = loop_test
+        spec.loader.exec_module(loop_test)
     timeout = timedelta(seconds=45)
     store = dist.TCPStore(args.host, 0 if args.rank == 0 else args.port, 2, args.rank == 0,
                           timeout=timeout, wait_for_workers=False)
@@ -139,6 +148,8 @@ def main():
                 realistic_state_smoke(coordinator, match, state_check, args.rank, root)
             if session_module is not None:
                 session_smoke(coordinator, session_module, match, state_check, args.rank, root)
+            if loop_test is not None:
+                loop_session_smoke(coordinator, loop_test, args.rank, root)
             dist.barrier()
             print(json.dumps({'host': socket.gethostname(), 'rank': args.rank, 'backend': 'gloo',
                               'common_before_corruption': 1, 'common_after_corruption': None,
@@ -146,6 +157,7 @@ def main():
                               'match_state_checked': match is not None,
                               'h3_shape_checked': state_check is not None,
                               'session_checked': session_module is not None,
+                              'loop_checked': loop_test is not None,
                               'cuda_available': torch.cuda.is_available()}), flush=True)
     finally:
         dist.destroy_process_group()
@@ -414,6 +426,54 @@ def session_smoke(coordinator, sessions, match, checker, rank, root):
     final, final_v, final_a = fork2.restore('7' * 32, fresh, tensor_device='cpu')
     if final != 2 or not torch.equal(total_v, final_v) or not torch.equal(total_a, final_a):
         raise AssertionError('session could not recover its completed synthetic window')
+
+
+def loop_session_smoke(coordinator, helper, rank, root):
+    """A failed rank-local save rolls the actual-shaped loop back on both ranks."""
+    opts = helper.options(); kwargs, texts = helper.request(); expected_calls = []
+    expected = helper.production_loop(opts)(helper.fake_diffuse(expected_calls), kwargs, window_frames=277,
+                                              overlap_frames=22, text_conditioning=texts)
+    output = {'height': 32, 'width': 32, 'fps': 24, 'audio_sample_rate': 32000, 'preencode_mp4': True,
+              'preencode_batch_frames': 17, 'video_codec_options': {'preset': 'ultrafast'}, 'num_outputs': 1}
+    base = {'root': root, 'output': output, 'deployment_sha256': 'a' * 64, 'max_bytes': 8 * 1024**2,
+            'channels': 2, 'audio_channels': 2, 'audio_dims': 32}
+    original_save = coordinator.storage.save
+    def fail_second(*args, **kw):
+        if rank == 1 and kw.get('window') == 2:
+            raise OSError('injected loop checkpoint failure on rank 1')
+        return original_save(*args, **kw)
+    first_calls = []
+    try:
+        coordinator.storage.save = fail_second
+        try:
+            helper.loop.run(helper.fake_diffuse(first_calls), kwargs, api=helper.api, options=opts,
+                            text_conditioning=texts, checkpoint={**base, 'run_id': '0' * 32})
+        except coordinator.CheckpointCoordinationError:
+            pass
+        else:
+            raise AssertionError('partial loop checkpoint was accepted')
+    finally:
+        coordinator.storage.save = original_save
+    if first_calls != expected_calls[:2]:
+        raise AssertionError('checkpoint failure occurred at the wrong window')
+    resumed_calls = []
+    resumed = helper.loop.run(helper.fake_diffuse(resumed_calls), kwargs, api=helper.api, options=opts,
+                              text_conditioning=texts, checkpoint={**base, 'run_id': '3' * 32,
+                                                                   'previous_run_id': '0' * 32, 'tensor_device': 'cpu'})
+    if resumed_calls != expected_calls[1:] or any(not torch.equal(a, b) for a, b in zip(expected, resumed)):
+        raise AssertionError('two-rank loop recovery differs from the uninterrupted synthetic AV')
+    for mode in ('conditioning', 'resume_mode'):
+        bad_texts = texts[:-1] if mode == 'conditioning' and rank == 1 else texts
+        config = {**base, 'run_id': '9' * 32}
+        if mode == 'resume_mode' and rank == 1:
+            config.update(previous_run_id='0' * 32, tensor_device='cpu')
+        try:
+            helper.loop.run(helper.fake_diffuse([]), kwargs, api=helper.api, options=opts,
+                            text_conditioning=bad_texts, checkpoint=config)
+        except coordinator.CheckpointCoordinationError:
+            pass
+        else:
+            raise AssertionError('rank-local ' + mode + ' mismatch did not abort preflight on both ranks')
 
 
 if __name__ == '__main__':
