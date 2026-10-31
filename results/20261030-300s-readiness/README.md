@@ -68,7 +68,8 @@ changed the clouds and measured motion more, so neither result has been promoted
 on earlier variants was that regional deflicker looked better, figures moved a little too fast, and ground cloud
 shadows looked questionable. Visual review of the new controls remains pending.
 For a closer look, `~/Downloads/h3-prod-smoke/porownanie_20_vs_10_krokow_16s.mp4` shows the two step-count samples
-side by side, and `porownanie_ruchu_postaci_16s.mp4` enlarges the road in the original and slow-figure-prompt clips.
+side by side, `porownanie_okien_277_vs_175_16s.mp4` compares the window sizes, and `porownanie_ruchu_postaci_16s.mp4`
+enlarges the road in the original and slow-figure-prompt clips.
 On sampled stills the figure's path looks similar in those two clips; the prompt alone has not established a clear
 improvement in walking speed or naturalness. Both comparisons use the left-hand clip's audio and remain review aids.
 Two separately saved exact-length excerpts of the earlier approved 16 s painting clip are also in the same Downloads

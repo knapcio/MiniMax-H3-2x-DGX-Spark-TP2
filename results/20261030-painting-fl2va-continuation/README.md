@@ -156,6 +156,15 @@ validation; the global two-drop screen found no repeated drops. The clip is
 `~/Downloads/h3-prod-smoke/d16_koninck_softlight_EXPERIMENT_EXACT16s.mp4`. Whether its ground light looks more natural
 still needs playback review; the prompt does not measure or enforce cloud-shadow alignment.
 
+On 2026-10-31 a one-sample-per-second grayscale screen over the bottom 37.5% of each exact 16 s frame found the
+original at 47.06 -> 60.90 (range 13.84), a same-prompt repeat at 47.03 -> 60.94 (range 13.91), and the soft-light
+sample at 47.10 -> 66.21 (range 19.11). Mean absolute change from the first sample was 10.54 / 10.57 / 13.58 gray
+levels respectively. Thus the soft-light wording did not keep this coarse brightness measure more constant in this
+one sample. These means include content and real motion and cannot tell whether shadows match the clouds or whether
+the result looks good. Reproduce with `scripts/ground_light_stats.py`; JSON reports and the playback comparison
+`porownanie_swiatla_16s.mp4` are in `~/Downloads/h3-prod-smoke/`. The original and soft-light sample were rendered
+at different times, so the difference is not proof of prompt causality.
+
 ### Experimental soft-ground copies (19:04)
 
 While that prompt A/B is queued, [`experimental-soft-ground.py`](experimental-soft-ground.py) makes a separate
