@@ -14,11 +14,55 @@ One decoded 1344x768 RGB uint8 copy would occupy 20.8 GiB; copies, VAE activatio
 additional. This arithmetic is not a measurement of peak memory.
 
 The vLLM-Omni stack includes an opt-in `preencode_mp4` path that emits VAE chunks to the encoder without materializing
-the whole uncompressed video. Its two-rank correctness, visual equivalence, memory and speed for this deployment
-remain unverified. The `/v1/videos` async API can outlive a client connection, but the job registry is process-local:
+the whole uncompressed video. One two-rank 16 s test is described below; memory and correctness at 300 s remain
+unverified. The `/v1/videos` async API can outlive a client connection, but the job registry is process-local:
 a head restart loses the job metadata and does not resume completed windows. The continuation loop retains accumulated
 audio/video latents in memory and does not checkpoint them. A failure near the end can therefore lose hours of work.
 Do not present a configured timeout, an async job, or frame-count arithmetic as a successful 300 s test.
+
+## 2026-10-31: resume after the owner's stop
+
+The owner asked to stop the experiments on October 30 and to continue on October 31. The stopped queues and their
+HOLD markers are historical; the resumed run uses new output names and a separate event log. Both memory guards,
+the head and agent were active, the API was idle and both GPUs were idle before the new 16 s 960x576 control started
+at 14:29 CET. That test combines instructions for slower, smaller steps, softer ground light without strong moving
+cloud shadows, and broad painted cloud shapes. It is a combined experiment, not proof of what caused a change.
+
+The 16 s `quality16-stream` request completed just before the stop, but its queue success marker was never written.
+Its HTTP 200, successful STATUS, full video/audio decode and SHA-256 were rechecked before collection: its native MP4
+is **byte-for-byte identical** to `quality16-base` (`439b8987208a0a25a344f177e948e10c28545f01bdbd6353ceb2ceece20a502c`,
+11,694,843 bytes). The baseline reported `decode 139.2 s`; the stream run reported `decode_to_mp4 141.2 s` and the
+API logged a pre-encoded response. Both window latent digests matched. Minimum available head/worker memory was
+39,597/43,935 MiB for baseline and 39,677/43,216 MiB for streaming. This establishes the streaming path for this
+one 16 s pair, not its peak memory or visual quality on a longer clip.
+
+On the same prior boot, 10 steps instead of 20 cut wall time from 2,423.3 s to 1,237.0 s (48.95%); 175-frame windows
+took 1,949.5 s (19.55% less than the baseline). Both are single experimental samples. The shorter windows also
+changed the clouds and measured motion more, so neither result has been promoted as a default. The owner's feedback
+on earlier variants was that regional deflicker looked better, figures moved a little too fast, and ground cloud
+shadows looked questionable. Visual review of the new controls remains pending.
+For a closer look, `~/Downloads/h3-prod-smoke/porownanie_20_vs_10_krokow_16s.mp4` shows the two step-count samples
+side by side, and `porownanie_ruchu_postaci_16s.mp4` enlarges the road in the original and slow-figure-prompt clips.
+On sampled stills the figure's path looks similar in those two clips; the prompt alone has not established a clear
+improvement in walking speed or naturalness. Both comparisons use the left-hand clip's audio and remain review aids.
+
+[`run-resume-control.sh`](run-resume-control.sh) started the new 16 s test after three checks of both nodes' health,
+GPU idleness, memory guards, available RAM and API gauges, plus an empty async-video job list. It never overwrites an
+output. [`queue-resume-20261031.sh`](queue-resume-20261031.sh) waits for that verified output, checks its HTTP result,
+prompt, image, shape, seed and streaming settings, and runs a matching 60 s control. It tries a 300 s 960x576 render
+only when both controls meet the existing cut, global-flicker, memory and 8 h projection guards. Both queues use
+`resume-events-20261031.log`, leaving the earlier stopped queue untouched. The 16/60/300 s tests and all motion and
+light settings are experimental; no duration is marked successful until its output is actually verified.
+
+[`queue-resume-long300-20261031.sh`](queue-resume-long300-20261031.sh) waits independently for that decision.
+If and only if the 300 s experiment was skipped for insufficient time, it rechecks both controls, the byte-identical
+earlier streaming baseline, memory, quality, job idleness and a 16 h projection. If all pass, it can extend four
+timeouts with the existing hash-checked transaction, restart the idle head, and try one 300 s experiment. It restores
+the previous limits on failure only when the head is safely idle or stopped; otherwise it holds for diagnosis. A
+completed 300 s attempt retains the 16 h limits. There is still no restart checkpoint. The resumed control,
+quality queue and fallback passed 5, 5 and 7 fake-host tests respectively; these tests do not substitute for GPU
+or long-duration validation. A Mac watcher collects successful clips after checking source/copy hashes, full media
+decode and duration; a second watcher records validated events in the workspace `SETUP.md` while the Mac is online.
 
 ## Duration-field correctness
 
@@ -44,9 +88,10 @@ test, not an end-to-end 300 s render.
 
 ## Deferred follow-up on the pair
 
-[`queue-quality.sh`](queue-quality.sh) is the exact script running on Spark_06 as
+On October 30, [`queue-quality.sh`](queue-quality.sh) was run on Spark_06 as
 `~/h3-tp2-results/queue-quality-20261030-v5.sh` (SHA-256 `36c4d6e6a6cfacd06cf5cc7d911a52f1fb0e579f3ee7bc81a441ab69d2430467`,
-process recorded in the workspace `SETUP.md`). Its fake-host tests cover failed guards, predecessor verification,
+process recorded in the workspace `SETUP.md`). The owner subsequently stopped it; it is not running now. Its
+fake-host tests cover failed guards, predecessor verification,
 no-overwrite, stopping on failure, and the conditional 300 s decision. The queue waits for the
 earlier 60 s chain to finish **with a verified MP4**. It verifies both services and memory guards, API request gauges,
 GPU idleness and available memory on both hosts before every experiment; it stops on failures and never restarts a
@@ -56,11 +101,11 @@ with only the figures told to move very slowly, and 5/16 s
 tests of the chunked MP4 path. Matched 16 s and 60 s 960x576 chunked tests combine soft light, slower figures and
 an instruction to keep the clouds' broad painted shapes, giving a longer quality and memory check before the 300 s
 decision. This combined prompt is an experiment; it does not isolate which wording caused any difference.
-`compare_speed.py` has two waiting processes on Spark_06 for the matched window-size and step-count controls. They
+`compare_speed.py` was used for the matched window-size and step-count controls. The comparators
 check that prompt, seed, image and other request fields match, and write `quality-speed-comparison-20261030.json`
 and `quality-steps-comparison-20261030.json` with wall time, per-window times, memory minima and diagnostic quality
 signals. Ten steps might be faster but may degrade the image; neither single comparison justifies changing a default.
-[`compare_length.py`](compare_length.py) also waits for the matched 960x576 16/60 s streaming controls, checks that
+[`compare_length.py`](compare_length.py) was designed for the matched 960x576 16/60 s streaming controls, checks that
 only duration differs, and reports their first 277-frame window times in `quality-length-comparison-20261030.json`.
 This is one same-boot pair with potentially different cache/runtime state, so it cannot by itself establish why the
 original 1344x768 60 s request slowed down. The comparator is staged on Spark_06 as
@@ -99,7 +144,8 @@ each node with CUDA hidden (11/11 per node). `file_txn.py` checks old and staged
 affected files, performs atomic file replacements and refuses to overwrite unexpected changes during rollback. Its
 tests cover a partial failure, bytecode-cache invalidation, damaged inputs and rollback refusal.
 
-`deploy-prompt-fc14580.sh` is queued separately on Spark_06 as `deploy-prompt-fc14580-v3.sh` after the quality chain.
+`deploy-prompt-fc14580.sh` was queued separately on Spark_06 as `deploy-prompt-fc14580-v3.sh` after the quality chain;
+it was stopped at the owner's request and is not running.
 It requires a verified 960
 control, a completed or safely skipped 300 s experiment, release of the quality queue's lock, healthy/idle services
 and memory guards on both nodes, and an empty async-video job store before stopping the head. It installs the five
@@ -109,13 +155,13 @@ window prompts. Before touching files, the queue requires systemd to report the 
 Startup failures trigger a verified rollback only if the new head is stopped or verifiably idle with an empty async
 job store; an activating or uncertain head is left untouched on HOLD. A failure after the head becomes healthy also
 leaves the service untouched on HOLD. The serving tree's `.synced-rev` remains `0ed86ba` because
-this is a five-file patch, not a full-tree sync. The deployment is **queued, not yet performed or GPU-qualified**.
+this is a five-file patch, not a full-tree sync. The deployment was stopped and is **not performed or GPU-qualified**.
 The idleness checks cannot reserve the API against an unrelated client arriving between the final check and stop.
 
 ## Deferred 16-hour fallback for a 300 s test
 
-[`queue-long300.sh`](queue-long300.sh) is waiting as `queue-long300-20261030-v3.sh` on Spark_06 (SHA-256
-`bf3a22f9e776a65b39252a74bf04702e5290a836224b3215070a4ba9a6579f6a`). If the first 300 s experiment succeeds,
+[`queue-long300.sh`](queue-long300.sh) was waiting as `queue-long300-20261030-v3.sh` on Spark_06 (SHA-256
+`bf3a22f9e776a65b39252a74bf04702e5290a836224b3215070a4ba9a6579f6a`); the owner stopped it. If the first 300 s experiment succeeds,
 it does nothing. If that experiment is skipped for quality, memory or a missing detector, it also does nothing.
 Only when it was skipped for insufficient time does the fallback recheck the verified 5/16/60 s streaming controls,
 the 16/60 s 960x576 controls' exact prompt/settings, no hard cuts, no two successive large global luma drops in the
@@ -136,8 +182,8 @@ checkpoint, and neither a completed file nor a clean global screen proves the lo
 
 ## Deferred VAE diagnostic
 
-[`queue-vae-trace.sh`](queue-vae-trace.sh) is waiting on Spark_06 as `queue-vae-trace-20261030-v2.sh` (SHA-256
-`8c86b948eb62836b26b971866596fce9780ba2d471f9e2be43fd66428db6de43`). It runs only after the patch and both of
+[`queue-vae-trace.sh`](queue-vae-trace.sh) was waiting on Spark_06 as `queue-vae-trace-20261030-v2.sh` (SHA-256
+`8c86b948eb62836b26b971866596fce9780ba2d471f9e2be43fd66428db6de43`); the owner stopped it. It runs only after the patch and both of
 its verified smoke clips finish, and after the 300 s fallback finishes or is skipped and both queue locks are released.
 It validates the deployed files on both hosts,
 requires an empty async-job store plus healthy, idle, sufficiently free nodes, and temporarily enables the trace via
