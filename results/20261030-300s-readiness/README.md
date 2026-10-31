@@ -172,6 +172,13 @@ The exact-duration exporter also passed a synthetic low-resolution 300.5→300 s
 frames and copied AAC packets were verified. This tests export duration handling only; the real 300 s GPU render
 and its picture and sound quality remain pending.
 
+The owner also reported that figures in the earlier clip walked a little too quickly. A separate queued 30 s
+experiment changes only the human-motion clause of the matched 960x544 locked-camera baseline: it asks for a relaxed
+gait and roughly one small step per second. Image, seed, 20 steps, window geometry and continuation framing remain
+the same. The queue waits for the prior tests and a verified client-smoke receipt, checks the source and head/agent
+service PIDs, and requires idle guarded nodes. Five fake-host tests cover the prompt difference, proof, busy nodes,
+changed services and failure. The actual clip is not yet rendered; a prompt cannot guarantee natural gait.
+
 Two separately saved exact-length excerpts of the earlier approved 16 s painting clip are also in the same Downloads
 folder as `d10_koninck_fragment_z_16s.mp4` and `d15_koninck_fragment_z_16s.mp4`. They contain 240 and 360 frames
 respectively; retained decoded frames and AAC packet prefixes were checked. These are trims, not independent 10 s
