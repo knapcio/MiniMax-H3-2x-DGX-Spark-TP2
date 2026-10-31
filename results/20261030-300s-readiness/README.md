@@ -74,6 +74,17 @@ failure gates. Both direct requests completed on 2026-10-31: 10 s at 17:09:46, 1
 has the requested frame count and decodes fully; neither has qualifying global or regional periodic-flicker runs
 under the current screens, and neither has a detected hard cut. Visual and audio review remain pending.
 
+The direct 15 s request took 951.5 s; the earlier 16 s continuation took 814.8 s, 14.37% less wall time even
+though it produced an extra second. Both used the same base prompt, source-image hash, seed, resolution, task and
+step count. They did not hold duration, continuation mode, server boot, deployed revision or per-window prompt
+wording constant, so this observation does not isolate a speedup. A verified exact 15 s prefix of the 16 s clip
+retains its first 360 decoded video frames and AAC packet prefix; its frame-aligned FFmpeg SSIM against the direct
+15 s clip is 0.829438 over 360 frames. That describes the difference, not their visual quality. A labelled local
+side-by-side clip is `~/Downloads/h3-prod-smoke/porownanie_direct15_i_prefix_cont16_20261031.mp4` (SHA-256
+`ca007437854713adea5410510ec9938e028f4573c40ea1b9634ebba36b924822`); its 360 frames and source AAC packets were
+verified. A 15 s continuation control and, ideally, a matched same-boot direct 15 s rerun are needed before choosing
+a faster path.
+
 An independent [`queue-aspect-experimental300-20261031.sh`](queue-aspect-experimental300-20261031.sh) waits for both
 direct controls and the trace-off head. The short 16 s control already has measured flicker, so the existing 300 s
 **quality** gate remains failed. This separate, explicitly labelled structural experiment asks whether 300 s can
@@ -98,6 +109,13 @@ distributed inference. The failure and HOLD events are preserved under
 `diagnostics/h3-300-20261030/failure-20261031-1727/` in the workspace; no 300 s video or quality pass exists.
 After confirming no active H3 workers or queued video jobs, the unhealthy head was restarted at 21:16:01 (new PID
 973294); readiness and a real two-node smoke remain pending at this writing.
+
+The failed 300 s first window and the earlier successful 16 s 960x544 control used the same 277-frame window and
+seed. Their rank-1 step-0 tensor-byte digests both begin `8a8189fa` (14 tensors), and the four logged FP8 GEMM
+shapes with M=21952 match. This is useful for selecting a short recovery control, but the digest does not cover all
+metadata or runtime state, and the requests used different boots. The 300 s request encoded 29 window prompts before
+the first diffusion, versus two for the 16 s control. This difference is an investigation lead, not an established
+cause of the CUDA failure.
 
 The current automatic later-window prompt says "the camera keeps moving the same way" even when the base prompt
 specifies a locked tripod; the live 60 s journal confirms that wording. Whether it causes any visible defect is
