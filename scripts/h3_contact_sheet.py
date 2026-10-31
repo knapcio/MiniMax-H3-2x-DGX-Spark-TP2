@@ -19,10 +19,11 @@ def digest(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def make(source, destination, interval):
+def make(source, destination, interval, *, include_last=False):
     source = source.resolve()
     destination = Path(os.path.abspath(destination))
-    if source == destination or os.path.lexists(destination) or not isinstance(interval,int) or isinstance(interval,bool) or interval < 1:
+    if (source == destination or os.path.lexists(destination) or not isinstance(interval,int) or isinstance(interval,bool)
+            or interval < 1 or not isinstance(include_last, bool)):
         raise ValueError('output must be new and interval must be a positive number of seconds')
     before = digest(source)
     probe = subprocess.run(['ffprobe','-v','error','-select_streams','v:0','-show_entries',
@@ -41,14 +42,20 @@ def make(source, destination, interval):
     if len(frame_times)!=count or any(abs(value-Fraction(i,24))>Fraction(1,1000000) for i,value in enumerate(frame_times)):
         raise ValueError('video frame timestamps are not a zero-start 24 fps sequence')
     stride = 24 * interval
-    expected = (count - 1) // stride + 1
+    indices = list(range(0, count, stride))
+    if include_last and indices[-1] != count - 1:
+        indices.append(count - 1)
+    expected = len(indices)
     if expected > 100:
         raise ValueError('interval would create more than 100 thumbnails')
     destination.parent.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='.h3-sheet-',dir=destination.parent) as temp:
         root=Path(temp)
+        selection = f'not(mod(n\\,{stride}))'
+        if include_last and (count - 1) % stride:
+            selection += f'+eq(n\\,{count - 1})'
         subprocess.run(['ffmpeg','-v','error','-xerror','-i',str(source),'-map','0:v:0','-an','-vf',
-                        f'select=not(mod(n\\,{stride})),scale=480:-2','-fps_mode','passthrough',
+                        f'select={selection},scale=480:-2','-fps_mode','passthrough',
                         str(root/'frame-%03d.png')],check=True,timeout=7200)
         frames=sorted(root.glob('frame-*.png'))
         if len(frames)!=expected or digest(source)!=before:
@@ -71,14 +78,16 @@ def make(source, destination, interval):
             with Image.open(path) as frame:
                 if frame.size!=(width,height): raise ValueError('thumbnail sizes differ')
                 canvas.paste(frame.convert('RGB'),(x,y))
-            draw.text((x+8,y+height+5),f'{i*interval} s',font=small,fill='white')
+            seconds = indices[i] / 24
+            label = f'{seconds:g} s' if indices[i] % 24 == 0 else f'{seconds:.3f} s'
+            draw.text((x+8,y+height+5),label,font=small,fill='white')
         png=root/'sheet.png'; canvas.save(png)
         with Image.open(png) as check: check.verify()
         if digest(source)!=before: raise ValueError('source changed while producing contact sheet')
         checksum=digest(png)
         os.link(png,destination)
     return {'source':str(source),'source_sha256':before,'output':str(destination),'output_sha256':checksum,
-            'sample_seconds':[i*interval for i in range(expected)],'source_frames':count,
+            'sample_frames':indices,'sample_seconds':[index / 24 for index in indices],'source_frames':count,
             'caveat':'Still frames do not establish motion smoothness or cloud-shadow alignment.'}
 
 
@@ -87,9 +96,10 @@ def main():
     parser.add_argument('source',type=Path)
     parser.add_argument('output',type=Path)
     parser.add_argument('--interval',type=int,default=10)
+    parser.add_argument('--include-last',action='store_true',help='also show the final decoded frame')
     args=parser.parse_args()
     try:
-        print(json.dumps(make(args.source,args.output,args.interval),indent=2))
+        print(json.dumps(make(args.source,args.output,args.interval,include_last=args.include_last),indent=2))
         return 0
     except (OSError,ValueError,KeyError,TypeError,ZeroDivisionError,subprocess.SubprocessError) as exc:
         print('h3-contact-sheet:',exc,file=sys.stderr)

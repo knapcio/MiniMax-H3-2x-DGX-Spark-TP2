@@ -654,3 +654,20 @@ the left AAC packets, keeps each image's aspect ratio, validates continuous vide
 checks both source hashes and refuses overwrite. Two synthetic media/guard tests passed; the 15 s comparison above
 was also checked on the real pair. The side-by-side itself is scaled and recompressed, so the original clips remain
 the quality reference.
+
+### Timeline and handover stills for long-clip review (2026-10-31)
+
+The exact 60 s source has a timeline including its final frame at 59.958 s:
+`d60_koninck_timeline_z_koncem_20261031.png` (SHA-256
+`e61779c48d1f5544c17b25fff496cc3e8b3f57c279eb5d9de4ee6f36620cfa9b`). A separate sheet shows three stills around
+each of its five planned window handovers at frames 277, 532, 787, 1042 and 1297:
+`d60_koninck_sklejenia_20261031.png` (SHA-256
+`df3d91912eed8bfeb9846fc555bdb3a38fcb3b20615ba8c1244a6c1cdca72522`). Each sampled index, 24 fps timestamp and source
+hash was checked. These are downscaled stills, so they cannot establish smoothness, flicker, audio quality, precise
+decoded seam timing or physical cloud-shadow alignment. The timeline does show noticeable shifts in ground brightness
+between several samples, consistent with the owner's concern and motivating the separate lighting comparisons.
+
+`scripts/h3_contact_sheet.py --include-last` adds the final frame to a timed overview;
+`scripts/h3_seam_sheet.py` derives approximate handover indices from a declared duration and window plan. Four tests
+cover timestamped extraction, final-frame inclusion, handover indices and invalid inputs; both tools were also run
+against the real 60 s source. Any later automated 300 s handover sheet must check its plan against the actual run log.

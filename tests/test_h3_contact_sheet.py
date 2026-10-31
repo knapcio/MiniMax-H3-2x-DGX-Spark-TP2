@@ -32,6 +32,13 @@ class H3ContactSheetTests(unittest.TestCase):
                 for col,dominant in enumerate((0,1,2)):
                     rgb=image.getpixel((col*480+240,56+240))
                     self.assertEqual(rgb.index(max(rgb)),dominant)
+            last_sheet=root/'last.png'
+            last_result=module.make(source,last_sheet,1,include_last=True)
+            self.assertEqual(last_result['sample_frames'],[0,24,48,71])
+            self.assertAlmostEqual(last_result['sample_seconds'][-1],71/24)
+            with Image.open(last_sheet) as image:
+                rgb=image.getpixel((240,56+480+30+240))
+                self.assertEqual(rgb.index(max(rgb)),2)
             with self.assertRaisesRegex(ValueError,'output must be new'):
                 module.make(source,out,1)
             self.assertEqual(module.digest(source),before)
