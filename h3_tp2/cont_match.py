@@ -132,6 +132,58 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
         state["prev"] = video
         return video, audio
 
+    def _snapshot_state():
+        """Copy match state to CPU after a completed window; experimental, not automatic checkpointing."""
+        prev, ref, ref_audio = state["prev"], state["ref"], state["ref_audio"]
+        if state["index"] < 1 or not isinstance(prev, torch.Tensor) or prev.dim() != 5 or ref is None:
+            raise ValueError("no completed tensor window with a reference to snapshot")
+        tensors = {"match.index": torch.tensor(state["index"], dtype=torch.int64),
+                   "match.prev": prev.detach().to("cpu", copy=True),
+                   "match.ref_mean": ref[0].detach().to("cpu", copy=True),
+                   "match.ref_std": ref[1].detach().to("cpu", copy=True)}
+        if ref_audio is not None:
+            tensors["match.audio_mean"] = ref_audio[0].detach().to("cpu", copy=True)
+            tensors["match.audio_std"] = ref_audio[1].detach().to("cpu", copy=True)
+        return tensors
+
+    def _restore_state(tensors, *, device):  # noqa: ANN001
+        """Restore a fresh wrapper's match state; caller must verify request and cumulative AV state."""
+        required = {"match.index", "match.prev", "match.ref_mean", "match.ref_std"}
+        audio_keys = {"match.audio_mean", "match.audio_std"}
+        if state["index"] != 0:
+            raise ValueError("match state can only be restored into a fresh wrapper")
+        if not isinstance(tensors, dict) or set(tensors) not in (required, required | audio_keys):
+            raise ValueError("incomplete or unexpected match-state tensors")
+        if any(not isinstance(value, torch.Tensor) for value in tensors.values()):
+            raise ValueError("match state contains a non-tensor value")
+        index = tensors["match.index"]
+        prev = tensors["match.prev"]
+        mean, std = tensors["match.ref_mean"], tensors["match.ref_std"]
+        if (index.ndim != 0 or index.dtype != torch.int64 or index.item() < 1 or prev.dim() != 5
+                or not prev.numel() or not prev.is_floating_point() or mean.dtype != torch.float32
+                or std.dtype != torch.float32 or mean.dim() != 1 or mean.shape != std.shape
+                or mean.numel() != prev.shape[1]):
+            raise ValueError("invalid match-state index, video, or reference shape")
+        if any(not torch.isfinite(value).all().item() for name, value in tensors.items() if name != "match.index"):
+            raise ValueError("match state contains non-finite values")
+        if (std < 0).any().item():
+            raise ValueError("invalid match reference standard deviation")
+        ref_audio = None
+        if audio_keys.issubset(tensors):
+            audio_mean, audio_std = tensors["match.audio_mean"], tensors["match.audio_std"]
+            if (audio_mean.dtype != torch.float32 or audio_std.dtype != torch.float32 or audio_mean.dim() != 3
+                    or not audio_mean.numel() or audio_mean.shape != audio_std.shape or audio_mean.shape[-1] != 1
+                    or (audio_std < 0).any().item()):
+                raise ValueError("invalid audio match reference")
+            ref_audio = (audio_mean.to(device=device, copy=True), audio_std.to(device=device, copy=True))
+        restored = {"prev": prev.to(device=device, copy=True), "index": int(index.item()),
+                    "ref": (mean.to(device=device, copy=True), std.to(device=device, copy=True)), "ref_audio": ref_audio}
+        state.update(restored)
+
+    # Introspection is inert unless explicitly invoked; the serving loop does
+    # not save or restore checkpoints, and this state alone is insufficient.
+    _diffuse.snapshot_state = _snapshot_state
+    _diffuse.restore_state = _restore_state
     return _diffuse
 
 

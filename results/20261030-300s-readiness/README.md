@@ -443,3 +443,24 @@ not survive host reboot. An uncontrolled termination at the wrong moment can sti
 no idle check can reserve the API against a new unrelated request. The 13 fake-host tests cover those guards,
 restoration, startup failure and missing trace; they do not verify the GPU hook. The Mac collector watches for the
 verified diagnostic video and reports while it is online. The trace and diagnostic render are not new quality defaults.
+
+## Checkpoint building blocks, CPU prototype only (2026-10-31)
+
+The 300 s request still has no restart checkpoint: a late worker failure loses the accumulated windows. The separate
+`h3_tp2/cont_checkpoint.py` stores immutable per-rank, per-window safetensors and a hash-checked receipt. It refuses
+foreign request/run identifiers, incomplete pairs, corrupt files, excessive state and overwrites; the caller can
+choose the highest window common to independently verified rank receipts. No pickle is loaded. The input fingerprint
+includes the caller-supplied metadata and tensor names, shapes, dtypes and bytes; it is only as complete as the
+inputs the eventual caller supplies.
+
+`wrap_diffuse` exposes opt-in snapshot/restore of its previous corrected window, index, and first-window video/audio
+look-lock statistics. A CPU stand-in saves that state alongside cumulative video/audio tensors, restores it into a
+fresh wrapper, and obtains the same next-window and concatenated tensors as an uninterrupted stand-in. Ten storage
+and restoration tests passed separately on the CPUs of spark-05 and spark-06 with CUDA hidden; the three existing
+look-lock tests also passed on spark-06. These checks do **not** test an actual distributed H3 render or failure.
+
+Nothing calls these helpers from the serving loop, and they were not installed in the live processes. A usable
+resume still needs capture after cumulative AV is committed, complete request/model/configuration fingerprints,
+both-rank coordination and matching checkpoints, RNG/seed and retry validation, a durable output/job protocol,
+limits for the extra host memory and disk use, and stop/restart/failure tests against a continuous GPU control.
+Until then the currently running 300 s request remains non-resumable.
