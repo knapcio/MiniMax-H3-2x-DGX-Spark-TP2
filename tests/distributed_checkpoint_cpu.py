@@ -49,6 +49,7 @@ def main():
     parser.add_argument('--module', type=Path, required=True)
     parser.add_argument('--package-root', type=Path, help='also test the staged checkpoint coordinator')
     parser.add_argument('--match-module', type=Path, help='also test continuation match-state restoration')
+    parser.add_argument('--state-module', type=Path, help='also validate H3-shaped continuation state')
     parser.add_argument('--crash-test', action='store_true', help='terminate rank 1 during a CPU collective')
     args = parser.parse_args()
     if torch.cuda.is_available() or not dist.is_gloo_available():
@@ -66,7 +67,10 @@ def main():
         raise ValueError('crash test requires the staged coordinator package')
     if args.match_module is not None and coordinator is None:
         raise ValueError('match-state test requires the staged coordinator package')
+    if args.state_module is not None and args.match_module is None:
+        raise ValueError('shape test requires match-state restoration')
     match = load_checkpoint(args.match_module) if args.match_module is not None else None
+    state_check = load_checkpoint(args.state_module) if args.state_module is not None else None
     timeout = timedelta(seconds=45)
     store = dist.TCPStore(args.host, 0 if args.rank == 0 else args.port, 2, args.rank == 0,
                           timeout=timeout, wait_for_workers=False)
@@ -125,11 +129,14 @@ def main():
                 coordinator_smoke(coordinator, args.rank, root)
             if match is not None:
                 match_state_smoke(coordinator, match, args.rank, root)
+            if state_check is not None:
+                realistic_state_smoke(coordinator, match, state_check, args.rank, root)
             dist.barrier()
             print(json.dumps({'host': socket.gethostname(), 'rank': args.rank, 'backend': 'gloo',
                               'common_before_corruption': 1, 'common_after_corruption': None,
                               'coordinator_checked': coordinator is not None,
                               'match_state_checked': match is not None,
+                              'h3_shape_checked': state_check is not None,
                               'cuda_available': torch.cuda.is_available()}), flush=True)
     finally:
         dist.destroy_process_group()
@@ -259,6 +266,67 @@ def match_state_smoke(coordinator, match, rank, root):
     final = coordinator.restore_latest(root, validate=validate, **fork)
     if final is None or final[0] != 2 or not torch.equal(final[1]['cumulative.video'], cumulative_video):
         raise AssertionError('the resumed synthetic AV checkpoint was not reusable')
+
+
+def realistic_state_smoke(coordinator, match, checker, rank, root):
+    """Use the deployed H3 temporal formulas with synthetic CPU latents."""
+    storage = coordinator.storage
+    options = {key: None for key in storage.REQUEST_OPTIONS}
+    options.update({'window_frames': 107, 'overlap_frames': 22, 'seed_step': 1, 'lock_audio': True})
+    request = {'seed': 1101, 'num_frames': 192, 'latent_h': 2, 'latent_w': 2,
+               'text_embeddings': torch.tensor([[1., 2.]]), 'ref_blocks': [{'kind': 'image'}]}
+    request_sha = storage.fingerprint_request(request, [(torch.tensor([[1.]]), torch.tensor([2]))], options,
+                                              deployment_sha256='a' * 64, max_bytes=1024 * 1024)
+    values = coordinator._gather({'rank': rank, 'sha': request_sha}, group=None, device='cpu')
+    if len({value['sha'] for value in values}) != 1:
+        raise AssertionError('synthetic logical request fingerprints differ across ranks')
+    run_id, fork_id = '4' * 32, '5' * 32
+    common = {'run_id': run_id, 'request_sha256': request_sha, 'max_bytes': 1024 * 1024}
+    video_t = checker.video_t(107); audio_first = checker.audio_t(107)
+    video_overlap = checker.video_t(22); audio_overlap = checker.audio_t(107) - checker.audio_t(85)
+    first_v = torch.arange(2 * video_t * 2 * 2, dtype=torch.float32).reshape(1, 2, video_t, 2, 2) / 100 + rank
+    next_v = first_v + 2; next_v[:, :, :video_overlap] = first_v[:, :, -video_overlap:]
+    first_a = torch.arange(2 * 6 * audio_first, dtype=torch.float32).reshape(2, 6, audio_first) / 100 + rank
+    next_a = first_a + 2; next_a[..., :audio_overlap] = first_a[..., -audio_overlap:]
+    def wrapper(samples):
+        values = iter(samples)
+        return match.wrap_diffuse(lambda **_kw: tuple(x.clone() for x in next(values)), apply=False,
+                                  lock='first', lock_audio=True, lock_ramp=.25, max_ratio=100)
+    def validate(tensors, window):
+        checker.validate_for_plan(tensors, window=window, total_frames=192, full_window=107, overlap=22,
+                                  latent_h=2, latent_w=2, channels=2, audio_channels=2, audio_dims=6)
+    run = wrapper(((first_v, first_a), (next_v, next_a)))
+    first = run(seed=1101)
+    state1 = {**run.snapshot_state(), 'cumulative.video': first[0], 'cumulative.audio': first[1]}
+    validate(state1, 1); coordinator.publish(root, window=1, tensors=state1, **common)
+    args = {'seed': 1102, 'ref_blocks': [{'kind': 'latent_guide', 'latent_t': video_overlap}],
+            'audio_condition_lengths': [audio_overlap]}
+    second = run(**args)
+    total_v = torch.cat((first[0], second[0][:, :, video_overlap:]), dim=2)
+    total_a = torch.cat((first[1], second[1][..., audio_overlap:]), dim=-1)
+    state2 = {**run.snapshot_state(), 'cumulative.video': total_v, 'cumulative.audio': total_a}
+    validate(state2, 2)
+    if rank == 1:
+        state2 = {name: tensor.clone() for name, tensor in state2.items()}
+        state2['match.prev'][:, :, -1, 0, 0] += 1  # valid file hash, semantically inconsistent tail
+    coordinator.publish(root, window=2, tensors=state2, **common)
+    restored = coordinator.restore_latest(root, validate=validate, **common)
+    if restored is None or restored[0] != 1:
+        raise AssertionError('semantic mismatch did not trigger a common rollback')
+    resumed = wrapper(((next_v, next_a),))
+    resumed.restore_state({key: value for key, value in restored[1].items() if key.startswith('match.')}, device='cpu')
+    again = resumed(**args)
+    out_v = torch.cat((restored[1]['cumulative.video'], again[0][:, :, video_overlap:]), dim=2)
+    out_a = torch.cat((restored[1]['cumulative.audio'], again[1][..., audio_overlap:]), dim=-1)
+    if not torch.equal(total_v, out_v) or not torch.equal(total_a, out_a):
+        raise AssertionError('H3-shaped synthetic recovery differs from uninterrupted output')
+    fork = {**common, 'run_id': fork_id}
+    coordinator.publish(root, window=1, tensors=restored[1], **fork)
+    repaired = {**resumed.snapshot_state(), 'cumulative.video': out_v, 'cumulative.audio': out_a}
+    validate(repaired, 2); coordinator.publish(root, window=2, tensors=repaired, **fork)
+    final = coordinator.restore_latest(root, validate=validate, **fork)
+    if final is None or final[0] != 2:
+        raise AssertionError('validated resumed H3-shaped checkpoint was not selected')
 
 
 if __name__ == '__main__':

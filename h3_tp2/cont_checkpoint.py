@@ -9,6 +9,7 @@ from __future__ import annotations
 import fcntl
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -23,6 +24,9 @@ VERSION = 1
 NAME = re.compile(r'^[A-Za-z][A-Za-z0-9_.-]{0,127}$')
 SHA256 = re.compile(r'^[0-9a-f]{64}$')
 RUN_ID = re.compile(r'^[0-9a-f]{32}$')
+REQUEST_OPTIONS = frozenset(('window_frames', 'overlap_frames', 'apply_match', 'crossfade', 'edit', 'retries',
+                             'max_ratio', 'lock', 'lock_strength', 'lock_ramp', 'lock_audio', 'lock_std',
+                             'lock_ref', 'seed_step'))
 
 
 def _hash_file(path: Path) -> str:
@@ -56,11 +60,75 @@ def fingerprint_inputs(metadata: dict[str, Any], tensors: dict[str, torch.Tensor
     hasher.update(len(scalar_bytes).to_bytes(8, 'big')); hasher.update(scalar_bytes)
     for name, tensor in sorted(tensors.items()):
         cpu = tensor.detach().to('cpu').contiguous()
-        info = json.dumps([name, str(cpu.dtype), list(cpu.shape)], separators=(',', ':')).encode()
+        info = json.dumps([name, str(tensor.dtype), list(tensor.shape), list(tensor.stride()),
+                           tensor.storage_offset(), tensor.device.type, tensor.requires_grad], separators=(',', ':')).encode()
         hasher.update(len(info).to_bytes(8, 'big')); hasher.update(info)
         data = cpu.reshape(-1).view(torch.uint8).numpy().tobytes()
         hasher.update(len(data).to_bytes(8, 'big')); hasher.update(data)
     return hasher.hexdigest()
+
+
+def fingerprint_request(kwargs: dict[str, Any], text_conditioning: Any, options: dict[str, Any], *,
+                        deployment_sha256: str, max_bytes: int) -> str:
+    """Hash a supported request tree, continuation options and a caller-verified deployment identity.
+
+    Unknown objects, cycles, missing options and an implicit seed are refused.
+    The caller must synchronize/own inputs and ensure the deployment digest
+    covers model weights, code, runtime and every other relevant configuration.
+    """
+    if not isinstance(kwargs, dict) or not isinstance(options, dict) or set(options) != REQUEST_OPTIONS:
+        raise ValueError('request kwargs or continuation options are incomplete')
+    if type(kwargs.get('seed')) is not int:
+        raise ValueError('an explicit integer seed is required for checkpointing')
+    if not isinstance(deployment_sha256, str) or not SHA256.fullmatch(deployment_sha256):
+        raise ValueError('deployment identity must be SHA-256')
+    tensors = {}
+    active = set()
+    nodes = 0
+
+    def visit(value, depth):  # noqa: ANN001
+        nonlocal nodes
+        nodes += 1
+        if nodes > 100_000 or depth > 32:
+            raise ValueError('request tree is too large or deep')
+        if isinstance(value, torch.Tensor):
+            name = f'tensor.{len(tensors):06d}'
+            tensors[name] = value
+            return ['tensor', name]
+        if value is None:
+            return ['none']
+        if type(value) is bool:
+            return ['bool', value]
+        if type(value) is int:
+            if abs(value) > 2**64 - 1:
+                raise ValueError('integer outside supported range')
+            return ['int', value]
+        if type(value) is float:
+            if not math.isfinite(value):
+                raise ValueError('non-finite request number')
+            return ['float', value]
+        if type(value) is str:
+            if len(value.encode()) > 10 * 1024**2:
+                raise ValueError('request string too large')
+            return ['str', value]
+        if type(value) not in (dict, list, tuple):
+            raise ValueError('unsupported request value: ' + type(value).__name__)
+        identity = id(value)
+        if identity in active:
+            raise ValueError('cyclic request tree')
+        active.add(identity)
+        try:
+            if type(value) is dict:
+                if any(type(key) is not str or not key or len(key) > 256 for key in value):
+                    raise ValueError('request mapping keys must be short nonempty strings')
+                return ['dict', [[key, visit(value[key], depth + 1)] for key in sorted(value)]]
+            return ['tuple' if type(value) is tuple else 'list', [visit(item, depth + 1) for item in value]]
+        finally:
+            active.remove(identity)
+
+    tree = visit({'version': 1, 'deployment_sha256': deployment_sha256, 'kwargs': kwargs,
+                  'text_conditioning': text_conditioning, 'options': options}, 0)
+    return fingerprint_inputs({'tree': tree}, tensors, max_bytes=max_bytes)
 
 
 def _identity(run_id: str, request_sha256: str, rank: int, world_size: int, window: int) -> None:

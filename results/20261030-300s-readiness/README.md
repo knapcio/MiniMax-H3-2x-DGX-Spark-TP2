@@ -487,6 +487,20 @@ separately on each CPU. In a separate test the rank-1 **test process** exited in
 rank 0 reported its lost peer in 0.048 s. These are Gloo/CPU tests, not a failure test of the H3 workers or NCCL;
 the serving loop still does not call the coordinator and the live 300 s request remains non-resumable.
 
+The prototype now also fingerprints supported nested request tensors and conditioning, their shapes, strides,
+storage offsets, dtypes and device types, plus an explicit seed, all continuation options and a caller-supplied
+deployment digest. Unknown objects, non-finite scalar values, cycles and missing options are refused. This remains
+only as complete as the deployment digest and the arguments the eventual caller supplies; actual installed model,
+runtime and request capture have not been audited end to end.
+
+`cont_checkpoint_state.py` validates a saved rank state against the complete window plan: video and audio lengths,
+the match-window index, look-lock references and the retained cumulative-video tail. Three state tests and twelve
+storage/match tests passed separately on each Spark CPU. In a further two-node Gloo stand-in using H3's actual
+17-frame/5-latent video timing and 40 Hz audio boundaries, both ranks agreed on the synthetic request fingerprint.
+A rank-1 file with a valid checksum but inconsistent video tail was rejected by the state validator; both ranks
+fell back, resumed synthetic AV identically to their uninterrupted counterparts and saved under a new run ID. This
+does not demonstrate actual H3 GPU/NCCL restart, reproducibility or safe production integration.
+
 ## Window-size planning from existing 960x544 samples (2026-10-31)
 
 `scripts/estimate_continuation.py` reproduces the deployed 17n+5 frame alignment and window plan. For a 300 s request

@@ -59,7 +59,39 @@ class ContinuationCheckpointTests(unittest.TestCase):
         self.assertNotEqual(reference, fingerprint({'seed': 3}, t.reshape(2, 4)))
         self.assertNotEqual(reference, fingerprint({'seed': 3}, t.to(torch.float16)))
         self.assertNotEqual(reference, fingerprint({'seed': 3}, t + 1))
+        noncontiguous = t.reshape(2, 4).transpose(0, 1)
+        self.assertNotEqual(fingerprint({'seed': 3}, noncontiguous),
+                            fingerprint({'seed': 3}, noncontiguous.contiguous()))
         self.assertEqual(len(fingerprint({}, torch.tensor(1, dtype=torch.bfloat16))), 64)
+
+    def test_request_tree_fingerprint_covers_conditioning_options_and_deployment(self):
+        options = {key: None for key in subject.REQUEST_OPTIONS}
+        options.update({'window_frames': 277, 'overlap_frames': 22, 'seed_step': 1, 'lock_audio': True})
+        kwargs = {'seed': 1101, 'visual_condition': torch.arange(6, dtype=torch.float32),
+                  'ref_blocks': [{'kind': 'image', 'shape': (2, 3)}]}
+        conditioning = [(torch.tensor([[1., 2.]]), torch.tensor([3], dtype=torch.int64))]
+        def fingerprint(k=kwargs, c=conditioning, o=options, deployment='a' * 64):
+            return subject.fingerprint_request(k, c, o, deployment_sha256=deployment, max_bytes=self.LIMIT)
+        baseline = fingerprint()
+        self.assertEqual(baseline, fingerprint(k=dict(reversed(list(kwargs.items())))))
+        self.assertNotEqual(baseline, fingerprint(k={**kwargs, 'seed': 1102}))
+        self.assertNotEqual(baseline, fingerprint(k={**kwargs, 'visual_condition': kwargs['visual_condition'].reshape(2, 3)}))
+        self.assertNotEqual(baseline, fingerprint(k={**kwargs, 'ref_blocks': [{'kind': 'image', 'shape': [2, 3]}]}))
+        self.assertNotEqual(baseline, fingerprint(c=[(torch.tensor([[1., 3.]]), conditioning[0][1])]))
+        self.assertNotEqual(baseline, fingerprint(o={**options, 'seed_step': 2}))
+        self.assertNotEqual(baseline, fingerprint(deployment='b' * 64))
+
+    def test_request_fingerprint_refuses_implicit_seed_cycles_and_unknown_values(self):
+        options = {key: None for key in subject.REQUEST_OPTIONS}
+        kwargs = {'seed': 1, 'x': torch.ones(1)}
+        def fingerprint(k, o=options):
+            return subject.fingerprint_request(k, None, o, deployment_sha256='a' * 64, max_bytes=self.LIMIT)
+        with self.assertRaisesRegex(ValueError, 'explicit integer seed'): fingerprint({'seed': None, 'x': torch.ones(1)})
+        with self.assertRaisesRegex(ValueError, 'options'): fingerprint(kwargs, {})
+        with self.assertRaisesRegex(ValueError, 'unsupported'): fingerprint({**kwargs, 'xtra': object()})
+        with self.assertRaisesRegex(ValueError, 'non-finite'): fingerprint({**kwargs, 'xtra': float('nan')})
+        cycle = []; cycle.append(cycle)
+        with self.assertRaisesRegex(ValueError, 'cyclic'): fingerprint({**kwargs, 'xtra': cycle})
 
     def test_data_corruption_and_foreign_request_are_rejected(self):
         self.save()
