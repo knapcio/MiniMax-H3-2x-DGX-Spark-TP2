@@ -85,6 +85,10 @@ same. It requires verified predecessors, the same image SHA, unchanged deployed 
 server prompt template, memory/disk margin and a guarded idle pair before each request. Five fake-host tests cover
 those gates, changes of service PID, request failures and the prompt fields. The GPU comparisons are queued, not
 completed; none of the wording or speed settings is promoted without assessment.
+[`compare_camera_speed.py`](compare_camera_speed.py) verifies the stored request fields, source hash and both
+service PIDs, compares the first 277 decoded frames of the camera-wording pair, and reports per-window time,
+available-memory samples and quality screens. Four unit tests and a synthetic FFmpeg integration passed; real
+comparison results do not exist until the queued renders finish.
 
 After the aspect queue and its 300 s fallback finish or safely skip, the independent
 [`deploy-aspect-prompt-20261031.sh`](deploy-aspect-prompt-20261031.sh) can install the staged duration/prompt fix on
