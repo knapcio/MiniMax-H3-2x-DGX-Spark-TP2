@@ -38,7 +38,8 @@ class CameraSpeedComparisonTests(unittest.TestCase):
 
     def test_reports_separate_camera_and_step_comparisons(self):
         report=module.compare(self.root)
-        self.assertEqual(report['first_window_decoded_frames_equal'],277)
+        self.assertEqual(report['pre_overlap_frames_equal'],255)
+        self.assertEqual(report['overlap_frames_equal'],22)
         self.assertEqual(report['wall_seconds']['locked20'],1750)
         self.assertEqual(report['locked_10_vs_20_wall_change_percent'],-48.57)
         self.assertIn('Review playback',report['caveat'])

@@ -66,10 +66,13 @@ def compare(root):
         'diffuse_seconds_per_window': {label: run['diffuse_seconds'] for label, run in zip(labels, runs, strict=True)},
         'memory': {label: run['memory'] for label, run in zip(labels, runs, strict=True)},
         'quality_signals': {label: run['quality_signals'] for label, run in zip(labels, runs, strict=True)},
-        'first_window_decoded_frames_compared': len(baseline_frames),
-        'first_window_decoded_frames_equal': sum(a == b for a, b in zip(baseline_frames, locked_frames, strict=True)),
+        'pre_overlap_frames_compared': 255,
+        'pre_overlap_frames_equal': sum(a == b for a, b in zip(baseline_frames[:255], locked_frames[:255], strict=True)),
+        'overlap_frames_compared': 22,
+        'overlap_frames_equal': sum(a == b for a, b in zip(baseline_frames[255:], locked_frames[255:], strict=True)),
         'caveat': ('One matched same-process set. Prompt and step changes can alter motion, light and audio; '
-                   'screens do not establish visual quality. Review playback before changing defaults.'),
+                   'the final 22 compared frames are the continuation overlap and decode can use temporal context. '
+                   'Screens do not establish visual quality. Review playback before changing defaults.'),
     }
 
 

@@ -86,7 +86,8 @@ server prompt template, memory/disk margin and a guarded idle pair before each r
 those gates, changes of service PID, request failures and the prompt fields. The GPU comparisons are queued, not
 completed; none of the wording or speed settings is promoted without assessment.
 [`compare_camera_speed.py`](compare_camera_speed.py) verifies the stored request fields, source hash and both
-service PIDs, compares the first 277 decoded frames of the camera-wording pair, and reports per-window time,
+service PIDs, compares the first 255 decoded frames and the following 22 overlap frames of the camera-wording pair,
+and reports per-window time,
 available-memory samples and quality screens. Four unit tests and a synthetic FFmpeg integration passed; real
 comparison results do not exist until the queued renders finish.
 
