@@ -22,6 +22,10 @@ class VaeTraceAnalysisTests(unittest.TestCase):
         self.assertEqual([row['approx_frame'] for row in report['overlaps']], [17, 34])
         self.assertTrue(all(row['encoded_repeated_drop'] for row in report['overlaps']))
         self.assertEqual(report['overlaps'][0]['new_minus_old_first'], 4)
+        self.assertEqual(report['overlaps'][0]['old_rebound_first'], 1)
+        self.assertEqual(report['overlaps'][0]['new_rebound_first'], -1)
+        self.assertEqual(report['overlaps'][0]['blend_rebound_first'], 2)
+        self.assertEqual(report['overlaps'][0]['encoded_rebound_after'], 3)
         self.assertIn('not proof of cause', report['caveat'])
 
     def test_duplicate_missing_or_nonfinite_trace_is_rejected(self):
@@ -43,6 +47,7 @@ class VaeTraceAnalysisTests(unittest.TestCase):
         self.assertEqual(report['candidate_offsets_with_most_matches'], [1])
         self.assertTrue(all(row['nearest_repeated_drop_offset'] == 1 for row in report['overlaps']))
         self.assertFalse(any(row['encoded_repeated_drop'] for row in report['overlaps']))
+        self.assertIsNone(report['overlaps'][0]['old_rebound_first'])
         self.assertIn('by chance', report['caveat'])
 
     def test_encoded_frames_are_sampled_once_each(self):

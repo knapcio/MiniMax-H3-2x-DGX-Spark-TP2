@@ -65,10 +65,14 @@ def compare(entries, means):
         nearest = min(nearby, key=lambda offset: (abs(offset), offset)) if nearby else None
         rows.append({'overlap': item['overlap'], 'approx_frame': frame,
                      'encoded_frame_change': means[frame] - means[frame - 1],
+                     'encoded_rebound_after': means[frame + 1] - means[frame] if frame + 1 < len(means) else None,
                      'encoded_repeated_drop': frame in drop_frames,
                      'nearest_repeated_drop_offset': nearest,
                      'old_first': item['old'][0], 'new_first': item['new'][0],
                      'blend_first': item['blended'][0],
+                     'old_rebound_first': item['old'][1] - item['old'][0] if len(item['old']) > 1 else None,
+                     'new_rebound_first': item['new'][1] - item['new'][0] if len(item['new']) > 1 else None,
+                     'blend_rebound_first': item['blended'][1] - item['blended'][0] if len(item['blended']) > 1 else None,
                      'new_minus_old_first': item['new'][0] - item['old'][0],
                      'encoded_minus_blend_first': means[frame] - item['blended'][0]})
     if not rows:

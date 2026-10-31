@@ -167,7 +167,8 @@ CPU-tested on stand-ins, and not yet qualified in a distributed GPU decode. Run 
 overlap samples and lists repeated >=2 YAVG drops. It rejects ambiguous duplicate overlap indices and missing traces.
 The indices and sampled luma are approximate; the analyzer also reports exploratory offsets of ±8 frames when
 checking a repeated drop against a boundary. Selecting an offset after observing periodic changes can produce a
-chance match, and global averages can miss regional flicker, so the comparison does not prove a cause. Four
+chance match. It also reports the first-to-second-frame changes in the old, incoming and blended samples beside the
+encoded-frame rebound; global averages can miss regional flicker, so the comparison does not prove a cause. Four
 synthetic/unit tests pass; the 16 s painting-trace analysis is still pending.
 
 The 2026-10-31 5 s T2VA trace smoke emitted six temporal-blend records and completed; its decoded video differed
