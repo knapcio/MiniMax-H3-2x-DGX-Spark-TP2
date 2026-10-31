@@ -58,6 +58,13 @@ per-overlap luma, full media and flicker diagnostics, then restores and verifies
 head is left untouched on HOLD. Fourteen fake-host tests cover the guards, missing trace and restoration; the GPU
 trace remains untested until it runs. The measurements are diagnostic, not proof of the flicker cause.
 
+[`queue-aspect-short-20261031.sh`](queue-aspect-short-20261031.sh) waits for the trace to finish and the normal head
+to be restored, checks both deployed file sets and source-image hash, and then runs separate direct 10 s and 15 s
+FL2VA requests at 960x544. These do not enable continuation, so their results test the short-request path rather than
+trimming the 16 s clip. They use the same image, prompt, seed and step count; each requires an idle, guarded pair and
+an empty async-job store. Seven fake-host tests cover the predecessor, source, trace-off, idle, no-overwrite and
+failure gates. The direct requests are queued, not yet rendered or visually evaluated.
+
 After the aspect queue and its 300 s fallback finish or safely skip, the independent
 [`deploy-aspect-prompt-20261031.sh`](deploy-aspect-prompt-20261031.sh) can install the staged duration/prompt fix on
 both nodes. It requires verified 16/60 s outputs, released queue locks, matching staged/live hashes, healthy idle
