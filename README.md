@@ -181,7 +181,7 @@ The workspace client also accepts `--experimental-long --long --first-frame --du
 MP4 encoding, but a 300 s render has not yet been verified. Its longer client timeout does not change the server's
 own limits, and a failed request has no continuation checkpoint.
 The workspace client refuses to replace an existing output. It saves the response under a unique temporary name,
-checks the requested dimensions, 24 fps, approximate duration and audio/video streams, and fully decodes the result
+checks the requested dimensions, 24 fps, frame count and approximate duration of both audio and video, and fully decodes the result
 before publishing the MP4. On a transfer or validation failure, a nonempty partial response is kept separately for
 inspection. These checks establish media integrity, not visual quality; the updated client has not yet been exercised
 with a new live render.
