@@ -17,6 +17,9 @@ locked on a tripod and does not move at all".
 light a touch warmer (the model brightens the painting's tone as it animates it, +9 luma in the first 3 s, then holds).
 `koninck16-grid.png`: one frame every 2 s. The hand-over is invisible by every number; the scene barely drifts, so
 the locks have little to correct. The owner later judged the 16 s and default 30 s clips good; a 60 s render follows.
+For other exact 24 fps clips, `python3 scripts/h3_contact_sheet.py INPUT.mp4 OUTPUT.png --interval 10` produces a
+timestamped, non-overwriting still sheet after checking frame timestamps and source hashes. It helps inspect visual
+drift, but individual stills cannot establish smooth motion or cloud-shadow correspondence.
 
 30 s (`koninck30-grid.png`, one frame every 3 s): the picture stays the picture across three windows, the clouds keep
 drifting, both hand-overs are invisible in the numbers, audio -39..-40 dB flat. At 1344x768 a window costs ~25 min
