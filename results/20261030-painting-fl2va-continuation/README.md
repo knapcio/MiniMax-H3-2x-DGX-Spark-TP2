@@ -162,6 +162,12 @@ checking a repeated drop against a boundary. Selecting an offset after observing
 chance match, and global averages can miss regional flicker, so the comparison does not prove a cause. Four
 synthetic/unit tests pass; analysis of an actual GPU trace is still pending.
 
+The 2026-10-31 5 s T2VA trace smoke emitted six temporal-blend records and completed; its decoded video differed
+from the trace-off smoke on a previous boot. Their step-0 tensor digests match (`c2f21d37…`, 14 tensors), but their
+final latent digests differ (`2c63a5fc…` vs `f01d2c13…`, two tensors) before the decode-only trace runs. Thus the
+different decoded frames cannot isolate any effect of tracing; the tensor digests do not cover all request or runtime
+state. The matched 16 s painting trace and analysis are still in progress.
+
 A sweep of all 25 locally saved `h3-prod-smoke` MP4s found a second sequence meeting this specific threshold in
 `d60_seedstep_per_window.mp4`: frames 1326..1445 (55.25..60.21 s), eight drops every 17 frames, median -4.38 YAVG.
 The other 23 clips had no >=2 YAVG run lasting at least three periods. This is a global-luma screen, not proof that
