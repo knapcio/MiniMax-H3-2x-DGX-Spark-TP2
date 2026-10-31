@@ -156,6 +156,21 @@ validation; the global two-drop screen found no repeated drops. The clip is
 `~/Downloads/h3-prod-smoke/d16_koninck_softlight_EXPERIMENT_EXACT16s.mp4`. Whether its ground light looks more natural
 still needs playback review; the prompt does not measure or enforce cloud-shadow alignment.
 
+For the newer 960x544 16 s clip, the global two-drop detector found frames 289 and 306 (12.04–12.75 s), and regional
+changes continued at the same 17-frame period through 15.58 s. Separate, **unreviewed** spatial repairs use the
+previously reviewed luma-adjustment method with `--local-periodic`: they alter 30 of the 384 exact-duration frames
+(289–378), preserve all decoded chroma and every AAC packet/timestamp, and change luma by at most 5 levels for radius
+16 or 6 levels for radius 8/4. Global repeated drops are no longer detected, while regional flags remain. Across the
+six affected boundary frames, lower-left/middle/right median changes fell from 2.11/2.12/1.78 gray levels to
+0.83/0.86/0.78 (radius 16) or 0.71/0.72/0.68 (radius 4). These metrics include real scene movement; the narrower
+blur can alter details or motion and neither candidate is a default. The separate copies and
+`porownanie_migania_960x544_16s.mp4` are in `~/Downloads/h3-prod-smoke/`.
+
+An additional unreviewed locked-camera soft-ground copy applies the earlier bounded correction after the radius-16
+repair. It leaves the upper 337 rows, chroma and AAC packets unchanged, changes lower luma by at most 10 levels and
+reduces the sampled lower-frame grayscale range from 26.34 to 19.77. It does not track shadows or prove physical
+alignment, and can suppress real light changes. File: `d16_koninck_960x544_regional_softground_EXPERIMENT.mp4`.
+
 On 2026-10-31 a one-sample-per-second grayscale screen over the bottom 37.5% of each exact 16 s frame found the
 original at 47.06 -> 60.90 (range 13.84), a same-prompt repeat at 47.03 -> 60.94 (range 13.91), and the soft-light
 sample at 47.10 -> 66.21 (range 19.11). Mean absolute change from the first sample was 10.54 / 10.57 / 13.58 gray

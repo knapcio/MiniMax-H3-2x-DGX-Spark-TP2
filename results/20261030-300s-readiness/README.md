@@ -33,7 +33,12 @@ rc=143 markers kept as history. The replacement is **960x544**, 0.58% wider rela
 dimensions divisible by 32 as required by the deployed model. The 5 s smoke completed successfully (195.5 s wall;
 head/worker minimum available 49,229/50,560 MiB). Its native 124-frame output passed full audio/video decode and
 global and regional repeated-flicker screens; an exact 120-frame/5.000 s copy was verified and collected. Those
-screens and one still do not establish temporal quality. The 16 s test started at 14:48 CET and is still running.
+screens and one still do not establish temporal quality. The 16 s test completed in 814.8 s (535.9/197.7 s diffusion),
+8.05% faster wall time than the earlier 960x576 sample with the same prompt and seed on the same head process. This
+changes the spatial shape, so it is a single resolution comparison, not an output-preserving acceleration. Its seam
+ratio was 1.00, no hard cut was detected and head/worker minimum available memory was 49,165/50,123 MiB. However,
+two successive >=2 YAVG drops were detected at 12.04–12.75 s, and the regional screen flagged repeated changes through
+15.58 s; the 300 s guard therefore cannot pass on this raw 16 s control. The 60 s test started at 15:02 CET.
 [`run-aspect-control-20261031.sh`](run-aspect-control-20261031.sh) runs the 5 s and 16 s controls in sequence; the
 latter requires a successful smoke and matching source-image SHA-256. The
 [`queue-aspect-20261031.sh`](queue-aspect-20261031.sh) then checks the 16 s request and source hash before running
@@ -45,6 +50,13 @@ only for a time-only skip and after rechecking both controls and their matching 
 names are separate; the 960x576 jobs must not be resumed. The aspect controller, queue and fallback passed 4, 5 and
 7 fake-host tests respectively; these do not establish GPU validity or visual quality. A separate Mac collector and
 duration comparator will verify and copy successful outputs while the Mac is online.
+
+After a verified patch, [`queue-aspect-vae-trace-20261031.sh`](queue-aspect-vae-trace-20261031.sh) waits for idle
+nodes and enables the trace in a runtime-only systemd drop-in. A 5 s smoke must actually produce usable trace lines
+before a 16 s 960x544, seed-1101 streamed request with the same prompt and source bytes. It records approximate
+per-overlap luma, full media and flicker diagnostics, then restores and verifies a trace-off head. A busy or uncertain
+head is left untouched on HOLD. Fourteen fake-host tests cover the guards, missing trace and restoration; the GPU
+trace remains untested until it runs. The measurements are diagnostic, not proof of the flicker cause.
 
 After the aspect queue and its 300 s fallback finish or safely skip, the independent
 [`deploy-aspect-prompt-20261031.sh`](deploy-aspect-prompt-20261031.sh) can install the staged duration/prompt fix on
