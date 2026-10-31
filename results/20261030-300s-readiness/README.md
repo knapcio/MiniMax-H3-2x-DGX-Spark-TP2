@@ -464,3 +464,26 @@ resume still needs capture after cumulative AV is committed, complete request/mo
 both-rank coordination and matching checkpoints, RNG/seed and retry validation, a durable output/job protocol,
 limits for the extra host memory and disk use, and stop/restart/failure tests against a continuous GPU control.
 Until then the currently running 300 s request remains non-resumable.
+
+## Window-size planning from existing 960x544 samples (2026-10-31)
+
+`scripts/estimate_continuation.py` reproduces the deployed 17n+5 frame alignment and window plan. For a 300 s request
+at 24 fps with a 22-frame overlap, the 7,213-frame internal result needs 61 / 47 / 29 windows at sizes 141 / 175 /
+277 respectively: 60 / 46 / 28 handovers. The 141 and 277 plans each end with a 73-frame window; the 175 plan has
+47 full windows. More handovers can harm continuity, even if each window is faster.
+
+On one earlier head process and the same image, the final 141-frame window of a 16 s request took 197.7 s, the
+final 175-frame window of a 60 s request took 263.9 s, and the median of the four full later windows in that 60 s
+request was 524.9 s at 277 frames. These are 1.66 / 1.72 / 2.06 denoising seconds per new frame respectively, after
+subtracting the 22-frame overlap. A naive multiplication of only the full windows yields 11,862 / 12,403 / 14,697 s
+for the three 300 s plans. The short final window, decode, setup, retries and any runtime changes are excluded; the
+samples use different durations, seeds and positions and are not a controlled whole-video speedup. The queued 30 s
+175-versus-277 comparison is needed to check time and quality before any default change.
+
+If saved as float32, the final 960x544 cumulative video latent has approximately 396.3 MiB per rank (24 channels,
+2,122 latent time positions, 34x60 spatial positions). Saving both cumulative and previous-window video at every
+window would total about 12,912 / 9,998 / 6,553 MiB per rank for the 141 / 175 / 277 plans, before audio, temporary
+copies, metadata and filesystem overhead. This is arithmetic from shapes, not a measured memory or disk peak. The
+calculator takes observed timings as inputs and makes no interpolation; three tests cover alignment, exact window
+counts, a short final window and invalid plans. All six observed 60 s windows and the first six observed windows of
+the 300 s retry matched the calculator's boundaries and overlap at the time of the check.
