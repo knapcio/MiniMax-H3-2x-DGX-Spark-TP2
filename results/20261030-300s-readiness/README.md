@@ -108,7 +108,11 @@ both memory guards remained active; the head stayed active but `/health` returne
 distributed inference. The failure and HOLD events are preserved under
 `diagnostics/h3-300-20261030/failure-20261031-1727/` in the workspace; no 300 s video or quality pass exists.
 After confirming no active H3 workers or queued video jobs, the unhealthy head was restarted at 21:16:01 (new PID
-973294); readiness and a real two-node smoke remain pending at this writing.
+973294). A 5 s FL2VA recovery smoke on two Sparks completed HTTP 200 / curl 0 in 120.9 s; it fully decoded, and a
+separately verified 120-frame exact copy was collected. It had no qualifying global or regional periodic-flicker
+runs, which is not a visual verdict or a test of long-run reliability. A guarded 15 s continuation control started at
+21:26:26. Its first window is 277 frames and both ranks logged the same 14-tensor step-0 digest `8a8189fa…` as the
+failed 300 s first window; the digest does not cover all request or runtime state. Its result is still pending.
 
 The failed 300 s first window and the earlier successful 16 s 960x544 control used the same 277-frame window and
 seed. Their rank-1 step-0 tensor-byte digests both begin `8a8189fa` (14 tensors), and the four logged FP8 GEMM
