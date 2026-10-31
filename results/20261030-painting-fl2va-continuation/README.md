@@ -161,15 +161,18 @@ latents. Default overlap and lock reference remain unchanged.
 To distinguish the two inputs to the decoder's five-frame overlap, `H3_TP2_VAE_BLEND_TRACE=1` enables a diagnostic
 on the next head start after this code is installed on both nodes. It logs the old, new and blended approximate luma
 for each temporal overlap, from spatially sampled decoded tensors, without intentionally changing the result. Its
-frame index is approximate; compare the trace with the rendered frame-level metrics. The hook is off by default,
-CPU-tested on stand-ins, and not yet qualified in a distributed GPU decode. Run only when the pair is available.
+frame index is approximate; compare the trace with the rendered frame-level metrics. The hook is off by default and
+was CPU-tested on stand-ins. It completed the two-Spark smoke and 16 s runs below, but a same-latent comparison is
+still needed to establish whether tracing changes the decoded result.
 `python3 scripts/analyze_vae_trace.py VIDEO TRACE` compares the same output's encoded global frame changes with the
 overlap samples and lists repeated >=2 YAVG drops. It rejects ambiguous duplicate overlap indices and missing traces.
 The indices and sampled luma are approximate; the analyzer also reports exploratory offsets of ±8 frames when
 checking a repeated drop against a boundary. Selecting an offset after observing periodic changes can produce a
 chance match. It also reports the first-to-second-frame changes in the old, incoming and blended samples beside the
-encoded-frame rebound; global averages can miss regional flicker, so the comparison does not prove a cause. Four
+encoded-frame rebound; global averages can miss regional flicker, so the comparison does not prove a cause. Five
 synthetic/unit tests pass; the 16 s painting-trace preview is described below.
+The report also compares encoded frame-to-frame luma changes across all 17 temporal phases; this is descriptive,
+not a significance test or a visual-quality verdict.
 
 The 2026-10-31 5 s T2VA trace smoke emitted six temporal-blend records and completed; its decoded video differed
 from the trace-off smoke on a previous boot. Their step-0 tensor digests match (`c2f21d37…`, 14 tensors), but their
@@ -191,8 +194,16 @@ threshold, and real scene changes can contribute. The independent preview report
 `~/Downloads/h3-prod-smoke/h3-vae-trace-painting-preview-20261031.json` (SHA-256
 `c7338d2d6a62fb4e30e3b92596ea2848fd100d52782bb3417d9130b0a4133293`). Its checked video SHA-256 is
 `fa4153f484132a49dac7149f8b486074d1f2bf34d7d87409befdabb4b0dd1382` and trace SHA-256 is
-`cbe8874889c85f9c714f1bcfd5c6414e6d9df252bd9acfd86ad124c7ca741f80`. The queue still needs to confirm the
-normal head has been restored before it marks the diagnostic complete and permits subsequent renders.
+`cbe8874889c85f9c714f1bcfd5c6414e6d9df252bd9acfd86ad124c7ca741f80`. At the time of the preview the queue
+was restoring the normal head; it must verify restoration before permitting subsequent renders.
+
+Across this encoded video, all 23 transitions at frame numbers divisible by 17 are negative (median -0.280 YAVG);
+the median changes for the other 16 phases are positive (+0.038 to +0.1555), with negative changes in 0–30.4% of
+their transitions. The final such transition has no corresponding trace overlap among the 22 recorded, so the phase
+statistics and trace sample counts differ. This strengthens the evidence for a phase-related bias in this clip, but
+neither proves a decoder cause nor implies that every change is visible. The separate phase report is
+`~/Downloads/h3-prod-smoke/h3-vae-trace-painting-phase-20261031.json` (SHA-256
+`9657fad03e837f09da273ac4eb888462fdc30ab224cdc6e09f1e3ce8e2b06efc`).
 
 The first 277-frame window of that 960x544 painting trace took 590.5 s, versus 535.9 s for the earlier matched
 16 s combined-prompt control (10.2% longer); the 14-tensor step-0 digests match. The runs used different boots,

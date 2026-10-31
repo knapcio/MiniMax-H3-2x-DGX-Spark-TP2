@@ -80,9 +80,20 @@ def compare(entries, means):
     offsets = {offset: sum(row['approx_frame'] + offset in drop_frames for row in rows)
                for offset in range(-8, 9)}
     most_matches = max(offsets.values())
+    # Show every phase, not only the largest detected drops: a gradual change
+    # in scene brightness can produce negative steps at every boundary too.
+    phase_stats = []
+    for phase in range(17):
+        changes = [means[i] - means[i - 1] for i in range(1, len(means)) if i % 17 == phase]
+        rebounds = [means[i + 1] - means[i] for i in range(1, len(means) - 1) if i % 17 == phase]
+        phase_stats.append({'phase': phase, 'frames': len(changes),
+                            'median_change': statistics.median(changes) if changes else None,
+                            'negative_fraction': sum(value < 0 for value in changes) / len(changes) if changes else None,
+                            'median_next_change': statistics.median(rebounds) if rebounds else None})
     return {'encoded_frames': len(means), 'trace_entries': len(entries), 'overlaps_in_range': len(rows),
             'periodic_global_drop_runs': [[{'frame': frame, 'delta': delta} for frame, delta in group]
                                           for group in drops],
+            'encoded_changes_by_phase': phase_stats,
             'drop_matches_by_candidate_offset': offsets,
             'candidate_offsets_with_most_matches': ([offset for offset, matches in offsets.items()
                                                       if matches == most_matches] if most_matches else []),

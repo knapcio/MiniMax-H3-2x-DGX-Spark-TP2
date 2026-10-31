@@ -26,6 +26,12 @@ class VaeTraceAnalysisTests(unittest.TestCase):
         self.assertEqual(report['overlaps'][0]['new_rebound_first'], -1)
         self.assertEqual(report['overlaps'][0]['blend_rebound_first'], 2)
         self.assertEqual(report['overlaps'][0]['encoded_rebound_after'], 3)
+        boundary = report['encoded_changes_by_phase'][0]
+        self.assertEqual(boundary['frames'], 2)
+        self.assertEqual(boundary['median_change'], -3)
+        self.assertEqual(boundary['negative_fraction'], 1)
+        self.assertEqual(boundary['median_next_change'], 3)
+        self.assertEqual(report['encoded_changes_by_phase'][1]['median_change'], 3)
         self.assertIn('not proof of cause', report['caveat'])
 
     def test_duplicate_missing_or_nonfinite_trace_is_rejected(self):
@@ -56,6 +62,13 @@ class VaeTraceAnalysisTests(unittest.TestCase):
             subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', 'testsrc=size=64x64:rate=24:duration=1',
                             '-c:v', 'libx264', '-pix_fmt', 'yuv420p', str(path)], check=True)
             self.assertEqual(len(module.encoded_means(path)), 24)
+
+    def test_short_sequence_leaves_unseen_phases_empty(self):
+        text = 'h3_tp2 VAE temporal blend 1 approx-frame 1: old [99] new [99] blended [99]\n'
+        report = module.compare(module.parse_trace(text), [100.0, 99.0])
+        self.assertIsNone(report['encoded_changes_by_phase'][0]['median_change'])
+        self.assertIsNone(report['encoded_changes_by_phase'][1]['median_next_change'])
+        self.assertEqual(report['encoded_changes_by_phase'][1]['negative_fraction'], 1)
 
 
 if __name__ == '__main__': unittest.main()
