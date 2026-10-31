@@ -105,6 +105,12 @@ painting clips also trigger this sensitive screen in some regions. Thus a flag i
 flicker**: real scene motion and harmless periodic changes can qualify. It is a way to choose segments for inspection,
 not an automatic acceptance threshold, and it cannot establish the source of the periodicity.
 
+For a separate corrected copy with AAC audio, `python3 scripts/verify_luma_repair.py SOURCE REPAIRED --limit 8`
+checks the full decoded YUV frames, bounds the largest per-pixel luma change, compares every chroma byte, video-frame
+timestamp and AAC packet, and records SHA-256 hashes. On the 960x544 exact-16 s local-periodic experiment it finds
+30 changed luma frames of 384, with a maximum change of 5, unchanged chroma and timestamps, and identical AAC packets.
+Those invariants do not measure visual quality: a bounded adjustment can still alter real movement or detail.
+
 The 17-frame period matches the checkpoint's `vae_clip_length=17` and the decoder's 17-frame chunk geometry; that
 alignment suggests a temporal decode boundary artifact, but the cause is not established. Crossfade was OFF. The
 look-lock is one possible contributor: it adjusts latent mean/std, not decoded luma, so the earlier claim that it
