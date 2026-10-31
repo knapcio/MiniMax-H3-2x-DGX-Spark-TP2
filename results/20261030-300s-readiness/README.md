@@ -38,11 +38,13 @@ screens and one still do not establish temporal quality. The 16 s test completed
 changes the spatial shape, so it is a single resolution comparison, not an output-preserving acceleration. Its seam
 ratio was 1.00, no hard cut was detected and head/worker minimum available memory was 49,165/50,123 MiB. However,
 two successive >=2 YAVG drops were detected at 12.04–12.75 s, and the regional screen flagged repeated changes through
-15.58 s; the 300 s guard therefore cannot pass on this raw 16 s control. The 60 s test started at 15:02 CET.
+15.58 s; the 300 s quality guard therefore cannot pass on this raw 16 s control. The 60 s test started at 15:02 CET
+and completed HTTP 200 in 3,198.5 s with full media validation; its exact 60.000 s copy is in the Mac Downloads folder.
 Its first 277-frame diffusion window took 536.2 s versus 535.9 s in the 16 s request, with the same logged
 first-window output-latent digest (`2c5fb185…`, two tensors) and the same rank-0 worker PID 3622. This pair does
 not reproduce the earlier 1344x768 first-window slowdown; the digest has the limited tensor-byte coverage described
-in the painting results and does not prove all runtime state identical. The completed 60 s media is still pending.
+in the painting results and does not prove all runtime state identical. All 255 pre-overlap decoded frames matched
+the 16 s control. The exact 60 s file has seven >=2 YAVG drops at 55.25–59.50 s; visual review remains pending.
 [`run-aspect-control-20261031.sh`](run-aspect-control-20261031.sh) runs the 5 s and 16 s controls in sequence; the
 latter requires a successful smoke and matching source-image SHA-256. The
 [`queue-aspect-20261031.sh`](queue-aspect-20261031.sh) then checks the 16 s request and source hash before running

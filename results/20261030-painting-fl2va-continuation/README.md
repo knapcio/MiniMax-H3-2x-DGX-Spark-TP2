@@ -52,6 +52,33 @@ new copy has not been reviewed by eye. Its exact-60 s variant is
 `d60_koninck_painting_regional_EXACT60s_EXPERIMENT.mp4`. The regional screen's raw outputs are
 `koninck60-regional.txt` and `koninck60-regional-experiment.txt`.
 
+### Aspect-matched 60 s control (2026-10-31)
+
+The 960x544 combined soft-light/slow-figure prompt completed in 3,198.5 s with HTTP 200, full video/audio decode,
+five seam ratios 0.98–0.99, no scene-score >0.1 cuts, and minimum available head/worker memory 49,058/50,067 MiB.
+The native result has 1,450 frames / 60.4167 s; the separately verified exact copy has 1,440 frames / 60.000 s,
+unchanged retained decoded frames and AAC packets ending with the video. It is
+`~/Downloads/h3-prod-smoke/d60_koninck_softlight_slowfig_960x544_EXPERIMENT_EXACT60s.mp4`. The first 255 decoded
+frames are byte-identical to the matched 16 s control; its first-window diffusion times were 536.2 and 535.9 s.
+This does not establish visual quality or explain the prior 1344x768 slowdown.
+
+The exact 60 s file has seven global >=2 YAVG drops every 17 frames at 55.25–59.50 s (native: eight through 60.21 s)
+and regional candidates at other points. Its lower-frame mean ranges 47.24–73.73 gray; the still sheet at
+`d60_koninck_960x544_timeline_20261031.png` shows strong changes in ground brightness and a gradual change in cloud
+shape. Stills cannot establish how the shadows move relative to the clouds. The prompt alone did not keep the ground
+light nearly constant, and playback has not been reviewed.
+
+The separate `d60_koninck_960x544_regional_deflicker_EXPERIMENT_EXACT60s.mp4` changes luma in 140 of 1,440 frames
+by at most four levels; chroma, video timing and AAC packets match the exact source. The global two-drop screen no
+longer flags a run, but regional candidates remain. A second separate copy,
+`d60_koninck_960x544_regional_softground_EXPERIMENT_EXACT60s.mp4`, applies the bounded soft-ground experiment after
+that correction: 1,437 frames have luma changes up to ten levels, the top 337 luma rows, all chroma and AAC packets
+remain identical to the regional source, and video timing matches. At one sample per second the lower-frame gray range
+changes from 26.49 to 19.85, and mean absolute deviation from the first frame from 15.01 to 11.24. This attenuates
+lighting variations; it does not track cloud shadows and may suppress real light or details. The labelled
+`porownanie_cieni_60s.mp4` compares the regional and soft-ground copies with the left audio. Both corrections remain
+experiments, not visual approval or proof that flicker and shadows are fixed.
+
 A more invasive, separate `--local-periodic` experiment on this 60 s source follows the dominant regional 17-frame
 phase across the clip, applying the same bounded spatial adjustment to five frames at each detected boundary. It
 changes 340/1,450 luma frames (289..1432), preserves all chroma and copied AAC, and decodes fully. Over the 69 phase-0
@@ -112,7 +139,8 @@ For a separate corrected copy with AAC audio, `python3 scripts/verify_luma_repai
 checks the full decoded YUV frames, bounds the largest per-pixel luma change, compares every chroma byte, video-frame
 timestamp and AAC packet, and records SHA-256 hashes. On the 960x544 exact-16 s local-periodic experiment it finds
 30 changed luma frames of 384, with a maximum change of 5, unchanged chroma and timestamps, and identical AAC packets.
-Those invariants do not measure visual quality: a bounded adjustment can still alter real movement or detail.
+`--unchanged-above 337` additionally verifies that the top 337 luma rows remain identical in every frame. Those
+invariants do not measure visual quality: a bounded adjustment can still alter real movement or detail.
 
 The 17-frame period matches the checkpoint's `vae_clip_length=17` and the decoder's 17-frame chunk geometry; that
 alignment suggests a temporal decode boundary artifact, but the cause is not established. Crossfade was OFF. The

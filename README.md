@@ -175,8 +175,9 @@ sends this FL2VA request; without `--first-frame` the long client retains Ref2VA
 FL2VA resizes the first image directly to the requested width and height. Choose a canvas close to the image's aspect
 ratio to avoid stretching it: for the 2316x1320 painting above, 960x544 differs by about 0.6%, while 960x576 compresses
 it horizontally by about 5%. The workspace client now uses `ffprobe` to choose 32-aligned dimensions near the image
-ratio when either dimension is omitted; supplying both `--width` and `--height` keeps the chosen canvas. The 960x544
-5 s smoke has passed on the pair; longer tests at that shape are still in progress, not a general quality guarantee.
+ratio when either dimension is omitted; supplying both `--width` and `--height` keeps the chosen canvas. At 960x544
+the 5, 16 and 60 s controls passed media checks on the pair; repeated luma drops were detected in the longer two, so
+these results are not a general quality guarantee.
 The workspace client also accepts `--experimental-long --long --first-frame --duration 300` and requests streamed
 MP4 encoding, but a 300 s render has not yet been verified. Its longer client timeout does not change the server's
 own limits, and a failed request has no continuation checkpoint.

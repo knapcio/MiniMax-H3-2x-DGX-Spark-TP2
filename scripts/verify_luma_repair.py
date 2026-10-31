@@ -16,12 +16,16 @@ exact = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(exact)
 
 
-def compare_frame(left: bytes, right: bytes, width: int, height: int) -> tuple[bool, int]:
+def compare_frame(left: bytes, right: bytes, width: int, height: int, unchanged_above: int = 0) -> tuple[bool, int]:
     y_size = width * height
     if len(left) != y_size * 3 // 2 or len(right) != len(left):
         raise ValueError('incomplete YUV420 frame')
     if left[y_size:] != right[y_size:]:
         raise ValueError('chroma bytes changed')
+    if not 0 <= unchanged_above <= height:
+        raise ValueError('invalid protected row count')
+    if left[:width * unchanged_above] != right[:width * unchanged_above]:
+        raise ValueError('luma changed in protected rows')
     if left[:y_size] == right[:y_size]:
         return False, 0
     a = Image.frombytes('L', (width, height), left[:y_size])
@@ -29,7 +33,7 @@ def compare_frame(left: bytes, right: bytes, width: int, height: int) -> tuple[b
     return True, ImageChops.difference(a, b).getextrema()[1]
 
 
-def inspect(source: Path, repaired: Path, limit: int = 8) -> dict:
+def inspect(source: Path, repaired: Path, limit: int = 8, unchanged_above: int = 0) -> dict:
     if source.resolve() == repaired.resolve() or not 1 <= limit <= 32:
         raise ValueError('distinct files and a luma limit in 1..32 are required')
     a, b = exact.probe(source), exact.probe(repaired)
@@ -46,6 +50,8 @@ def inspect(source: Path, repaired: Path, limit: int = 8) -> dict:
     width, height = int(va['width']), int(va['height'])
     if width % 2 or height % 2:
         raise ValueError('expected even video dimensions')
+    if not 0 <= unchanged_above <= height:
+        raise ValueError('invalid protected row count')
     if any(len([s for s in meta['streams'] if s['codec_type'] == 'audio' and s.get('codec_name') == 'aac']) != 1
            or len([s for s in meta['streams'] if s['codec_type'] == 'audio']) != 1 for meta in (a, b)):
         raise ValueError('expected one AAC stream in each file')
@@ -75,7 +81,7 @@ def inspect(source: Path, repaired: Path, limit: int = 8) -> dict:
             x, y = left.stdout.read(frame_size), right.stdout.read(frame_size)
             if not x and not y:
                 break
-            differs, max_delta = compare_frame(x, y, width, height)
+            differs, max_delta = compare_frame(x, y, width, height, unchanged_above)
             if differs:
                 changed.append(count)
                 maximum = max(maximum, max_delta)
@@ -99,6 +105,7 @@ def inspect(source: Path, repaired: Path, limit: int = 8) -> dict:
     return {'source_sha256': digest(source), 'repaired_sha256': digest(repaired), 'frames': count,
             'changed_luma_frames': changed, 'max_luma_change': maximum,
             'chroma_identical': True, 'video_timing_identical': True, 'aac_packets_identical': True,
+            'unchanged_top_luma_rows': unchanged_above,
             'caveat': 'Luma edits can still alter real motion and details; this check does not establish visual quality.'}
 
 
@@ -107,9 +114,11 @@ def main() -> int:
     parser.add_argument('source', type=Path)
     parser.add_argument('repaired', type=Path)
     parser.add_argument('--limit', type=int, default=8)
+    parser.add_argument('--unchanged-above', type=int, default=0, metavar='ROWS',
+                        help='require the top ROWS of every decoded luma plane to be unchanged')
     args = parser.parse_args()
     try:
-        print(json.dumps(inspect(args.source, args.repaired, args.limit), indent=2))
+        print(json.dumps(inspect(args.source, args.repaired, args.limit, args.unchanged_above), indent=2))
         return 0
     except (OSError, subprocess.SubprocessError, ValueError, KeyError, ZeroDivisionError) as exc:
         print(f'verify-luma-repair: {exc}', file=sys.stderr)

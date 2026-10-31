@@ -22,6 +22,16 @@ class LumaRepairTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'incomplete'):
             module.compare_frame(original, luma[:-1], 4, 4)
 
+    def test_protected_top_rows_cannot_change(self):
+        original=bytes([100]*16+[128]*8)
+        lower=bytes([100]*8+[104]*8+[128]*8)
+        upper=bytes([104]*8+[100]*8+[128]*8)
+        self.assertEqual(module.compare_frame(original,lower,4,4,2),(True,4))
+        with self.assertRaisesRegex(ValueError,'protected rows'):
+            module.compare_frame(original,upper,4,4,2)
+        with self.assertRaisesRegex(ValueError,'invalid protected'):
+            module.compare_frame(original,lower,4,4,5)
+
     def test_real_encoded_luma_edit_and_color_change(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
