@@ -168,6 +168,13 @@ preserving chroma, frame times and AAC. At the detected source boundaries the si
 experimental copy has a global two-drop run, and playback review remains necessary. File:
 `~/Downloads/h3-prod-smoke/d16_koninck_original_prompt_960x544_regional_deflicker_EXPERIMENT_EXACT16s.mp4`.
 
+[`scripts/compare_regional_transitions.py`](../../scripts/compare_regional_transitions.py) additionally measures signed
+grayscale changes in the six regions at source spikes detected in at least three regions. In this pair it selected
+six frames; all 36 region/frame changes were negative in both versions, with median -1.477→-0.690 gray levels.
+This supports a coordinated brightness change at those selected frames, but the metric can include real light or
+motion and does not establish a decoder cause or visual quality. Three synthetic tests pass. The complete report is
+`~/Downloads/h3-prod-smoke/h3-regional-transitions-original16-20261031.json`.
+
 The automatic duration check initially stopped on exit 141 even though the expected journal line was present:
 `grep -q` closed its input early and `journalctl` received SIGPIPE under `pipefail`. The output, journal, node
 guards and idle state were independently checked; the full original event log was archived as
