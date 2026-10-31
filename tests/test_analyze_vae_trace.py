@@ -33,6 +33,18 @@ class VaeTraceAnalysisTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'invalid'):
             module.parse_trace(line.replace('[2]', '[NaN]'))
 
+    def test_exploratory_offset_can_find_shifted_periodic_drops(self):
+        text = ('h3_tp2 VAE temporal blend 1 approx-frame 17: old [97] new [101] blended [97]\n'
+                'h3_tp2 VAE temporal blend 2 approx-frame 34: old [97] new [101] blended [97]\n')
+        means = [100.0] * 50
+        means[18] = means[35] = 97.0
+        report = module.compare(module.parse_trace(text), means)
+        self.assertEqual(report['drop_matches_by_candidate_offset'][1], 2)
+        self.assertEqual(report['candidate_offsets_with_most_matches'], [1])
+        self.assertTrue(all(row['nearest_repeated_drop_offset'] == 1 for row in report['overlaps']))
+        self.assertFalse(any(row['encoded_repeated_drop'] for row in report['overlaps']))
+        self.assertIn('by chance', report['caveat'])
+
     def test_encoded_frames_are_sampled_once_each(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / 'sample.mp4'

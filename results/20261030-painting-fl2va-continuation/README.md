@@ -157,8 +157,10 @@ frame index is approximate; compare the trace with the rendered frame-level metr
 CPU-tested on stand-ins, and not yet qualified in a distributed GPU decode. Run only when the pair is available.
 `python3 scripts/analyze_vae_trace.py VIDEO TRACE` compares the same output's encoded global frame changes with the
 overlap samples and lists repeated >=2 YAVG drops. It rejects ambiguous duplicate overlap indices and missing traces.
-The indices and sampled luma are approximate; global averages can miss regional flicker, so the comparison does not
-prove a cause. Three synthetic/unit tests pass; analysis of an actual GPU trace is still pending.
+The indices and sampled luma are approximate; the analyzer also reports exploratory offsets of ±8 frames when
+checking a repeated drop against a boundary. Selecting an offset after observing periodic changes can produce a
+chance match, and global averages can miss regional flicker, so the comparison does not prove a cause. Four
+synthetic/unit tests pass; analysis of an actual GPU trace is still pending.
 
 A sweep of all 25 locally saved `h3-prod-smoke` MP4s found a second sequence meeting this specific threshold in
 `d60_seedstep_per_window.mp4`: frames 1326..1445 (55.25..60.21 s), eight drops every 17 frames, median -4.38 YAVG.

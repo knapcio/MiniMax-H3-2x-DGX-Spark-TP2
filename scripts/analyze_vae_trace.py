@@ -61,23 +61,32 @@ def compare(entries, means):
         frame = item['approx_frame']
         if not 0 < frame < len(means):
             continue
+        nearby = [offset for offset in range(-8, 9) if frame + offset in drop_frames]
+        nearest = min(nearby, key=lambda offset: (abs(offset), offset)) if nearby else None
         rows.append({'overlap': item['overlap'], 'approx_frame': frame,
                      'encoded_frame_change': means[frame] - means[frame - 1],
                      'encoded_repeated_drop': frame in drop_frames,
+                     'nearest_repeated_drop_offset': nearest,
                      'old_first': item['old'][0], 'new_first': item['new'][0],
                      'blend_first': item['blended'][0],
                      'new_minus_old_first': item['new'][0] - item['old'][0],
                      'encoded_minus_blend_first': means[frame] - item['blended'][0]})
     if not rows:
         raise ValueError('no overlap trace maps into the encoded frames')
+    offsets = {offset: sum(row['approx_frame'] + offset in drop_frames for row in rows)
+               for offset in range(-8, 9)}
+    most_matches = max(offsets.values())
     return {'encoded_frames': len(means), 'trace_entries': len(entries), 'overlaps_in_range': len(rows),
             'periodic_global_drop_runs': [[{'frame': frame, 'delta': delta} for frame, delta in group]
                                           for group in drops],
+            'drop_matches_by_candidate_offset': offsets,
+            'candidate_offsets_with_most_matches': ([offset for offset, matches in offsets.items()
+                                                      if matches == most_matches] if most_matches else []),
             'median_abs_encoded_vs_sampled_blend': statistics.median(abs(row['encoded_minus_blend_first']) for row in rows),
             'overlaps': rows,
             'caveat': ('Trace frame indices and sampled luma are approximate; spatial sampling, crop, color conversion '
-                       'and encoding may differ. A match is diagnostic, not proof of cause; global averages can miss '
-                       'regional flicker or real movement.')}
+                       'and encoding may differ. Offset matching is exploratory and can align periodic events by chance. '
+                       'A match is diagnostic, not proof of cause; global averages can miss regional flicker or real movement.')}
 
 
 def main():
