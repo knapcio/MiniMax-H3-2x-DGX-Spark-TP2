@@ -52,7 +52,9 @@ def inspect(path: Path, top: float = 0.625) -> dict:
     boxes = [(0, y, WIDTH, HEIGHT)] + [(i * WIDTH // 3, y, (i + 1) * WIDTH // 3, HEIGHT) for i in range(3)]
     series = [[] for _ in boxes]
     spatial = []
+    adjacent_spatial = []
     reference = None
+    previous = None
     for offset in range(0, len(result.stdout), frame_bytes):
         image = Image.frombytes('L', (WIDTH, HEIGHT), result.stdout[offset:offset + frame_bytes])
         for values, box in zip(series, boxes, strict=True):
@@ -61,6 +63,9 @@ def inspect(path: Path, top: float = 0.625) -> dict:
         if reference is None:
             reference = ground
         spatial.append(spatial_change(reference, ground))
+        if previous is not None:
+            adjacent_spatial.append(spatial_change(previous, ground))
+        previous = ground
     mean = series[0]
     return {
         'sample_seconds': list(range(count)),
@@ -74,9 +79,16 @@ def inspect(path: Path, top: float = 0.625) -> dict:
         'mean_ground_change_spatial_std': round(statistics.mean(item['spatial_std'] for item in spatial), 2),
         'max_ground_change_spatial_std': round(max(item['spatial_std'] for item in spatial), 2),
         'spatial_difference_boundary_or_clipped_pixels': sum(item['boundary_or_clipped_pixels'] for item in spatial),
+        'adjacent_ground_change_spatial_std': [round(item['spatial_std'], 2) for item in adjacent_spatial],
+        'mean_adjacent_ground_change_spatial_std': (
+            round(statistics.mean(item['spatial_std'] for item in adjacent_spatial), 2) if adjacent_spatial else 0),
+        'max_adjacent_ground_change_spatial_std': round(
+            max((item['spatial_std'] for item in adjacent_spatial), default=0), 2),
+        'adjacent_spatial_difference_boundary_or_clipped_pixels': sum(item['boundary_or_clipped_pixels'] for item in adjacent_spatial),
         'spatial_blur_radius_at_336px_width': 8,
         'caveat': ('One grayscale mean per second in a fixed image region; changing content and shadows both affect it. '
                    'Spatial spread is the standard deviation of smoothed brightness differences from frame 0; '
+                   'adjacent spread uses consecutive one-second samples. '
                    'large per-pixel differences are clipped; boundary values can also be exact. '
                    'This does not track clouds or establish shadow alignment, '
                    'motion quality or absence of flicker.'),

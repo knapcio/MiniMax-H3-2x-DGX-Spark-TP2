@@ -598,3 +598,18 @@ SHA-256 `320bb6dbf9e2b517aff1a8f70c31b77bee8391e47eed01c1687388c7fec90a3a`) prod
 test copy: 30 frames changed, at most 8 luma levels, chroma/timestamps/AAC unchanged. Across six source-selected
 transition frames the median absolute regional mean change was 1.477 before and 0.629 after. This numerical test
 does not establish perceived quality or prove the decoder cause. The 300 s application remains pending the render.
+
+### Ground-light comparison for the 0.8x 30 s clip (2026-10-31)
+
+The 0.8x clip and its separate soft-ground copy now have a labelled side-by-side:
+`porownanie_cieni_30s_spowolniony20_20261031.mp4` (SHA-256
+`4418f85f2473e1b3777805d66759b7f3117a7f37f321de7cba20299ddedb5ffd`). It retains the left clip's AAC and has
+720 frames / 30 s; both streams fully decoded and both source hashes were unchanged.
+
+The ground-light report additionally measures the spatial spread of the smoothed gray difference between consecutive
+one-second samples. Its mean / maximum were 2.20 / 9.04 gray levels in the slowed source and 1.81 / 7.36 in the
+soft-ground copy; no sample reached the signed-difference boundary. These values show smaller measured lower-frame
+changes in this pair, including any real scene changes. They do not say whether shadows align with clouds or look
+natural. Full report: `h3-ground-adjacent-slow20-20261031.json` (SHA-256
+`a3ef6393a4ac6ee54c85afd169eece67b68d846d201daf753839f83546b9e545`). The added adjacent-sample metric has five
+unit/media tests, including a localized light change introduced after the first second.

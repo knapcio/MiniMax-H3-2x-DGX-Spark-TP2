@@ -48,7 +48,26 @@ class GroundLightStatsTests(unittest.TestCase):
                 self.assertAlmostEqual(actual, expected, delta=2)
             self.assertEqual(len(result['ground_thirds_gray_mean']['left']), 3)
             self.assertEqual(result['ground_change_spatial_std'], [0, 0, 0])
+            self.assertEqual(result['adjacent_ground_change_spatial_std'], [0, 0])
+            self.assertEqual(result['mean_adjacent_ground_change_spatial_std'], 0)
             self.assertIn('does not track clouds', result['caveat'])
+
+    def test_adjacent_spread_detects_local_change_after_the_first_second(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            for index in range(72):
+                frame = Image.new('RGB', (336, 192), (100, 100, 100))
+                if index >= 48:
+                    ImageDraw.Draw(frame).rectangle((0, 120, 167, 191), fill=(60, 60, 60))
+                frame.save(root / f'frame-{index:03d}.png')
+            video = root / 'sample.mp4'
+            subprocess.run(['ffmpeg', '-v', 'error', '-framerate', '24', '-i', str(root / 'frame-%03d.png'),
+                            '-c:v', 'libx264', '-crf', '0', '-pix_fmt', 'yuv420p', str(video)], check=True)
+            result = module.inspect(video)
+            self.assertEqual(result['adjacent_ground_change_spatial_std'][0], 0)
+            self.assertGreater(result['adjacent_ground_change_spatial_std'][1], 10)
+            self.assertEqual(result['max_adjacent_ground_change_spatial_std'],
+                             result['adjacent_ground_change_spatial_std'][1])
 
     def test_rejects_invalid_region(self):
         for value in (-0.1, 1, 1.1):
