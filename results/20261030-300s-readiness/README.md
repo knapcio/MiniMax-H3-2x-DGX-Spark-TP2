@@ -558,6 +558,10 @@ an incoming request. Its JIT cache is isolated and compilation limited to two jo
 configuration, numeric error accounting, the predecessor gate and child cleanup; node snapshots and busy detection
 were checked on the live pair. As of 23:05 the watcher was waiting, so there is no GPU result or speedup claim.
 Synthetic kernel timing does not establish whole-render speed or visual/audio quality, and no serving default changes.
+`scripts/analyze_attention_probe.py` validates the expected four cases, backend dispatch and timing samples, then
+reports timing ratios and numerical errors separately. It retains unavailable and nonfinite results instead of
+treating them as successes. A Mac-side collector can save the checked remote JSON and report while the Mac is online;
+network failure delays collection and does not change the Spark-side queue.
 
 ## Faster exact-duration export (2026-10-31)
 
