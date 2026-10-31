@@ -188,7 +188,8 @@ inspection. These checks establish media integrity, not visual quality; the upda
 with a new live render.
 Add `--exact-duration` to trim the result to the nearest 24 fps frame after generation. The helper verifies retained
 decoded frames and AAC packets before publication; the audio can end up to one AAC packet before the target. This
-optional step re-encodes the video losslessly and takes extra time. A failed trim preserves the raw response separately.
+optional step tries a fast stream copy for H.264 without B-frames and falls back to lossless video re-encoding if
+needed. Verification still decodes the retained frames. A failed trim preserves the raw response separately.
 
 ### Long clips from a client or an agent: the request
 
