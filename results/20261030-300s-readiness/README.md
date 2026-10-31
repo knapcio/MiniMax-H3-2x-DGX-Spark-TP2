@@ -465,6 +465,14 @@ both-rank coordination and matching checkpoints, RNG/seed and retry validation, 
 limits for the extra host memory and disk use, and stop/restart/failure tests against a continuous GPU control.
 Until then the currently running 300 s request remains non-resumable.
 
+At 22:35 on 2026-10-31, `tests/distributed_checkpoint_cpu.py` also ran one CUDA-hidden Gloo process on each Spark
+over `10.100.96.0/24`, using separate local temporary checkpoint directories and exchanging bounded JSON receipts.
+Both ranks selected common window 1 from `{1,2}` and `{1,3}`. After rank 1's window-1 data was deliberately changed,
+its checksum check failed and both ranks found no common valid window. Both processes exited successfully; the
+active H3 workers and memory guards remained running and checked kernel logs contained no new Xid since the retry
+started. This tests receipt exchange and a corruption scenario on the real network, not GPU collectives, checkpoint
+capture in the H3 loop, coordinated process failure, request fingerprint completeness or model output equivalence.
+
 ## Window-size planning from existing 960x544 samples (2026-10-31)
 
 `scripts/estimate_continuation.py` reproduces the deployed 17n+5 frame alignment and window plan. For a 300 s request
