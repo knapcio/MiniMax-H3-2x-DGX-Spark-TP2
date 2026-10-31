@@ -549,3 +549,19 @@ retained decoded frames and AAC prefix checked and the whole file decoded. The s
 `porownanie_migania_30s_regional_radius4_20261031.mp4` retains the preferred left clip's AAC. The signed-transition
 and exhaustive luma/chroma verification reports are `d30_koninck_allregional_radius4_transitions_20261031.json` and
 `d30_koninck_allregional_radius4_20261031.verification.json` in the same folder.
+
+A more conservative hybrid retains the **exact owner-preferred frames through frame 533** (22.25 s), then uses the
+radius-4 broader repair. Frames 532–536 match in both input clips, so the switch introduces no new source difference
+at the boundary. Every one of the 720 decoded output frames matches the selected input, video timestamps are
+continuous 24 fps, AAC packets/timestamps are identical and the file fully decodes. Compared with the preferred copy,
+49 frames after the switch change by at most 6 luma levels, with all chroma unchanged. The clip is
+`d30_koninck_history5s_regional_hybrid_EXPERIMENT_EXACT30s_20261031.mp4` (SHA-256
+`4dedf52d3a40a3f4ba189491c047a156578b52033de1446f0e33f81e1eb4c7ce`), and the labelled comparison is
+`porownanie_migania_30s_hybrid_20261031.mp4`.
+
+An independent exact-30 s comparison against the original source selected 30 repeated-change frames in 15–22.25 s;
+median absolute regional mean change was 0.095 gray levels for both preferred and hybrid clips. Across 15 selected
+frames in 22.25–30 s it was 1.680 for preferred and 0.463 for hybrid. The screen can include real motion and does
+not establish perceived flicker or detail quality; regional spikes still remain. Report:
+`d30_koninck_hybrid_transitions_20261031.json` (SHA-256
+`6583b91f2c37c40a257877bce898906ea2d5b053f1da21dc4974b675ab1512ee`). Playback review is still required.
