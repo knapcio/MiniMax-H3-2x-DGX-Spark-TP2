@@ -78,7 +78,7 @@ memory/cut/input, time, busy-node, failed-render and output-validation gates; th
 The current automatic later-window prompt says "the camera keeps moving the same way" even when the base prompt
 specifies a locked tripod; the live 60 s journal confirms that wording. Whether it causes any visible defect is
 unknown. After the structural 300 s stage, [`queue-camera-speed-ab-20261031.sh`](queue-camera-speed-ab-20261031.sh)
-can run three 30 s, 960x544 requests on the same checked head/agent processes: default prompt/20 steps, an explicit
+can run three 30 s, 960x544 requests with the same checked head/agent service PIDs: default prompt/20 steps, an explicit
 locked-camera continuation prompt/20 steps, and that same explicit prompt/10 steps. The first comparison changes
 the continuation wording; the second changes only step count. The first-window wording and base prompt remain the
 same. It requires verified predecessors, the same image SHA, unchanged deployed prompt files, trace off, no custom
@@ -89,7 +89,8 @@ completed; none of the wording or speed settings is promoted without assessment.
 service PIDs, compares the first 255 decoded frames and the following 22 overlap frames of the camera-wording pair,
 and reports per-window time,
 available-memory samples and quality screens. Four unit tests and a synthetic FFmpeg integration passed; real
-comparison results do not exist until the queued renders finish.
+comparison results do not exist until the queued renders finish. Matching service PIDs alone does not prove that a
+child worker process remained unchanged.
 
 After the aspect queue and its 300 s fallback finish or safely skip, the independent
 [`deploy-aspect-prompt-20261031.sh`](deploy-aspect-prompt-20261031.sh) can install the staged duration/prompt fix on
