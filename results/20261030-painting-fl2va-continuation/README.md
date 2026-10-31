@@ -583,3 +583,18 @@ the ending. These measurements can include real motion, and do not establish vis
 side-by-side `porownanie_migania_koncowki_60s_20261031.mp4` uses the original left AAC. The reusable
 `scripts/combine_repairs.py` refuses mismatched boundary frames, timing, color geometry or AAC, verifies every
 selected frame and never overwrites an output; three FFmpeg tests cover success and refusal cases.
+
+### Bounded regional experiment for a verified long clip (2026-10-31)
+
+`scripts/experimental_regional_repair.py` packages the radius-4 experiment for a separate verified clip. It checks
+the source hash, geometry, frame count, AAC and 24 fps, selects the dominant repeated regional phase and skips a
+clip with no qualifying events. It refuses to process more than 30% of frames, never overwrites a file and checks
+every decoded output frame, chroma, timestamps, AAC packets, full decode and source stability before publication.
+The 30% bound is a guard against a broad correction, not a visual-quality threshold. The output report compares
+regional changes at the source-selected transitions and explicitly flags that real lighting or motion can be changed.
+
+Five unit tests pass. A real 384-frame 960x544 source (`d16_koninck_duration_precedence_960x544_VALIDATION_EXACT16s`,
+SHA-256 `320bb6dbf9e2b517aff1a8f70c31b77bee8391e47eed01c1687388c7fec90a3a`) produced a separate, fully decoded
+test copy: 30 frames changed, at most 8 luma levels, chroma/timestamps/AAC unchanged. Across six source-selected
+transition frames the median absolute regional mean change was 1.477 before and 0.629 after. This numerical test
+does not establish perceived quality or prove the decoder cause. The 300 s application remains pending the render.
