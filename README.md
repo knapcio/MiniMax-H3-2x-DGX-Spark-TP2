@@ -185,6 +185,9 @@ checks the requested dimensions, 24 fps, approximate duration and audio/video st
 before publishing the MP4. On a transfer or validation failure, a nonempty partial response is kept separately for
 inspection. These checks establish media integrity, not visual quality; the updated client has not yet been exercised
 with a new live render.
+Add `--exact-duration` to trim the result to the nearest 24 fps frame after generation. The helper verifies retained
+decoded frames and AAC packets before publication; the audio can end up to one AAC packet before the target. This
+optional step re-encodes the video losslessly and takes extra time. A failed trim preserves the raw response separately.
 
 ### Long clips from a client or an agent: the request
 
