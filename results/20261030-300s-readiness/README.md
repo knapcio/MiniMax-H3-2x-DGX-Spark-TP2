@@ -157,6 +157,11 @@ fields, and the older image checksum was not recorded: this is an observational 
 resolution benchmark or proof of equal quality. `~/Downloads/h3-prod-smoke/porownanie_rozdzielczosci_16s.mp4`
 shows both clips with their aspect ratios preserved; playback review is pending.
 
+For that 960x544 control, the global two-drop screen found no qualifying run, while all six regional screens flagged
+seven changes at frames 289..391, 17 frames apart (median 1.14–1.62 gray levels versus 0.18–0.31 nearby). The sampled
+lower-frame gray range was 27.27. These are screening signals that can include real motion; they are not a visual
+verdict or proof of a cause, and they show why a clean global screen alone is insufficient.
+
 The automatic duration check initially stopped on exit 141 even though the expected journal line was present:
 `grep -q` closed its input early and `journalctl` received SIGPIPE under `pipefail`. The output, journal, node
 guards and idle state were independently checked; the full original event log was archived as
