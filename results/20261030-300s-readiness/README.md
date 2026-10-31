@@ -162,6 +162,11 @@ The automatic duration check initially stopped on exit 141 even though the expec
 guards and idle state were independently checked; the full original event log was archived as
 `~/h3-tp2-results/aspect-events-20261031-before-sigpipe-recovery.log` on the head. A corrected check consumes the
 complete journal, a recovery marker records the archive hash, and the dependent experiments were rearmed.
+
+The exact-duration exporter also passed a synthetic low-resolution 300.5→300 s test: all 7,200 retained video
+frames and copied AAC packets were verified. This tests export duration handling only; the real 300 s GPU render
+and its picture and sound quality remain pending.
+
 Two separately saved exact-length excerpts of the earlier approved 16 s painting clip are also in the same Downloads
 folder as `d10_koninck_fragment_z_16s.mp4` and `d15_koninck_fragment_z_16s.mp4`. They contain 240 and 360 frames
 respectively; retained decoded frames and AAC packet prefixes were checked. These are trims, not independent 10 s

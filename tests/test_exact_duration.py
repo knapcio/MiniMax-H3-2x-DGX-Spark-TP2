@@ -75,6 +75,21 @@ class ExactDurationTests(unittest.TestCase):
         self.assertTrue(link.is_symlink())
         self.assertFalse(target.exists())
 
+    def test_five_minute_export_preserves_frames_and_audio(self):
+        source = self.root / "synthetic-300-source.mp4"
+        output = self.root / "synthetic-300-exact.mp4"
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i",
+                        "testsrc2=size=64x48:rate=24:duration=300.5", "-f", "lavfi", "-i",
+                        "sine=frequency=440:sample_rate=32000:duration=300.5", "-c:v", "libx264",
+                        "-preset", "ultrafast", "-threads", "2", "-pix_fmt", "yuv420p", "-c:a", "aac",
+                        "-shortest", str(source)], check=True)
+        before = hashlib.sha256(source.read_bytes()).digest()
+        frames, seconds, gap = exact.trim(source, output, "300")
+        self.assertEqual((frames, seconds), (7200, 300.0))
+        self.assertGreaterEqual(gap, 0)
+        self.assertLess(gap, 0.033)
+        self.assertEqual(hashlib.sha256(source.read_bytes()).digest(), before)
+
     def test_failed_frame_verification_does_not_publish_partial_output(self):
         output = self.root / "rejected.mp4"
         with patch.object(exact, "frame_hashes", side_effect=[["source"], ["different"]]):
