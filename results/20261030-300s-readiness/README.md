@@ -98,6 +98,9 @@ three; its explicit prompt list repeats the same continuation text for each wind
 both service PIDs, deployed files, memory/disk and idle/async state and reports seams and flicker. Three fake-host
 tests cover matching prompts, missing or modified baselines, busy services and failed output. This is queued, not
 measured; more transitions may offset any performance gain in visual quality.
+[`compare_window175.py`](compare_window175.py) checks that the two stored requests differ only in window size and
+the number of repeated prompt entries, and reports time, memory and seam/flicker screens. Three unit tests and a
+synthetic FFmpeg/metadata integration passed; they do not establish a GPU speedup or subjective quality.
 
 After the aspect queue and its 300 s fallback finish or safely skip, the independent
 [`deploy-aspect-prompt-20261031.sh`](deploy-aspect-prompt-20261031.sh) can install the staged duration/prompt fix on
