@@ -195,7 +195,10 @@ threshold, and real scene changes can contribute. The independent preview report
 `c7338d2d6a62fb4e30e3b92596ea2848fd100d52782bb3417d9130b0a4133293`). Its checked video SHA-256 is
 `fa4153f484132a49dac7149f8b486074d1f2bf34d7d87409befdabb4b0dd1382` and trace SHA-256 is
 `cbe8874889c85f9c714f1bcfd5c6414e6d9df252bd9acfd86ad124c7ca741f80`. At the time of the preview the queue
-was restoring the normal head; it must verify restoration before permitting subsequent renders.
+was restoring the normal head. Restoration and trace-off health were verified at 17:00:19 CET; the automatic
+collector then verified and saved the original video and trace, and its analysis reproduced the same 22 overlaps
+and two global drops. The collected report is `~/Downloads/h3-prod-smoke/h3-vae-trace-comparison-960x544-20261031.json`
+(SHA-256 `a92288a10b3650b3f8d2053045c9969416eafef0e28640b8abebd8f853eb0264`).
 
 Across this encoded video, all 23 transitions at frame numbers divisible by 17 are negative (median -0.280 YAVG);
 the median changes for the other 16 phases are positive (+0.038 to +0.1555), with negative changes in 0–30.4% of
