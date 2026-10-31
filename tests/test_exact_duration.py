@@ -66,6 +66,15 @@ class ExactDurationTests(unittest.TestCase):
             exact.trim(self.source, absent, "3")
         self.assertFalse(absent.exists())
 
+    def test_dangling_output_symlink_is_not_followed_or_replaced(self):
+        target = self.root / "missing-target.mp4"
+        link = self.root / "dangling-output.mp4"
+        link.symlink_to(target)
+        with self.assertRaisesRegex(ValueError, "new file"):
+            exact.trim(self.source, link, "1")
+        self.assertTrue(link.is_symlink())
+        self.assertFalse(target.exists())
+
     def test_failed_frame_verification_does_not_publish_partial_output(self):
         output = self.root / "rejected.mp4"
         with patch.object(exact, "frame_hashes", side_effect=[["source"], ["different"]]):

@@ -71,8 +71,9 @@ def frame_hashes(path, count):
 
 
 def trim(source, destination, seconds):
-    source, destination = source.expanduser().resolve(), destination.expanduser().resolve()
-    if source == destination or destination.exists():
+    source = source.expanduser().resolve(strict=True)
+    destination = Path(os.path.abspath(destination.expanduser()))
+    if source == destination.resolve() or os.path.lexists(destination):
         raise ValueError("output must be a new file distinct from input")
     metadata = probe(source)
     videos = [s for s in metadata["streams"] if s["codec_type"] == "video"]
