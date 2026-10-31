@@ -7,7 +7,9 @@ import json
 import os
 from pathlib import Path
 import socket
+import sys
 import tempfile
+import time
 
 import torch
 import torch.distributed as dist
@@ -45,6 +47,9 @@ def main():
     parser.add_argument('--port', type=int)
     parser.add_argument('--port-file', type=Path)
     parser.add_argument('--module', type=Path, required=True)
+    parser.add_argument('--package-root', type=Path, help='also test the staged checkpoint coordinator')
+    parser.add_argument('--match-module', type=Path, help='also test continuation match-state restoration')
+    parser.add_argument('--crash-test', action='store_true', help='terminate rank 1 during a CPU collective')
     args = parser.parse_args()
     if torch.cuda.is_available() or not dist.is_gloo_available():
         raise RuntimeError('test requires CUDA hidden and the Gloo CPU backend')
@@ -53,6 +58,15 @@ def main():
         raise ValueError('rank 0 requires a new port file; rank 1 requires its port')
     torch.set_num_threads(1)
     checkpoint = load_checkpoint(args.module)
+    coordinator = None
+    if args.package_root is not None:
+        sys.path.insert(0, str(args.package_root))
+        from h3_tp2 import cont_checkpoint_coord as coordinator
+    if args.crash_test and coordinator is None:
+        raise ValueError('crash test requires the staged coordinator package')
+    if args.match_module is not None and coordinator is None:
+        raise ValueError('match-state test requires the staged coordinator package')
+    match = load_checkpoint(args.match_module) if args.match_module is not None else None
     timeout = timedelta(seconds=45)
     store = dist.TCPStore(args.host, 0 if args.rank == 0 else args.port, 2, args.rank == 0,
                           timeout=timeout, wait_for_workers=False)
@@ -64,6 +78,20 @@ def main():
     try:
         with tempfile.TemporaryDirectory(prefix='h3-dist-checkpoint-cpu-') as temp:
             root = Path(temp)
+            if args.crash_test:
+                dist.barrier()
+                if args.rank == 1:
+                    os._exit(17)  # intentional loss of only this test process
+                started = time.monotonic()
+                try:
+                    coordinator.publish(root, run_id=run_id, request_sha256=request_sha, window=1,
+                                        tensors={'video': torch.tensor([1.0])}, max_bytes=1024 * 1024)
+                except RuntimeError:
+                    print(json.dumps({'host': socket.gethostname(), 'rank': args.rank, 'peer_lost': True,
+                                      'seconds_to_error': round(time.monotonic() - started, 3),
+                                      'cuda_available': torch.cuda.is_available()}), flush=True)
+                    return 0
+                raise AssertionError('lost rank was treated as a committed checkpoint')
             windows = (1, 2) if args.rank == 0 else (1, 3)
             for window in windows:
                 checkpoint.save(root, run_id=run_id, request_sha256=request_sha, rank=args.rank, world_size=2,
@@ -93,13 +121,144 @@ def main():
             if checkpoint.latest_common(dict(enumerate(rank_receipts)), run_id=run_id,
                                         request_sha256=request_sha, world_size=2) is not None:
                 raise AssertionError('ranks selected a non-common or corrupted checkpoint')
+            if coordinator is not None:
+                coordinator_smoke(coordinator, args.rank, root)
+            if match is not None:
+                match_state_smoke(coordinator, match, args.rank, root)
             dist.barrier()
             print(json.dumps({'host': socket.gethostname(), 'rank': args.rank, 'backend': 'gloo',
                               'common_before_corruption': 1, 'common_after_corruption': None,
+                              'coordinator_checked': coordinator is not None,
+                              'match_state_checked': match is not None,
                               'cuda_available': torch.cuda.is_available()}), flush=True)
     finally:
         dist.destroy_process_group()
     return 0
+
+
+def coordinator_smoke(coordinator, rank, root):
+    """A partial save must fall back, then fork to a fresh run before advancing."""
+    run_id, fork_id, request_sha = 'c' * 32, 'e' * 32, 'd' * 64
+    common = {'run_id': run_id, 'request_sha256': request_sha, 'max_bytes': 1024 * 1024}
+    def state(window):
+        return {'video': torch.tensor([rank, window], dtype=torch.float32)}
+    def validate(tensors, window):
+        if set(tensors) != {'video'} or not torch.equal(tensors['video'], state(window)['video']):
+            raise ValueError('state contents do not match window and rank')
+    coordinator.publish(root, window=1, tensors=state(1), **common)
+    original_save = coordinator.storage.save
+    try:
+        if rank == 1:
+            def fail_second(*_args, **_kwargs):
+                raise OSError('injected rank-1 checkpoint failure')
+            coordinator.storage.save = fail_second
+        try:
+            coordinator.publish(root, window=2, tensors=state(2), **common)
+        except coordinator.CheckpointCoordinationError:
+            pass
+        else:
+            raise AssertionError('partial checkpoint save was treated as committed')
+    finally:
+        coordinator.storage.save = original_save
+    restored = coordinator.restore_latest(root, validate=validate, **common)
+    if restored is None or restored[0] != 1:
+        raise AssertionError('partial save did not fall back to the prior common window')
+    # Existing window-2 files are immutable. Copy the restored state to a new
+    # run ID on both ranks before sampling and publishing the next window.
+    fork = {**common, 'run_id': fork_id}
+    coordinator.publish(root, window=1, tensors=restored[1], **fork)
+    coordinator.publish(root, window=2, tensors=state(2), **fork)
+    if rank == 1:
+        path = root / fork_id / 'rank-0001-window-000002.safetensors'
+        with path.open('r+b') as out:
+            out.seek(-1, 2); original = out.read(1); out.seek(-1, 2); out.write(bytes([original[0] ^ 1]))
+    dist.barrier()
+    fallback = coordinator.restore_latest(root, validate=validate, **fork)
+    if fallback is None or fallback[0] != 1:
+        raise AssertionError('corrupt latest checkpoint did not fall back on both ranks')
+    if rank == 1:
+        path = root / fork_id / 'rank-0001-window-000001.safetensors'
+        with path.open('r+b') as out:
+            out.seek(-1, 2); original = out.read(1); out.seek(-1, 2); out.write(bytes([original[0] ^ 1]))
+    dist.barrier()
+    if coordinator.restore_latest(root, validate=validate, **fork) is not None:
+        raise AssertionError('corruption on one rank was accepted by the group')
+    mismatched = {**common, 'run_id': 'f' * 32, 'request_sha256': request_sha if rank == 0 else '9' * 64}
+    try:
+        coordinator.publish(root, window=1, tensors=state(1), **mismatched)
+    except coordinator.CheckpointCoordinationError:
+        pass
+    else:
+        raise AssertionError('different request fingerprints were accepted')
+    payload = {'rank': rank, 'value': 'ok' if rank == 0 else object()}
+    exchanged = coordinator._gather(payload, group=None, device='cpu')
+    if exchanged[1] != {'serialization_error': True}:
+        raise AssertionError('a rank serialization error did not reach both processes')
+    try:
+        coordinator.restore_latest(root, validate=validate if rank == 0 else None, **fork)
+    except coordinator.CheckpointCoordinationError:
+        pass
+    else:
+        raise AssertionError('a missing validator on one rank was accepted')
+
+
+def match_state_smoke(coordinator, match, rank, root):
+    """Compare uninterrupted and recovered synthetic AV latents on both ranks."""
+    run_id, fork_id, request_sha = '1' * 32, '2' * 32, '3' * 64
+    common = {'run_id': run_id, 'request_sha256': request_sha, 'max_bytes': 1024 * 1024}
+    first_v = torch.arange(64, dtype=torch.float32).reshape(1, 2, 8, 2, 2) / 20 + rank
+    next_v = first_v + 3; next_v[:, :, :2] = first_v[:, :, -2:]
+    first_a = torch.arange(96, dtype=torch.float32).reshape(2, 6, 8) / 20 + rank
+    next_a = first_a + 3; next_a[..., :2] = first_a[..., -2:]
+    def wrapper(samples):
+        values = iter(samples)
+        return match.wrap_diffuse(lambda **_kw: tuple(x.clone() for x in next(values)), apply=False,
+                                  lock='first', lock_audio=True, lock_ramp=.25, max_ratio=100)
+    def validate(tensors, window):
+        if (tensors.get('match.index') is None or tensors['match.index'].item() != window
+                or tuple(tensors['cumulative.video'].shape) != ((1, 2, 8, 2, 2) if window == 1 else (1, 2, 14, 2, 2))
+                or tuple(tensors['cumulative.audio'].shape) != ((2, 6, 8) if window == 1 else (2, 6, 14))):
+            raise ValueError('synthetic cumulative state differs from its window')
+    run = wrapper(((first_v, first_a), (next_v, next_a)))
+    first = run(seed=1)
+    first_state = {**run.snapshot_state(), 'cumulative.video': first[0], 'cumulative.audio': first[1]}
+    coordinator.publish(root, window=1, tensors=first_state, **common)
+    args = {'seed': 2, 'ref_blocks': [{'kind': 'latent_guide', 'latent_t': 2}], 'audio_condition_lengths': [2]}
+    second = run(**args)
+    cumulative_video = torch.cat((first[0], second[0][:, :, 2:]), dim=2)
+    cumulative_audio = torch.cat((first[1], second[1][..., 2:]), dim=-1)
+    second_state = {**run.snapshot_state(), 'cumulative.video': cumulative_video, 'cumulative.audio': cumulative_audio}
+    original_save = coordinator.storage.save
+    try:
+        if rank == 1:
+            def fail_second(*_args, **_kwargs):
+                raise OSError('injected rank-1 checkpoint failure')
+            coordinator.storage.save = fail_second
+        try:
+            coordinator.publish(root, window=2, tensors=second_state, **common)
+        except coordinator.CheckpointCoordinationError:
+            pass
+        else:
+            raise AssertionError('partial synthetic AV checkpoint was accepted')
+    finally:
+        coordinator.storage.save = original_save
+    restored = coordinator.restore_latest(root, validate=validate, **common)
+    if restored is None or restored[0] != 1:
+        raise AssertionError('synthetic AV state did not roll back')
+    resume = wrapper(((next_v, next_a),))
+    resume.restore_state({k: v for k, v in restored[1].items() if k.startswith('match.')}, device='cpu')
+    again = resume(**args)
+    resumed_video = torch.cat((restored[1]['cumulative.video'], again[0][:, :, 2:]), dim=2)
+    resumed_audio = torch.cat((restored[1]['cumulative.audio'], again[1][..., 2:]), dim=-1)
+    if not torch.equal(cumulative_video, resumed_video) or not torch.equal(cumulative_audio, resumed_audio):
+        raise AssertionError('resumed synthetic AV differs from uninterrupted output')
+    fork = {**common, 'run_id': fork_id}
+    coordinator.publish(root, window=1, tensors=restored[1], **fork)
+    resumed_state = {**resume.snapshot_state(), 'cumulative.video': resumed_video, 'cumulative.audio': resumed_audio}
+    coordinator.publish(root, window=2, tensors=resumed_state, **fork)
+    final = coordinator.restore_latest(root, validate=validate, **fork)
+    if final is None or final[0] != 2 or not torch.equal(final[1]['cumulative.video'], cumulative_video):
+        raise AssertionError('the resumed synthetic AV checkpoint was not reusable')
 
 
 if __name__ == '__main__':

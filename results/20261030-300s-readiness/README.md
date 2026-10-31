@@ -473,6 +473,20 @@ active H3 workers and memory guards remained running and checked kernel logs con
 started. This tests receipt exchange and a corruption scenario on the real network, not GPU collectives, checkpoint
 capture in the H3 loop, coordinated process failure, request fingerprint completeness or model output equivalence.
 
+The separate `cont_checkpoint_coord.py` prototype coordinates per-rank publication, inventories common windows and
+loads the newest one that passes checks and a caller-supplied state validator on every rank. A failed partial write
+leaves an immutable newer file on the successful rank, so after restoring an older common window the caller must first
+publish that state under a **new run ID** on both ranks before continuing; no old evidence is overwritten.
+
+A second Gloo test across the two Spark CPUs injected a rank-1 save failure, rejected the partial window, restored
+the previous common state, forked it under a fresh ID and advanced. It also rejected a corrupted latest checkpoint,
+fell back to the preceding one, refused when no valid common window remained, and rejected mismatched request IDs and
+a missing validator. With synthetic video/audio latents and look-lock state, both ranks obtained the same resumed
+next-window and cumulative tensors as their own uninterrupted CPU stand-ins. Three coordinator guard tests passed
+separately on each CPU. In a separate test the rank-1 **test process** exited intentionally during a collective;
+rank 0 reported its lost peer in 0.048 s. These are Gloo/CPU tests, not a failure test of the H3 workers or NCCL;
+the serving loop still does not call the coordinator and the live 300 s request remains non-resumable.
+
 ## Window-size planning from existing 960x544 samples (2026-10-31)
 
 `scripts/estimate_continuation.py` reproduces the deployed 17n+5 frame alignment and window plan. For a 300 s request
