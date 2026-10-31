@@ -92,6 +92,13 @@ available-memory samples and quality screens. Four unit tests and a synthetic FF
 comparison results do not exist until the queued renders finish. Matching service PIDs alone does not prove that a
 child worker process remained unchanged.
 
+[`queue-window175-20261031.sh`](queue-window175-20261031.sh) follows those controls with a 30 s, 20-step request
+using 175-frame windows and the same image, seed and locked-camera prompt. The 30 s plan has five windows instead of
+three; its explicit prompt list repeats the same continuation text for each window. It checks the verified baseline,
+both service PIDs, deployed files, memory/disk and idle/async state and reports seams and flicker. Three fake-host
+tests cover matching prompts, missing or modified baselines, busy services and failed output. This is queued, not
+measured; more transitions may offset any performance gain in visual quality.
+
 After the aspect queue and its 300 s fallback finish or safely skip, the independent
 [`deploy-aspect-prompt-20261031.sh`](deploy-aspect-prompt-20261031.sh) can install the staged duration/prompt fix on
 both nodes. It requires verified 16/60 s outputs, released queue locks, matching staged/live hashes, healthy idle
