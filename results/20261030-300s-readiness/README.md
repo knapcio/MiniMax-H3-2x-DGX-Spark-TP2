@@ -147,6 +147,21 @@ side by side, `porownanie_okien_277_vs_175_16s.mp4` compares the window sizes, a
 enlarges the road in the original and slow-figure-prompt clips.
 On sampled stills the figure's path looks similar in those two clips; the prompt alone has not established a clear
 improvement in walking speed or naturalness. Both comparisons use the left-hand clip's audio and remain review aids.
+
+On 2026-10-31 the duration-precedence control at 960x544 returned HTTP 200 in **816.8 s**: a request with
+`duration_seconds=30` and `target.duration_seconds=16` generated prompts for two 16 s windows. Denoising took
+536.3 / 196.0 s and decode 80.5 s. The native clip has 396 frames / 16.5 s; the separately verified exact copy has
+384 frames / 16.0 s. An older 1344x768 control with the same prompt, seed, steps and image path took 2,423.3 s;
+the smaller clip's elapsed time was 66.29% shorter. The runs used different boots, code and request
+fields, and the older image checksum was not recorded: this is an observational comparison, not an isolated
+resolution benchmark or proof of equal quality. `~/Downloads/h3-prod-smoke/porownanie_rozdzielczosci_16s.mp4`
+shows both clips with their aspect ratios preserved; playback review is pending.
+
+The automatic duration check initially stopped on exit 141 even though the expected journal line was present:
+`grep -q` closed its input early and `journalctl` received SIGPIPE under `pipefail`. The output, journal, node
+guards and idle state were independently checked; the full original event log was archived as
+`~/h3-tp2-results/aspect-events-20261031-before-sigpipe-recovery.log` on the head. A corrected check consumes the
+complete journal, a recovery marker records the archive hash, and the dependent experiments were rearmed.
 Two separately saved exact-length excerpts of the earlier approved 16 s painting clip are also in the same Downloads
 folder as `d10_koninck_fragment_z_16s.mp4` and `d15_koninck_fragment_z_16s.mp4`. They contain 240 and 360 frames
 respectively; retained decoded frames and AAC packet prefixes were checked. These are trims, not independent 10 s
