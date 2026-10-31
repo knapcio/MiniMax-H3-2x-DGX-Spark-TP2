@@ -613,3 +613,23 @@ changes in this pair, including any real scene changes. They do not say whether 
 natural. Full report: `h3-ground-adjacent-slow20-20261031.json` (SHA-256
 `a3ef6393a4ac6ee54c85afd169eece67b68d846d201daf753839f83546b9e545`). The added adjacent-sample metric has five
 unit/media tests, including a localized light change introduced after the first second.
+
+### Symmetric temporal ground smoothing: mixed result, not promoted (2026-10-31)
+
+`experimental-temporal-ground.py` tests an optional 25-frame centered Gaussian filter of low-spatial-frequency
+ground luma (sigma six frames, maximum six levels). It fades its correction to zero at the first and last frame.
+The symmetric kernel has no constant time shift in the interior, but can still smear real changes and does not
+establish that shadows follow clouds. Three unit/media tests cover symmetry, a linear time ramp, bounded masking,
+first/last frames and exact chroma/audio/timing preservation.
+
+On the 0.8x soft-ground 30 s clip, the separate v2 output changed 707 of 720 luma frames by at most five levels;
+the first and last frames, top 476 rows, all chroma, video timestamps and AAC packets remained identical, and both
+output streams fully decoded. The mean / maximum adjacent-second ground spatial change moved from 1.81 / 7.36 to
+1.78 / 6.90 gray levels, while the median / 95th-percentile absolute frame change in the lower-middle region rose
+from 0.149 / 0.588 to 0.175 / 0.597. These metrics include actual motion and do not establish perceived quality,
+but give no clear basis to promote the filter. Output:
+`d30_koninck_slow20_softground_temporal_v2_EXPERIMENT_EXACT30s_20261031.mp4` (SHA-256
+`dd4e7bcc7a7ff438200c04e88b78ca83bf7b080a90e2d8de27eedf5ecfa3536b`); comparison:
+`porownanie_czasowej_stabilizacji_cieni_30s_v2_20261031.mp4` (SHA-256
+`4d64d3edfc0c2daee94e25264f15a5499a8b385ba34eb70876fec059b24ff8df`). The side-by-side uses the left AAC. Playback
+review remains pending; the unfiltered soft-ground source and production defaults remain unchanged.
