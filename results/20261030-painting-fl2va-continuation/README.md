@@ -565,3 +565,21 @@ frames in 22.25–30 s it was 1.680 for preferred and 0.463 for hybrid. The scre
 not establish perceived flicker or detail quality; regional spikes still remain. Report:
 `d30_koninck_hybrid_transitions_20261031.json` (SHA-256
 `6583b91f2c37c40a257877bce898906ea2d5b053f1da21dc4974b675ab1512ee`). Playback review is still required.
+
+### A 60 s copy correcting only the final global flicker run (2026-10-31)
+
+The 960x544 exact-60 s original and its regional repair were combined at frame 1323 (55.125 s), just before the
+first global drop at frame 1326. Both inputs have identical frames 1321–1325. The separate result retains the first
+1,323 source frames exactly and changes 35 later luma frames (1326–1432) by at most four levels; all chroma, AAC
+packets/timestamps and continuous 24 fps video timestamps match. Every output frame was checked against its selected
+input and both streams fully decoded. File:
+`d60_koninck_960x544_tail_deflicker_EXPERIMENT_EXACT60s_20261031.mp4` (SHA-256
+`371e308fe19b7471335ae5a044b63c1951114fea514a1f94c3f7b622ee402f04`).
+
+At 13 source-selected repeated-change frames after the cut, median absolute regional mean change was 1.951 gray
+levels in the original and 0.467 in the candidate; 25 selected frames before the cut are unchanged. The global
+17-frame, two-drop screen no longer finds the earlier >=2 YAVG run, while regional signals remain elsewhere and in
+the ending. These measurements can include real motion, and do not establish visual or sound quality. The full
+side-by-side `porownanie_migania_koncowki_60s_20261031.mp4` uses the original left AAC. The reusable
+`scripts/combine_repairs.py` refuses mismatched boundary frames, timing, color geometry or AAC, verifies every
+selected frame and never overwrites an output; three FFmpeg tests cover success and refusal cases.
