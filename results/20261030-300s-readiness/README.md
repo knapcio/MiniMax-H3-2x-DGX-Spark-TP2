@@ -514,6 +514,8 @@ The prepared pipeline can generate multiple outputs sequentially, but the protot
 latent state and no earlier decoded results. The session therefore rejects `num_outputs != 1` on every rank.
 The two-node Gloo/CPU test checks this rejection along with request mismatch, partial-save fallback and synthetic
 AV equality; it does not establish real model or process-restart recovery.
+The [checkpoint integration audit](checkpoint-integration-audit-20261031.md) records the on-disk two-node hashes,
+the serving-loop boundaries and the remaining identity, cancellation and durable-job work.
 
 ## Window-size planning from existing 960x544 samples (2026-10-31)
 
