@@ -165,6 +165,20 @@ A sweep of all 25 locally saved `h3-prod-smoke` MP4s found a second sequence mee
 The other 23 clips had no >=2 YAVG run lasting at least three periods. This is a global-luma screen, not proof that
 those clips are flicker-free: smaller, local or shorter events can be visible to the owner and miss this threshold.
 
+## Separate audio-level experiment (2026-10-31)
+
+The 960x544 60 s clip's generated ambience is very quiet: -46.68 LUFS integrated and -32.25 dBTP measured with
+FFmpeg loudnorm. A separate copy of the regional-deflicker + soft-ground candidate applies a **linear** level change
+to target -20 LUFS, with no dynamic-range compression or limiter; the new AAC measures -20.01 LUFS and -5.58 dBTP.
+The 1440 video packets, timestamps and codec extradata were verified identical to the source, and both video and
+stereo 32 kHz audio start at zero and end at 60.000 s. The source is unchanged. Raising the level may reveal noise;
+the sound has not been reviewed by ear and the brightness corrections are still experimental. File:
+`~/Downloads/h3-prod-smoke/d60_koninck_960x544_regional_softground_LOUDNESS_EXPERIMENT_EXACT60s.mp4`.
+
+[`scripts/normalize_ambient_audio.py`](../../scripts/normalize_ambient_audio.py) can create a new opt-in copy and
+JSON report for other durations. It refuses silent input, more than 30 dB of gain, peak limiting, unexpected streams,
+overwrites and failed media verification; it does not change the generation defaults.
+
 ## Playback-speed experiment (2026-10-31)
 
 The owner reported that the people walked a little too quickly. A separate local experiment takes the first eight
