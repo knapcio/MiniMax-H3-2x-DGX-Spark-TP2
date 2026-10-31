@@ -300,6 +300,13 @@ frame timestamps, all even frames and stereo audio. Files in `~/Downloads/h3-pro
   from -41.41 to -20.00 LUFS, preserving every video packet and timestamp. It can amplify noise and has not been
   reviewed by ear. The quiet retimed source and original generation remain intact.
 
+The same opt-in pipeline was additionally exercised on a temporary, synthetic 96x64, 24 fps 150 s clip with AAC:
+it produced an exact 300.000 s / 7,200-frame output, with all 3,600 input frames preserved at the even indices,
+continuous timestamps, retimed audio and a successful full decode. The synthetic media was deleted after verification;
+`diagnostics/h3-300-20261030/synthetic-retime-300-20261031.json` in the workspace retains the report (SHA-256
+`ac39373f70346735a4c70c8d41da0bd46d1b86cc57501220b2f0941dfeee3515`). This is a format and timing test, not an H3
+GPU render and not evidence that a real five-minute video looks or sounds good.
+
 ### Experimental repair of the existing 5 s-history clip (not a model fix)
 
 `experimental-deflicker.py` makes a separate, explicitly altered copy: it detects the repeated drops and lifts luma

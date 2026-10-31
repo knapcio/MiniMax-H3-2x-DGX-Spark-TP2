@@ -100,6 +100,12 @@ memory/cut/input, time, busy-node, failed-render and output-validation gates. Th
 `experiment300-960x544-20261031` started at 17:27:06 and returned HTTP 500 after 207.6 s; the file contains an error
 response, not video. The Spark_05 rank-1 log reports `CUDA error: unspecified launch failure` from the process-group
 watchdog at 17:27:48. Rank 1 exited with signal 6 at 17:29:52; the head then killed rank 0 and its executor died.
+The Spark_05 kernel journal records Xid 13, `Graphics SM Global Exception` / `Multiple Warp Errors` (GPC 1, TPC 2,
+SM 0), followed by Xid 43 naming rank-1 PID 287792 at 17:27:47. The journal was readable without elevation; an earlier
+query failed because it was quoted incorrectly. Evidence is saved as `worker-kernel-journal.txt` beside the worker
+log (SHA-256 `27fdb824713aa350222e616e33662d5fa2fb4b31f48e879acdb7c97abd304430`). NVIDIA describes Xid 13 as a
+general execution exception that can have application, system-software or hardware causes; these codes do not identify
+the particular operation. [NVIDIA Xid catalog](https://docs.nvidia.com/deploy/xid-errors/analyzing-xid-catalog.html).
 The request recorded minimum available host memory of 47,617 MiB on the head and 50,832 MiB on the worker; sampled
 host-memory exhaustion is not supported. CUDA errors are asynchronously reported, so the watchdog stack does not
 identify the failing kernel or establish whether this is a model, software, fabric or device issue. Worker agent and
@@ -112,7 +118,9 @@ After confirming no active H3 workers or queued video jobs, the unhealthy head w
 separately verified 120-frame exact copy was collected. It had no qualifying global or regional periodic-flicker
 runs, which is not a visual verdict or a test of long-run reliability. A guarded 15 s continuation control started at
 21:26:26. Its first window is 277 frames and both ranks logged the same 14-tensor step-0 digest `8a8189fa…` as the
-failed 300 s first window; the digest does not cover all request or runtime state. Its result is still pending.
+failed 300 s first window; the digest does not cover all request or runtime state. That window completed its 20 steps
+in 584.9 s at 21:36:11, and window 2/2 started. The full control and long-run reliability remain unverified; no new
+Spark_05 Xid was logged during this control up to 21:36:34.
 
 The failed 300 s first window and the earlier successful 16 s 960x544 control used the same 277-frame window and
 seed. Their rank-1 step-0 tensor-byte digests both begin `8a8189fa` (14 tensors), and the four logged FP8 GEMM
