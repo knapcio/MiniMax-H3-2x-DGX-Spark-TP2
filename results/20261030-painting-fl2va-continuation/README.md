@@ -183,6 +183,9 @@ The first 277-frame window of that 960x544 painting trace took 590.5 s, versus 5
 16 s combined-prompt control (10.2% longer); the 14-tensor step-0 digests match. The runs used different boots,
 and that digest does not cover all request or runtime state. The trace hook operates during decode, so the timing
 observation does not establish why denoising differed or how repeatable the difference is.
+The first-window output-latent digests also differ before decode (`2c5fb185…` for the earlier control versus
+`54aee5ef…` for the trace run, two tensors each). Consequently a later trace-on/off pixel comparison would mix
+different diffusion outputs and cannot isolate the trace hook.
 
 A sweep of all 25 locally saved `h3-prod-smoke` MP4s found a second sequence meeting this specific threshold in
 `d60_seedstep_per_window.mp4`: frames 1326..1445 (55.25..60.21 s), eight drops every 17 frames, median -4.38 YAVG.
