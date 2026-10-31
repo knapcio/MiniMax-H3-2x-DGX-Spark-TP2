@@ -360,6 +360,26 @@ The exact copies retain 720 and 1,440 verified frames respectively; at 30 s copi
 it ends with the video. Raw comparisons are in `soft-ground-30-verification.txt` / `soft-ground-verification.txt`;
 regional screens are in `koninck30-softground-regional.txt` / `koninck60-softground-regional.txt`.
 
+### Direct 10/15 s lighting and a stronger 10 s comparison (2026-10-31 21:17)
+
+The direct 960x544 10 s and 15 s renders completed with the soft-light/slow-figure prompt; they are separate
+generations and do not isolate a duration effect. Across one sample per second in the bottom 37.5% of the frame,
+the 10 s source ranges from 46.57 to 90.84 gray levels (range 44.27); the 15 s source spans 19.03 levels. Sampled
+still frames show a visibly brightening foreground in the 10 s sample, but cannot establish whether shadows follow
+the clouds or whether movement is natural. The existing 35% / 10-luma-cap 10 s postprocess reduces that range to
+36.50. A separate stronger experiment uses 60% / a 20-luma cap and reduces it to 29.47, without claiming a
+physically correct result. All 240 frames and AAC packets/timestamps were verified; 239 luma frames changed by at
+most 20 levels, with the top 337 luma rows and all chroma unchanged. Neither the global nor regional periodic
+screen flags a qualifying run, which does not rule out visible defects. As it changes more of the picture and can
+suppress real movement or lighting, it remains unreviewed and is not a default.
+
+The source, stronger candidate and labelled side-by-side comparison are in `~/Downloads/h3-prod-smoke/`:
+`d10_koninck_direct_960x544_EXPERIMENT_EXACT10s.mp4`,
+`d10_koninck_960x544_softground_s06_l20_EXPERIMENT_EXACT10s.mp4`, and
+`porownanie_cieni_10s_silniejsze_20261031.mp4`. The comparison is 240 frames / 10 s and retains the source AAC
+packets and timing. `d10_koninck_960x544_softground_s06_l20_EXPERIMENT.verification.json` records the checks and
+ground-light samples.
+
 ## The 60 s render runs at 120 s/step instead of 86-88 (`koninck60-fl2va`, 14:38-, investigation in progress)
 
 The first post-render 5 s T2VA calibration on the same boot finished at 18:38: 1344x768 ran at 21.10–21.12 s/step,

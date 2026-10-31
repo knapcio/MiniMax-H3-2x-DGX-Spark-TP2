@@ -62,14 +62,17 @@ nodes and enables the trace in a runtime-only systemd drop-in. A 5 s smoke must 
 before a 16 s 960x544, seed-1101 streamed request with the same prompt and source bytes. It records approximate
 per-overlap luma, full media and flicker diagnostics, then restores and verifies a trace-off head. A busy or uncertain
 head is left untouched on HOLD. Fourteen fake-host tests cover the guards, missing trace and restoration; the GPU
-trace remains untested until it runs. The measurements are diagnostic, not proof of the flicker cause.
+trace completed on two Sparks, and the normal head was restored at 17:00. The measurements are diagnostic, not proof
+of the flicker cause.
 
 [`queue-aspect-short-20261031.sh`](queue-aspect-short-20261031.sh) waits for the trace to finish and the normal head
 to be restored, checks both deployed file sets and source-image hash, and then runs separate direct 10 s and 15 s
 FL2VA requests at 960x544. These do not enable continuation, so their results test the short-request path rather than
 trimming the 16 s clip. They use the same image, prompt, seed and step count; each requires an idle, guarded pair and
 an empty async-job store. Seven fake-host tests cover the predecessor, source, trace-off, idle, no-overwrite and
-failure gates. The direct requests are queued, not yet rendered or visually evaluated.
+failure gates. Both direct requests completed on 2026-10-31: 10 s at 17:09:46, 15 s at 17:26:04. Each exact copy
+has the requested frame count and decodes fully; neither has qualifying global or regional periodic-flicker runs
+under the current screens, and neither has a detected hard cut. Visual and audio review remain pending.
 
 An independent [`queue-aspect-experimental300-20261031.sh`](queue-aspect-experimental300-20261031.sh) waits for both
 direct controls and the trace-off head. The short 16 s control already has measured flicker, so the existing 300 s
@@ -79,7 +82,22 @@ the result looks good. It requires matched 16/60 s inputs, no detected hard cuts
 nodes, six measured 60 s diffusion phases, an 8 h timeout projection with margin, sufficient disk space, verified
 deployed files, three idle checks and no queued API jobs. It does not change timeouts or restart either node. The
 raw result, if any, is preserved with its flicker and memory measurements. Six fake-host tests cover predecessor,
-memory/cut/input, time, busy-node, failed-render and output-validation gates; the 300 s GPU request remains unrun.
+memory/cut/input, time, busy-node, failed-render and output-validation gates. The GPU attempt failed as described below.
+
+### 300 s attempt failed during the first window (17:27–17:30)
+
+`experiment300-960x544-20261031` started at 17:27:06 and returned HTTP 500 after 207.6 s; the file contains an error
+response, not video. The Spark_05 rank-1 log reports `CUDA error: unspecified launch failure` from the process-group
+watchdog at 17:27:48. Rank 1 exited with signal 6 at 17:29:52; the head then killed rank 0 and its executor died.
+The request recorded minimum available host memory of 47,617 MiB on the head and 50,832 MiB on the worker; sampled
+host-memory exhaustion is not supported. CUDA errors are asynchronously reported, so the watchdog stack does not
+identify the failing kernel or establish whether this is a model, software, fabric or device issue. Worker agent and
+both memory guards remained active; the head stayed active but `/health` returned 503. Independent fresh-process
+512x512 FP32 CUDA matrix multiplies on each GPU returned finite, correct results. Those small checks do not qualify
+distributed inference. The failure and HOLD events are preserved under
+`diagnostics/h3-300-20261030/failure-20261031-1727/` in the workspace; no 300 s video or quality pass exists.
+After confirming no active H3 workers or queued video jobs, the unhealthy head was restarted at 21:16:01 (new PID
+973294); readiness and a real two-node smoke remain pending at this writing.
 
 The current automatic later-window prompt says "the camera keeps moving the same way" even when the base prompt
 specifies a locked tripod; the live 60 s journal confirms that wording. Whether it causes any visible defect is
@@ -183,7 +201,7 @@ complete journal, a recovery marker records the archive hash, and the dependent 
 
 The exact-duration exporter also passed a synthetic low-resolution 300.5→300 s test: all 7,200 retained video
 frames and copied AAC packets were verified. This tests export duration handling only; the real 300 s GPU render
-and its picture and sound quality remain pending.
+failed and its picture and sound quality remain untested.
 
 The owner also reported that figures in the earlier clip walked a little too quickly. A separate queued 30 s
 experiment changes only the human-motion clause of the matched 960x544 locked-camera baseline: it asks for a relaxed
