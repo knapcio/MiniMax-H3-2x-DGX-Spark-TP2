@@ -527,3 +527,25 @@ lower region, once per second. In this pair its average standard deviation fell 
 pixel reached the diagnostic's signed-difference bounds. This describes less uneven change in that region, not the
 motion or geometry of shadows. Uniform changes, local changes, boundary saturation and sampling are covered by four
 tests for `scripts/ground_light_stats.py`.
+
+### Wider regional flicker repair on the 30 s history clip (2026-10-31)
+
+The owner preferred the earlier regional repair but reported residual flicker. Two separate `--local-periodic`
+copies correct the dominant 17-frame phase over a wider interval, with a spatial blur radius of 16 or 4 pixels.
+Each changes 110 of the original 736 luma frames by at most 8 levels; chroma, video timestamps and AAC packets
+are identical to the original. Compared directly with the owner-preferred repair, the radius-4 copy differs in 68
+frames (18 in 15–22 s, 50 in 22–30 s), again by at most 8 luma levels.
+
+Across source-detected transitions in at least three regions, the median absolute regional **mean** change for
+28 selected frames in 15–22 s is 0.105 gray levels in both the preferred and radius-4 copies. For 17 selected
+frames in 22–30 s it is 1.452 versus 0.441; the radius-16 copy measured 0.454 there. These statistics may include
+real motion and can hide local change. The separate absolute-pixel screen still reports repeated lower-region spikes
+through 24.79 s in the radius-4 candidate; it does not prove that the remainder is artifact-free. The narrower
+correction can alter motion or fine detail, so the candidate is not a default and needs playback review.
+
+`~/Downloads/h3-prod-smoke/d30_koninck_history5s_allregional_radius4_EXPERIMENT_EXACT30s_20261031.mp4` is a
+720-frame exact-length copy (SHA-256 `3105365039e43dca2fd7459706c05101a62b3753ca5ee76691fcc3db0a6f141b`), with
+retained decoded frames and AAC prefix checked and the whole file decoded. The side-by-side
+`porownanie_migania_30s_regional_radius4_20261031.mp4` retains the preferred left clip's AAC. The signed-transition
+and exhaustive luma/chroma verification reports are `d30_koninck_allregional_radius4_transitions_20261031.json` and
+`d30_koninck_allregional_radius4_20261031.verification.json` in the same folder.
