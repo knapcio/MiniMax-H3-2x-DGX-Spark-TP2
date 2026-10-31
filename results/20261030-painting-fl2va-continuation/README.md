@@ -633,3 +633,24 @@ but give no clear basis to promote the filter. Output:
 `porownanie_czasowej_stabilizacji_cieni_30s_v2_20261031.mp4` (SHA-256
 `4d64d3edfc0c2daee94e25264f15a5499a8b385ba34eb70876fec059b24ff8df`). The side-by-side uses the left AAC. Playback
 review remains pending; the unfiltered soft-ground source and production defaults remain unchanged.
+
+### Direct 15 s ground-light comparison (2026-10-31)
+
+The direct 15 s 960x544 clip had a 19.03-level range in the mean of the lower image, but its mean spatial spread of
+smoothed lower-frame changes from the first frame was 10.88 and its mean adjacent-second spread was 5.20 gray levels.
+That illustrates why a whole-region mean alone can miss localized changes; none of these statistics identifies actual
+cloud shadows.
+
+A separate 35%-attenuation experiment reduced those numbers to 13.60, 8.49 and 4.08 respectively. It changed luma in
+356 of 360 frames by at most 10 levels; the top 337 rows, chroma, timestamps and AAC packets are unchanged, and both
+streams fully decoded. Output: `d15_koninck_direct_softground_EXPERIMENT_EXACT15s_20261031.mp4` (SHA-256
+`35bb3b309280c57796419c2a550f3cbd7ba67dec266c906820a822ff8e21689b`). The labelled side-by-side is
+`porownanie_cieni_15s_direct_20261031.mp4` (SHA-256
+`259dc7c4212e587f618632b9fce694172bb2ca2b96ad8275d2ee93bc7c285d7e`). This can suppress real lighting and detail;
+cloud alignment and playback quality are unverified.
+
+`scripts/compare_videos.py` now makes labelled comparisons for any specified exact 24 fps frame count. It preserves
+the left AAC packets, keeps each image's aspect ratio, validates continuous video timing and full audio/video decode,
+checks both source hashes and refuses overwrite. Two synthetic media/guard tests passed; the 15 s comparison above
+was also checked on the real pair. The side-by-side itself is scaled and recompressed, so the original clips remain
+the quality reference.
