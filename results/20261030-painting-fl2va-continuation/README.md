@@ -70,7 +70,9 @@ light nearly constant, and playback has not been reviewed.
 
 The separate `d60_koninck_960x544_regional_deflicker_EXPERIMENT_EXACT60s.mp4` changes luma in 140 of 1,440 frames
 by at most four levels; chroma, video timing and AAC packets match the exact source. The global two-drop screen no
-longer flags a run, but regional candidates remain. A second separate copy,
+longer flags a run, but regional candidates remain. Across 38 selected repeated source frames, the median absolute
+regional mean change fell from 1.892 to 0.542 grayscale levels; these measurements include possible real motion and
+do not replace playback review. The signed report is `h3-regional-transitions-current60-20261031.json`. A second separate copy,
 `d60_koninck_960x544_regional_softground_EXPERIMENT_EXACT60s.mp4`, applies the bounded soft-ground experiment after
 that correction: 1,437 frames have luma changes up to ten levels, the top 337 luma rows, all chroma and AAC packets
 remain identical to the regional source, and video timing matches. At one sample per second the lower-frame gray range
@@ -114,6 +116,12 @@ motion artifacts remain. The local file is `d30_koninck_history5s_regional_defli
 `~/Downloads/h3-prod-smoke/`; source preserved. `experimental-regional-deflicker.py` reproduces the experiment with
 Pillow and FFmpeg; it uses neighboring frames to estimate a bounded blurred Y-plane correction only on the 42 frames
 identified by the existing detector. It can alter real movement or light and is **not a default**.
+
+For the owner's 15–22 s interval, a later signed-regional screen selected 28 source frames with repeated changes in
+at least three regions. The median absolute regional mean change at those frames fell from 3.424 to 0.105 grayscale
+levels in the preferred copy. This supports the reported improvement but can also include suppressed real motion or
+light; it is not a complete visual-quality measure. Full report:
+`~/Downloads/h3-prod-smoke/h3-regional-transitions-history30-20261031.json`.
 
 At 336x192 grayscale, median mean absolute frame change at the 13 flicker boundaries in the three lower image regions
 is 7.07 / 7.59 / 6.88 in the original, 2.15 / 2.02 / 2.09 after the first global repair, and 1.16 / 1.16 / 1.12

@@ -51,6 +51,9 @@ class RegionalTransitionTests(unittest.TestCase):
                 after = rows[frame]['candidate_signed_gray'][region]
                 self.assertLess(before, after)
                 self.assertLess(after, 0)
+        self.assertGreater(report['source_median_absolute_gray'], report['candidate_median_absolute_gray'])
+        self.assertGreaterEqual(report['source_frames_all_darker'], 3)
+        self.assertGreaterEqual(report['source_frames_all_brighter'], 3)
         self.assertIn('do not prove a decoder cause', report['caveat'])
 
     def test_no_periodic_changes_produces_empty_result(self):

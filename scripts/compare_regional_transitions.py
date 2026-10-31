@@ -103,6 +103,10 @@ def compare(source, candidate, min_regions=3):
             'candidate_negative_transitions': sum(x < 0 for x in new_values),
             'source_median_signed_gray': statistics.median(old_values) if old_values else None,
             'candidate_median_signed_gray': statistics.median(new_values) if new_values else None,
+            'source_median_absolute_gray': statistics.median(map(abs, old_values)) if old_values else None,
+            'candidate_median_absolute_gray': statistics.median(map(abs, new_values)) if new_values else None,
+            'source_frames_all_darker': sum(all(x < 0 for x in values) for values in source_changes.values()),
+            'source_frames_all_brighter': sum(all(x > 0 for x in values) for values in source_changes.values()),
             'selected_transitions': rows,
             'caveat': ('Signed means are sampled from six grayscale regions at repeated source changes. '
                        'They can include actual motion or light, do not prove a decoder cause, and do not establish visual quality.')}
