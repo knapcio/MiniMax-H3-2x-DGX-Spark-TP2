@@ -491,3 +491,33 @@ same-boot 16 s comparison holds the request and seed fixed while changing the wi
 The timeout recovery queue checks the actual failure, waits for both nodes to be idle, and verifies the effective
 limits before retrying. The 23.2 s/step T2VA reference followed two 960x576 warm-up requests; the recovery queue
 repeats that sequence before each 1344 measurement. Individual runs still cannot establish a root cause on their own.
+
+### A gentler 20% slowdown of the owner-preferred clip (2026-10-31)
+
+The first 24 s of `d30_koninck_history5s_regional_EXACT30s_EXPERIMENT.mp4` were trimmed without changing any
+retained decoded frame or AAC packet, then stretched to exactly 30 s at 24 fps. The whole picture plays at 0.8x
+speed, not only the figures; audio is time-stretched and re-encoded, and no new narrative action is generated.
+The separate motion-compensated result is
+`~/Downloads/h3-prod-smoke/d30_koninck_history5s_regional_spowolniony20_v2_EXPERIMENT_EXACT30s.mp4`
+(SHA-256 `59ba3b854171646c752580257eea57c11ecb611ab6d986e9e4427ecb65b58899`). All 144 output frames whose times
+coincide with source frames were verified identical, all 720 timestamps are continuous 24 fps, and both streams
+fully decode. The other output frames are interpolated and can warp or smear; audio and playback need review.
+
+A first ordering of the interpolation and a second ordering gave identical 720 decoded frames and identical AAC
+packets, despite different MP4 file hashes. Both show uneven median absolute frame changes by five-frame output
+phase: in the lower-middle region, 0.092..0.162 grayscale levels versus 0.172..0.184 across four source phases.
+Removing the exact-anchor overlay did not change the 720 decoded frames of a blended control; a motion-compensated
+and a blended output matched on 543/720 frames and showed nearly the same phase medians. A synthetic moving-stripe
+control had lower-middle min/max phase ratios 0.874 at the source and 0.861 after retiming; it does not model the
+painting. These measurements describe a content- and phase-dependent cadence, not proof of visible judder or a root
+cause. The available phase diagnostics and their limitations are in `scripts/retime_phase_diagnostics.py`.
+
+A separate copy additionally attenuates smooth ground-light differences from frame 0 by 35%, capped at 10 luma
+levels. It changed 717/720 luma frames while preserving the top 476 rows, all chroma, frame timing and AAC packets;
+the one-per-second lower-frame brightness range decreased from 33.96 to 25.48 grayscale levels. This can suppress
+real lighting and does not establish whether clouds and shadows align. It is
+`d30_koninck_history5s_slow20_softground_EXPERIMENT_EXACT30s.mp4` (SHA-256
+`73e021035910f11c7e60e3a50e66f1fe1a12bc36b186accc1daccade3e431571`). Full-frame and road-zoom comparisons against
+the unretimed clip are `porownanie_tempa_30s_20proc_20261031.mp4` and
+`porownanie_chodu_30s_20proc_zblizenie_20261031.mp4`; both retain the original left clip's AAC and need playback
+review. The 1.25x-duration and optional blend modes are opt-in; nine retiming and three phase-screen tests pass.

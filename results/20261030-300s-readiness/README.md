@@ -159,6 +159,14 @@ improvements. Eight retry-gate tests, three independent-gait tests and the exist
 on fake hosts. Three bench tests cover the default worker-memory path, distinct per-output paths and rejection of
 unsafe SSH paths; the private bundle opts into per-output paths so later cases do not overwrite worker samples.
 
+The separate [`queue-cloud-light-20261031.sh`](queue-cloud-light-20261031.sh), started at 22:06, waits for the
+whole isolated follow-up series and its lock to finish. It then compares one 30 s locked-camera baseline with a
+request that changes only the cloud/ground-light clause, asking for steady ground light and faint, slowly moving
+diffuse shadows. It rechecks the same source hash, service PIDs, idle state, both memory guards and both kernel
+journals; a failed query or new Xid stops it. Four fake-host tests cover the prompt, predecessor HOLD, busy pair,
+Xid/query failure and failed render. This is queued, not a demonstrated correction or physically verified shadow
+model. Its checked script SHA-256 is `c3fb916f01abc80063c136fd7b2cc3fb091efbd83ffcc14d2191ec24533a4b96`.
+
 The failed 300 s first window and the earlier successful 16 s 960x544 control used the same 277-frame window and
 seed. Their rank-1 step-0 tensor-byte digests both begin `8a8189fa` (14 tensors), and the four logged FP8 GEMM
 shapes with M=21952 match. This is useful for selecting a short recovery control, but the digest does not cover all

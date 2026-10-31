@@ -22,10 +22,10 @@ class SlowVideoTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
 
-    def sample(self, name='source.mp4', *, audio=True, fps=24, audio_duration=1.25):
+    def sample(self, name='source.mp4', *, audio=True, fps=24, audio_duration=1.25, duration=1.25):
         path = self.root / name
         cmd = ['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i',
-               f'testsrc2=size=128x96:rate={fps}:duration=1.25']
+               f'testsrc2=size=128x96:rate={fps}:duration={duration}']
         if audio:
             cmd += ['-f', 'lavfi', '-i', f'sine=frequency=440:sample_rate=32000:duration={audio_duration}']
         cmd += ['-map', '0:v:0']
@@ -62,6 +62,35 @@ class SlowVideoTests(unittest.TestCase):
         self.assertEqual(report['audio'], 'none')
         self.assertEqual(report['retained_even_frames_identical'], 30)
         self.assertFalse(any(s['codec_type'] == 'audio' for s in slow.exact.probe(output)['streams']))
+
+    def test_twenty_percent_slower_preserves_aligned_anchors_and_audio(self):
+        source = self.sample(duration=1, audio_duration=1)
+        output = self.root / 'slow125.mp4'
+        original = hashlib.sha256(source.read_bytes()).hexdigest()
+        report = slow.create(source, output, factor='1.25')
+        self.assertEqual((report['source_frames'], report['output_frames']), (24, 30))
+        self.assertEqual((report['anchor_frames_identical'], report['anchor_source_stride'],
+                          report['anchor_output_stride']), (6, 4, 5))
+        self.assertEqual(report['output_seconds'], 1.25)
+        self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), original)
+        audio = [s for s in slow.exact.probe(output)['streams'] if s['codec_type'] == 'audio'][0]
+        self.assertAlmostEqual(float(audio['duration']), 1.25, places=2)
+
+    def test_fractional_frame_count_or_unknown_factor_is_rejected(self):
+        source = self.sample(audio=False)
+        for factor in ('1.25', '1.3'):
+            with self.subTest(factor=factor):
+                with self.assertRaises(ValueError):
+                    slow.create(source, self.root / ('bad' + factor + '.mp4'), factor=factor)
+
+    def test_blended_interpolation_retains_anchors_and_retimes_audio(self):
+        source = self.sample(duration=1, audio_duration=1)
+        output = self.root / 'slow-blended.mp4'
+        report = slow.create(source, output, factor='1.25', interpolation='blend')
+        self.assertEqual(report['interpolation'], 'blend')
+        self.assertEqual((report['anchor_frames_identical'], report['output_frames']), (6, 30))
+        audio = [s for s in slow.exact.probe(output)['streams'] if s['codec_type'] == 'audio'][0]
+        self.assertAlmostEqual(float(audio['duration']), 1.25, places=2)
 
     def test_rejects_existing_or_dangling_output_without_touching_it(self):
         source = self.sample(audio=False)

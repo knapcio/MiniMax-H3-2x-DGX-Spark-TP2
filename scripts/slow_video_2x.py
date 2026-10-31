@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create an opt-in, 2x-slower H3 video with interpolated frames and retimed audio.
+"""Create an opt-in, slowed H3 video with interpolated frames and retimed audio.
 
 This slows every part of the picture, not only people. Intermediate frames may
 warp or smear, and retimed audio may sound unnatural. It does not establish
@@ -64,7 +64,12 @@ def verify_timestamps(path, count):
         raise ValueError('video timestamps are not continuous 24 fps')
 
 
-def create(source, destination):
+def create(source, destination, *, factor='2', interpolation='mci'):
+    if factor not in ('2', '1.25'):
+        raise ValueError('supported duration factors are 2 and 1.25')
+    if interpolation not in ('mci', 'blend'):
+        raise ValueError('interpolation must be mci or blend')
+    numerator, denominator = (2, 1) if factor == '2' else (5, 4)
     source = Path(source).expanduser().resolve(strict=True)
     destination = Path(os.path.abspath(Path(destination).expanduser()))
     if os.path.lexists(destination) or source == destination.resolve():
@@ -85,6 +90,8 @@ def create(source, destination):
             abs(float(video.get('start_time', 0))) > 0.001 or
             video.get('sample_aspect_ratio') not in (None, '1:1', 'N/A')):
         raise ValueError('expected at least three zero-start, square-pixel YUV420 frames at 24 fps')
+    if frames % denominator:
+        raise ValueError('source frame count must be divisible by 4 for 1.25x duration')
     source_seconds = Fraction(frames, 24)
     if audios:
         audio = audios[0]
@@ -93,7 +100,7 @@ def create(source, destination):
                 abs(float(audio['duration']) - float(source_seconds)) > 0.1):
             raise ValueError('expected near-video-length, zero-start AAC audio')
         source_audio_format = audio_format(source)
-    out_frames = frames * 2
+    out_frames = frames * numerator // denominator
     duration = float(Fraction(out_frames, 24))
     destination.parent.mkdir(parents=True, exist_ok=True)
     fd, name = tempfile.mkstemp(prefix='.h3-slow2x-', suffix='.mp4', dir=destination.parent)
@@ -101,26 +108,41 @@ def create(source, destination):
     temporary = Path(name)
     started = time.monotonic()
     try:
-        # Pad two source frames before motion interpolation so the penultimate
-        # intermediate frame has future context. Replace every even frame with
-        # its exact source frame and repeat the final frame for the last odd one.
+        # The source and output timestamps coincide at each denominator-th
+        # source frame / numerator-th output frame. Overlay those exact anchors;
+        # pad the interpolation input to provide future context at the end.
+        anchors = '' if denominator == 1 else f'select=not(mod(n\\,{denominator})),'
+        enable = f'not(mod(n,{numerator}))'
+        if denominator == 1:
+            enable += f'+eq(n,{out_frames - 1})'
+        # For 1.25x, interpolate the original 24 fps stream to 30 fps first,
+        # then assign 24 fps timestamps. This keeps the interpolation filter's
+        # declared input rate consistent with its input timestamps.
+        before_interpolate = f'setpts={numerator}*(PTS-STARTPTS)/{denominator},' if denominator == 1 else ''
+        interpolate_rate = 24 if denominator == 1 else 30
+        interpolate_options = ('mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1' if interpolation == 'mci'
+                               else 'mi_mode=blend')
+        output_timing = 'setpts=N/(24*TB)' if denominator == 1 else 'settb=1/120,setpts=N*5'
         filters = (
             '[0:v]split=2[raw][warp];'
-            '[raw]setpts=2*(PTS-STARTPTS)[original];'
-            '[warp]tpad=stop_mode=clone:stop=2,setpts=2*(PTS-STARTPTS),'
-            'minterpolate=fps=24:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1,'
-            f'trim=end_frame={out_frames},setpts=N/(24*TB)[mi];'
-            f"[mi][original]overlay=format=yuv420:enable='not(mod(n,2))+eq(n,{out_frames - 1})':"
+            f'[raw]{anchors}setpts={numerator}*(PTS-STARTPTS)/{denominator}[original];'
+            f'[warp]tpad=stop_mode=clone:stop=2,{before_interpolate}'
+            f'minterpolate=fps={interpolate_rate}:{interpolate_options},'
+            f'trim=end_frame={out_frames},{output_timing}[mi];'
+            f"[mi][original]overlay=format=yuv420:enable='{enable}':"
             'eof_action=repeat:repeatlast=1,format=yuv420p[v]'
         )
         if audios:
-            filters += f';[0:a]atempo=0.5,apad,atrim=duration={duration:.9f},asetpts=PTS-STARTPTS[a]'
+            tempo = denominator / numerator
+            filters += f';[0:a]atempo={tempo:g},apad,atrim=duration={duration:.9f},asetpts=PTS-STARTPTS[a]'
         cmd = ['ffmpeg', '-v', 'error', '-xerror', '-nostdin', '-y', '-i', str(source),
                '-filter_complex', filters, '-map', '[v]']
         if audios:
             cmd += ['-map', '[a]', '-c:a', 'aac', '-b:a', '128k']
         cmd += ['-map_metadata', '0', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '0',
                 '-pix_fmt', 'yuv420p', '-fps_mode', 'passthrough']
+        if denominator != 1:
+            cmd += ['-enc_time_base:v', '1:24']
         for key, option in (('color_range', '-color_range'), ('color_space', '-colorspace'),
                             ('color_transfer', '-color_trc'), ('color_primaries', '-color_primaries')):
             if video.get(key) and video[key] != 'unknown':
@@ -154,12 +176,13 @@ def create(source, destination):
         verify_timestamps(source, frames)
         verify_timestamps(temporary, out_frames)
         original_hashes = exact.frame_hashes(source, frames)
-        even_hashes = selected_hashes(temporary, r'not(mod(n\,2))')
-        final_hashes = selected_hashes(temporary, fr'eq(n\,{out_frames - 1})')
-        if len(even_hashes) != frames or even_hashes != original_hashes:
-            raise ValueError('an even output frame differs from its source frame')
-        if final_hashes != [original_hashes[-1]]:
-            raise ValueError('last interpolated frame does not repeat the last source frame')
+        anchor_hashes = selected_hashes(temporary, fr'not(mod(n\,{numerator}))')
+        if anchor_hashes != original_hashes[::denominator]:
+            raise ValueError('an output anchor differs from its source frame')
+        if denominator == 1:
+            final_hashes = selected_hashes(temporary, fr'eq(n\,{out_frames - 1})')
+            if final_hashes != [original_hashes[-1]]:
+                raise ValueError('last interpolated frame does not repeat the last source frame')
         decode = ['ffmpeg', '-v', 'error', '-xerror', '-nostdin', '-i', str(temporary), '-map', '0:v:0']
         if audios:
             decode += ['-map', '0:a:0']
@@ -173,11 +196,15 @@ def create(source, destination):
             'output_sha256': output_sha, 'source_frames': frames, 'output_frames': out_frames,
             'source_seconds': float(source_seconds), 'output_seconds': duration,
             'processing_seconds': round(time.monotonic() - started, 2),
-            'retained_even_frames_identical': frames, 'last_frame_repeats_source': True,
+            'interpolation': interpolation,
+            'anchor_frames_identical': len(anchor_hashes),
+            'anchor_source_stride': denominator, 'anchor_output_stride': numerator,
+            'retained_even_frames_identical': frames if denominator == 1 else None,
+            'last_frame_repeats_source': True if denominator == 1 else None,
             'video_timestamps': 'continuous 24 fps on source and output',
-            'audio': ('time-stretched 2x and reencoded to AAC, with end padding as needed' if audios else 'none'),
+            'audio': (f'time-stretched {factor}x and reencoded to AAC, with end padding as needed' if audios else 'none'),
             'audio_format': source_audio_format if audios else None,
-            'caveat': ('All picture motion is slowed, not only people; synthesized odd frames may warp or smear. '
+            'caveat': ('All picture motion is slowed, not only people; synthesized frames may warp or smear. '
                        'Retimed audio may sound unnatural and does not establish event synchronization. '
                        'Source duration and narrative coverage are not increased by new model generation.'),
         }
@@ -189,9 +216,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('source', type=Path)
     parser.add_argument('output', type=Path)
+    parser.add_argument('--factor', choices=('2', '1.25'), default='2', help='duration multiplier; default 2')
+    parser.add_argument('--interpolation', choices=('mci', 'blend'), default='mci',
+                        help='motion-compensated or blended intermediate frames')
     args = parser.parse_args()
     try:
-        print(json.dumps(create(args.source, args.output), indent=2))
+        print(json.dumps(create(args.source, args.output, factor=args.factor, interpolation=args.interpolation), indent=2))
         return 0
     except (OSError, ValueError, KeyError, TypeError, ZeroDivisionError, subprocess.SubprocessError) as exc:
         print(f'slow-video-2x: {exc}', file=sys.stderr)
