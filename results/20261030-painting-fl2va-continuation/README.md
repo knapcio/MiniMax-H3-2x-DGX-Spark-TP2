@@ -275,6 +275,31 @@ experiment excludes the source's later flickering section; that is not evidence 
 No one has reviewed the new playback. This changes playback speed, not model generation time; whether a shorter
 direct render plus interpolation is faster at equivalent quality remains untested.
 
+On 2026-10-31 at 21:31, an independent 15 s 960x544 FL2VA render (951.5 s wall) was converted into a separate
+30.000 s / 720-frame 24 fps candidate with motion-interpolated odd frames. This slows the entire scene, including
+clouds and people, and stretches the source's 15 s of events; it does not generate another 15 s of new action.
+The candidate retains every one of the 360 decoded source frames exactly at the even indices; its final frame
+repeats the last source frame. Odd frames can warp or smear, and still-frame checks do not establish natural motion.
+The 32 kHz stereo audio was stretched with `atempo=0.5`, re-encoded to AAC and padded at the end to 30 s. Its
+measured level was -41.49 to -41.41 LUFS; it needs listening review and event synchronization is not guaranteed.
+The Mac processing and verification took 21.76 s in this single run; there is no matched native 30 s baseline on the
+same boot, so this does not establish an equal-quality generation speedup. The global and regional screens found no
+qualifying periodic runs at either 17 or 34 frames, but those screens can miss motion or interpolation defects.
+
+`scripts/slow_video_2x.py` reproduces the experiment as an opt-in separate file, refuses overwrites, verifies a full
+decode and source stability, checks every even frame and the final frame, and verifies output rate, length and audio
+format. Six CPU/FFmpeg tests cover audio/no-audio inputs, frame and timestamp preservation, wrong format, source change
+and existing or dangling outputs. For the actual 15-to-30 s experiment an additional independent check verified 720 continuous
+frame timestamps, all even frames and stereo audio. Files in `~/Downloads/h3-prod-smoke/`:
+
+* `d30_koninck_z_direct15_spowolniony_2x_EXPERIMENT_EXACT30s.mp4` (SHA-256
+  `6d0c47401ae49b34d91594e8776aff1b4041ef5b813b6739884d9d2e9f6cd8a6`);
+* `porownanie_predkosci_direct15_vs_slow30_20261031.mp4` (15 s side-by-side with the original 15 s on the left,
+  the first 15 s of the slowed clip on the right, and the original audio); and
+* `d30_koninck_z_direct15_spowolniony_2x_LOUDNESS_EXPERIMENT_EXACT30s.mp4`, an additional audio-only level change
+  from -41.41 to -20.00 LUFS, preserving every video packet and timestamp. It can amplify noise and has not been
+  reviewed by ear. The quiet retimed source and original generation remain intact.
+
 ### Experimental repair of the existing 5 s-history clip (not a model fix)
 
 `experimental-deflicker.py` makes a separate, explicitly altered copy: it detects the repeated drops and lifts luma
