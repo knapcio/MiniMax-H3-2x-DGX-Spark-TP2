@@ -307,6 +307,17 @@ continuous timestamps, retimed audio and a successful full decode. The synthetic
 `ac39373f70346735a4c70c8d41da0bd46d1b86cc57501220b2f0941dfeee3515`). This is a format and timing test, not an H3
 GPU render and not evidence that a real five-minute video looks or sounds good.
 
+`scripts/interpolation_diagnostics.py` provides a supplementary review aid for the interpolated frames: in each
+even/odd/even triplet it compares the two grayscale changes with the direct change between retained frames, both
+globally and across image regions. On the actual 30 s candidate it screened 359 triplets at 336x192; median excess
+was 0.071 gray levels over the whole frame and the largest regional excess was 0.232 near 20.792 s. The three frames
+around that point are saved as `d30_slow30_klatki_interpolowane_20s_20261031.png`; a separate labelled road crop video
+is `porownanie_chodu_direct15_slow30_zblizenie_20261031.mp4`. This screen does not prove that the intermediate frame
+is correct: real motion can raise its score, and small figure warps can be missed. Three CPU/FFmpeg tests cover a
+linear triplet, an intermediate-only flash, and an actual encoded retiming. The analysis report is
+`d30_koninck_z_direct15_spowolniony_2x_interpolation_screen.json` (SHA-256
+`18111ae42d5853563744449109070ae958137a205d758a2b18f7ac2c727f81bb`).
+
 ### Experimental repair of the existing 5 s-history clip (not a model fix)
 
 `experimental-deflicker.py` makes a separate, explicitly altered copy: it detects the repeated drops and lifts luma
