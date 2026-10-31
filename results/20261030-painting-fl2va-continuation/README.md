@@ -175,6 +175,13 @@ stereo 32 kHz audio start at zero and end at 60.000 s. The source is unchanged. 
 the sound has not been reviewed by ear and the brightness corrections are still experimental. File:
 `~/Downloads/h3-prod-smoke/d60_koninck_960x544_regional_softground_LOUDNESS_EXPERIMENT_EXACT60s.mp4`.
 
+The earlier 30 s regional + soft-ground candidate also has a separate levelled copy:
+`d30_koninck_history5s_regional_softground_LOUDNESS_EXPERIMENT_EXACT30s.mp4`. Its audio measured -44.00→-20.00 LUFS,
+with -8.51 dBTP after AAC encoding. All 720 video packets, timestamps and codec extradata match the source; the
+30.000 s video and 29.984 s audio retain the source timing. Full decode passed. The owner preferred the earlier
+regional-deflicker clip, but the subsequent soft-ground and audio changes still need playback review; they do not
+correct the reported fast figures.
+
 [`scripts/normalize_ambient_audio.py`](../../scripts/normalize_ambient_audio.py) can create a new opt-in copy and
 JSON report for other durations. It refuses silent input, more than 30 dB of gain, peak limiting, unexpected streams,
 overwrites and failed media verification; it does not change the generation defaults.
