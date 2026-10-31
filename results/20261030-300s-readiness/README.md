@@ -510,6 +510,10 @@ rejected different seeds and output settings, rejected a rank-local invalid tail
 matched uninterrupted synthetic AV and saved/restored the next window under fresh IDs. These tests do not invoke the
 H3 serving loop, real model weights, GPU/NCCL or an actual process restart; complete deployment identity, memory
 headroom, cancellation and durable job semantics remain unresolved. The current render is still non-resumable.
+The prepared pipeline can generate multiple outputs sequentially, but the prototype stores only one output's
+latent state and no earlier decoded results. The session therefore rejects `num_outputs != 1` on every rank.
+The two-node Gloo/CPU test checks this rejection along with request mismatch, partial-save fallback and synthetic
+AV equality; it does not establish real model or process-restart recovery.
 
 ## Window-size planning from existing 960x544 samples (2026-10-31)
 

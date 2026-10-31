@@ -364,6 +364,13 @@ def session_smoke(coordinator, sessions, match, checker, rank, root):
         pass
     else:
         raise AssertionError('different output settings were accepted by the session')
+    multiple_outputs = {**common, 'output': {**output, 'num_outputs': 2}}
+    try:
+        sessions.Session.begin(root, run_id='b' * 32, **multiple_outputs)
+    except coordinator.CheckpointCoordinationError:
+        pass
+    else:
+        raise AssertionError('multiple outputs lack saved prior results and must be rejected')
     first_t, audio_first = checker.video_t(107), checker.audio_t(107)
     overlap_t = checker.video_t(22); audio_overlap = checker.audio_t(107) - checker.audio_t(85)
     first_v = torch.arange(2 * first_t * 2 * 2, dtype=torch.float32).reshape(1, 2, first_t, 2, 2) / 100 + rank

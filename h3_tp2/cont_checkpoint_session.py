@@ -22,7 +22,8 @@ class Session:
 
     Every participating rank must call the same methods in the same order.
     The caller must authenticate a complete deployment digest, own synchronized
-    input tensors, and abort the request if a checkpoint operation fails.
+    input tensors, and abort the request if a checkpoint operation fails. Only
+    a single output is supported: previously finished outputs are not saved.
     """
 
     @classmethod
@@ -51,7 +52,7 @@ class Session:
                     or type(output['audio_sample_rate']) is not int or output['audio_sample_rate'] != 32000
                     or type(output['preencode_mp4']) is not bool or type(output['preencode_batch_frames']) is not int
                     or output['preencode_batch_frames'] < 1 or type(output['num_outputs']) is not int
-                    or output['num_outputs'] < 1):
+                    or output['num_outputs'] != 1):
                 raise ValueError('checkpoint output geometry, rate or encoding configuration differs')
             state_check.planned_window(kwargs['num_frames'], options['window_frames'], options['overlap_frames'], 1)
             identity_kwargs = {**kwargs, RESERVED_KEY: {'channels': channels, 'audio_channels': audio_channels,
