@@ -134,6 +134,20 @@ A sweep of all 25 locally saved `h3-prod-smoke` MP4s found a second sequence mee
 The other 23 clips had no >=2 YAVG run lasting at least three periods. This is a global-luma screen, not proof that
 those clips are flicker-free: smaller, local or shorter events can be visible to the owner and miss this threshold.
 
+## Playback-speed experiment (2026-10-31)
+
+The owner reported that the people walked a little too quickly. A separate local experiment takes the first eight
+seconds of the 960x544 16 s combined-prompt control, slows **all** picture motion by 2x and uses FFmpeg motion
+interpolation to return to 24 fps. The resulting `d16_koninck_960x544_polowa_predkosci_EXPERIMENT.mp4` and a labelled
+side-by-side `porownanie_predkosci_postaci_16s.mp4` are in `~/Downloads/h3-prod-smoke/`. Both are exactly 16.000 s
+and fully decode. In the slowed copy, every even output frame (192/192 checked) equals the corresponding decoded
+source frame; the in-between frames are synthesized and may introduce warping or other artifacts. All 501 AAC packets
+and their timestamps are identical to the original 16 s soundtrack, so sound events may no longer track the slowed
+picture. The source is unchanged. The 17-frame global and regional screens report no repeated spikes here, but this
+experiment excludes the source's later flickering section; that is not evidence that interpolation fixed flicker.
+No one has reviewed the new playback. This changes playback speed, not model generation time; whether a shorter
+direct render plus interpolation is faster at equivalent quality remains untested.
+
 ### Experimental repair of the existing 5 s-history clip (not a model fix)
 
 `experimental-deflicker.py` makes a separate, explicitly altered copy: it detects the repeated drops and lifts luma
