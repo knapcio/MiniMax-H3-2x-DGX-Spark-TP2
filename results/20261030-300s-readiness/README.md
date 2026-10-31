@@ -121,6 +121,10 @@ took 1,949.5 s (19.55% less than the baseline). Both are single experimental sam
 changed the clouds and measured motion more, so neither result has been promoted as a default. The owner's feedback
 on earlier variants was that regional deflicker looked better, figures moved a little too fast, and ground cloud
 shadows looked questionable. Visual review of the new controls remains pending.
+For the 10-step and 20-step exact-16 s files, a frame-aligned FFmpeg SSIM comparison over all 384 frames averages
+0.9488; four-second averages fall from 0.9698 to 0.9323. This measures similarity between the two outputs, not which
+one has better visual quality, natural motion or audio. The single matched pair and still-frame inspection do not
+justify making 10 steps the default.
 For a closer look, `~/Downloads/h3-prod-smoke/porownanie_20_vs_10_krokow_16s.mp4` shows the two step-count samples
 side by side, `porownanie_okien_277_vs_175_16s.mp4` compares the window sizes, and `porownanie_ruchu_postaci_16s.mp4`
 enlarges the road in the original and slow-figure-prompt clips.
