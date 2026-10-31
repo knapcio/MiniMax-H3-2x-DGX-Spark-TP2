@@ -169,7 +169,7 @@ overlap samples and lists repeated >=2 YAVG drops. It rejects ambiguous duplicat
 The indices and sampled luma are approximate; the analyzer also reports exploratory offsets of ±8 frames when
 checking a repeated drop against a boundary. Selecting an offset after observing periodic changes can produce a
 chance match. It also reports the first-to-second-frame changes in the old, incoming and blended samples beside the
-encoded-frame rebound; global averages can miss regional flicker, so the comparison does not prove a cause. Five
+encoded-frame rebound; global averages can miss regional flicker, so the comparison does not prove a cause. Six
 synthetic/unit tests pass; the 16 s painting-trace preview is described below.
 The report also compares encoded frame-to-frame luma changes across all 17 temporal phases; this is descriptive,
 not a significance test or a visual-quality verdict.
@@ -204,6 +204,25 @@ statistics and trace sample counts differ. This strengthens the evidence for a p
 neither proves a decoder cause nor implies that every change is visible. The separate phase report is
 `~/Downloads/h3-prod-smoke/h3-vae-trace-painting-phase-20261031.json` (SHA-256
 `9657fad03e837f09da273ac4eb888462fdc30ab224cdc6e09f1e3ce8e2b06efc`).
+
+`scripts/compare_temporal_phases.py SOURCE CANDIDATE --start FRAME --end FRAME` compares all phases between two
+fully decoded clips over a half-open frame interval. It checks matching dimensions, average frame rate and decoded
+frame count, and verifies both SHA-256 hashes before and after; the frame-index comparison alone does not establish
+identical timestamps. Two comparator tests and six analyzer tests pass. The following medians are signed global YAVG
+changes at frames divisible by 17, not scores of visible quality:
+
+| Clip and interval | Transitions | Source | Regional correction |
+|---|---:|---:|---:|
+| Owner's history5s 30 s, 15–22 s | 10 | -6.117 | -0.5225 |
+| New 60 s, 55–60 s | 7 | -2.054 | -0.454 |
+| Exact 16 s, full clip | 22 | -0.287 | -0.287 |
+
+The owner preferred the regional 30 s copy; the 60 s correction has not been visually reviewed. The 16 s median
+is unchanged because the bounded correction targets particular stronger local events, not every phase-0 frame.
+Both useful reductions can include suppression of real scene lighting; they are not proof that the decoder alone
+caused those changes. The respective local reports are `h3-phase-compare-history30-15to22-20261031.json`,
+`h3-phase-compare-current60-55to60-20261031.json` and `h3-phase-compare-original16-20261031.json` in
+`~/Downloads/h3-prod-smoke/`.
 
 The first 277-frame window of that 960x544 painting trace took 590.5 s, versus 535.9 s for the earlier matched
 16 s combined-prompt control (10.2% longer); the 14-tensor step-0 digests match. The runs used different boots,

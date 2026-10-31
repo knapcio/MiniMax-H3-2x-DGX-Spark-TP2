@@ -51,6 +51,23 @@ def encoded_means(video):
     return means
 
 
+def phase_changes(means, *, start=1, end=None, period=17):
+    """Describe signed frame changes by phase in the half-open frame interval."""
+    end = len(means) if end is None else end
+    if period < 1 or start < 1 or end > len(means) or start >= end:
+        raise ValueError('invalid phase interval or period')
+    stats = []
+    for phase in range(period):
+        frames = [i for i in range(start, end) if i % period == phase]
+        changes = [means[i] - means[i - 1] for i in frames]
+        rebounds = [means[i + 1] - means[i] for i in frames if i + 1 < len(means)]
+        stats.append({'phase': phase, 'frames': len(changes),
+                      'median_change': statistics.median(changes) if changes else None,
+                      'negative_fraction': sum(value < 0 for value in changes) / len(changes) if changes else None,
+                      'median_next_change': statistics.median(rebounds) if rebounds else None})
+    return stats
+
+
 def compare(entries, means):
     if len(means) < 2:
         raise ValueError('fewer than two encoded video frames')
@@ -82,14 +99,7 @@ def compare(entries, means):
     most_matches = max(offsets.values())
     # Show every phase, not only the largest detected drops: a gradual change
     # in scene brightness can produce negative steps at every boundary too.
-    phase_stats = []
-    for phase in range(17):
-        changes = [means[i] - means[i - 1] for i in range(1, len(means)) if i % 17 == phase]
-        rebounds = [means[i + 1] - means[i] for i in range(1, len(means) - 1) if i % 17 == phase]
-        phase_stats.append({'phase': phase, 'frames': len(changes),
-                            'median_change': statistics.median(changes) if changes else None,
-                            'negative_fraction': sum(value < 0 for value in changes) / len(changes) if changes else None,
-                            'median_next_change': statistics.median(rebounds) if rebounds else None})
+    phase_stats = phase_changes(means)
     return {'encoded_frames': len(means), 'trace_entries': len(entries), 'overlaps_in_range': len(rows),
             'periodic_global_drop_runs': [[{'frame': frame, 'delta': delta} for frame, delta in group]
                                           for group in drops],

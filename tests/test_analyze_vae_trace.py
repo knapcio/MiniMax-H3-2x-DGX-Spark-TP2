@@ -70,5 +70,15 @@ class VaeTraceAnalysisTests(unittest.TestCase):
         self.assertIsNone(report['encoded_changes_by_phase'][1]['median_next_change'])
         self.assertEqual(report['encoded_changes_by_phase'][1]['negative_fraction'], 1)
 
+    def test_phase_stats_honor_interval_and_reject_invalid_bounds(self):
+        values = [100.0] * 52
+        values[17] = values[34] = values[51] = 97.0
+        result = module.phase_changes(values, start=18, end=50)
+        self.assertEqual(result[0]['frames'], 1)
+        self.assertEqual(result[0]['median_change'], -3)
+        for kwargs in ({'start': 0}, {'start': 10, 'end': 10}, {'end': 53}, {'period': 0}):
+            with self.assertRaises(ValueError):
+                module.phase_changes(values, **kwargs)
+
 
 if __name__ == '__main__': unittest.main()
