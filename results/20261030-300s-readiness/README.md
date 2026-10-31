@@ -65,6 +65,16 @@ trimming the 16 s clip. They use the same image, prompt, seed and step count; ea
 an empty async-job store. Seven fake-host tests cover the predecessor, source, trace-off, idle, no-overwrite and
 failure gates. The direct requests are queued, not yet rendered or visually evaluated.
 
+An independent [`queue-aspect-experimental300-20261031.sh`](queue-aspect-experimental300-20261031.sh) waits for both
+direct controls and the trace-off head. The short 16 s control already has measured flicker, so the existing 300 s
+**quality** gate remains failed. This separate, explicitly labelled structural experiment asks whether 300 s can
+complete and produce decodable media despite that known quality issue; it does not promote settings or assert that
+the result looks good. It requires matched 16/60 s inputs, no detected hard cuts, memory samples and guards on both
+nodes, six measured 60 s diffusion phases, an 8 h timeout projection with margin, sufficient disk space, verified
+deployed files, three idle checks and no queued API jobs. It does not change timeouts or restart either node. The
+raw result, if any, is preserved with its flicker and memory measurements. Six fake-host tests cover predecessor,
+memory/cut/input, time, busy-node, failed-render and output-validation gates; the 300 s GPU request remains unrun.
+
 After the aspect queue and its 300 s fallback finish or safely skip, the independent
 [`deploy-aspect-prompt-20261031.sh`](deploy-aspect-prompt-20261031.sh) can install the staged duration/prompt fix on
 both nodes. It requires verified 16/60 s outputs, released queue locks, matching staged/live hashes, healthy idle
