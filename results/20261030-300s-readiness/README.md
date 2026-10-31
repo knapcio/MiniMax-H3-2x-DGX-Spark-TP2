@@ -533,3 +533,22 @@ copies, metadata and filesystem overhead. This is arithmetic from shapes, not a 
 calculator takes observed timings as inputs and makes no interpolation; three tests cover alignment, exact window
 counts, a short final window and invalid plans. All six observed 60 s windows and the first six observed windows of
 the 300 s retry matched the calculator's boundaries and overlap at the time of the check.
+
+## Isolated attention comparison, queued (2026-10-31)
+
+Attention was a large share of the earlier long-window step profile. The live 300 s retry's log showed a local
+GEMM M=21,696; given the transformer's Ulysses sequence-to-head exchange, twice this is a plausible attention
+length of 43,392, not a recorded attention tensor shape. `scripts/attention_probe.py` compares BF16 non-causal
+cuDNN and two FlashInfer variants for synthetic 28-head, 128-dimensional inputs. At length 512 it compares both
+to FP32 math for Q/K scales 1, 4 and 16; at the inferred longer length it reports timing and differences against
+cuDNN. The FMHA-v2 candidate requires allowing FP16 QK reduction, so it changes numerical precision. FlashInfer's
+SM12x dispatch is inside its `auto` backend path; the probe checks which implementation was actually selected.
+
+The pinned `queue-attention-probe-20261031.py` watcher on 06 waits for successful completion of the 300 s retry
+and all matched quality comparisons. It verifies the bundle, no new Xid, both service PIDs and memory guards, then
+requires three idle samples. During the isolated, one-hour-capped benchmark it monitors API requests and available
+memory on both nodes and stops only the benchmark if a guard fails. API polling cannot remove the small race after
+an incoming request. Its JIT cache is isolated and compilation limited to two jobs. CPU-only tests checked dispatch
+configuration, numeric error accounting, the predecessor gate and child cleanup; node snapshots and busy detection
+were checked on the live pair. As of 23:05 the watcher was waiting, so there is no GPU result or speedup claim.
+Synthetic kernel timing does not establish whole-render speed or visual/audio quality, and no serving default changes.
