@@ -20,11 +20,37 @@ a head restart loses the job metadata and does not resume completed windows. The
 audio/video latents in memory and does not checkpoint them. A failure near the end can therefore lose hours of work.
 Do not present a configured timeout, an async job, or frame-count arithmetic as a successful 300 s test.
 
+## 2026-10-31: preserve the painting's aspect ratio
+
+The painting source is 2316x1320 (1.7545:1). The deployed FL2VA encoder directly resizes the reference to the
+requested canvas (`_prepare_encoder_images` in `encoder_processing.py`), so the 960x576 experiment compressed it
+horizontally by about 5%. The 16 s test still completed and is useful as a speed/quality reference: 886.1 s wall,
+585.9/212.6 s diffusion, seam ratio 0.99, no detected hard cut or repeated global luma drops, and minimum available
+head/worker memory 49,377/50,574 MiB. These diagnostics and a shorter runtime do not establish subjective quality.
+
+Before the 960x576 60 s request started, its waiting quality and fallback queues were stopped deliberately and their
+rc=143 markers kept as history. The replacement is **960x544**, 0.58% wider relative to the source ratio, with both
+dimensions divisible by 32 as required by the deployed model. The 5 s smoke completed successfully (195.5 s wall;
+head/worker minimum available 49,229/50,560 MiB). Its native 124-frame output passed full audio/video decode and
+global and regional repeated-flicker screens; an exact 120-frame/5.000 s copy was verified and collected. Those
+screens and one still do not establish temporal quality. The 16 s test started at 14:48 CET and is still running.
+[`run-aspect-control-20261031.sh`](run-aspect-control-20261031.sh) runs the 5 s and 16 s controls in sequence; the
+latter requires a successful smoke and matching source-image SHA-256. The
+[`queue-aspect-20261031.sh`](queue-aspect-20261031.sh) then checks the 16 s request and source hash before running
+60 s, with quality/memory/time gates for a conditional 300 s. The active v2 queues require a clean repeated global
+luma-drop screen on **both** 16 s and 60 s controls before the 300 s attempt; the 60 s detector can still miss
+regional flicker, and this is not a visual verdict. The separate
+[`queue-aspect-long300-20261031.sh`](queue-aspect-long300-20261031.sh) applies the existing guarded 16 h fallback
+only for a time-only skip and after rechecking both controls and their matching source hashes. Their output/event
+names are separate; the 960x576 jobs must not be resumed. The aspect controller, queue and fallback passed 4, 5 and
+7 fake-host tests respectively; these do not establish GPU validity or visual quality. A separate Mac collector and
+duration comparator will verify and copy successful outputs while the Mac is online.
+
 ## 2026-10-31: resume after the owner's stop
 
 The owner asked to stop the experiments on October 30 and to continue on October 31. The stopped queues and their
-HOLD markers are historical; the resumed run uses new output names and a separate event log. Both memory guards,
-the head and agent were active, the API was idle and both GPUs were idle before the new 16 s 960x576 control started
+HOLD markers are historical; the resumed run used new output names and a separate event log. Both memory guards,
+the head and agent were active, the API was idle and both GPUs were idle before the 16 s 960x576 control started
 at 14:29 CET. That test combines instructions for slower, smaller steps, softer ground light without strong moving
 cloud shadows, and broad painted cloud shapes. It is a combined experiment, not proof of what caused a change.
 
@@ -45,13 +71,18 @@ For a closer look, `~/Downloads/h3-prod-smoke/porownanie_20_vs_10_krokow_16s.mp4
 side by side, and `porownanie_ruchu_postaci_16s.mp4` enlarges the road in the original and slow-figure-prompt clips.
 On sampled stills the figure's path looks similar in those two clips; the prompt alone has not established a clear
 improvement in walking speed or naturalness. Both comparisons use the left-hand clip's audio and remain review aids.
+Two separately saved exact-length excerpts of the earlier approved 16 s painting clip are also in the same Downloads
+folder as `d10_koninck_fragment_z_16s.mp4` and `d15_koninck_fragment_z_16s.mp4`. They contain 240 and 360 frames
+respectively; retained decoded frames and AAC packet prefixes were checked. These are trims, not independent 10 s
+or 15 s generation tests.
 
 [`run-resume-control.sh`](run-resume-control.sh) started the new 16 s test after three checks of both nodes' health,
 GPU idleness, memory guards, available RAM and API gauges, plus an empty async-video job list. It never overwrites an
 output. [`queue-resume-20261031.sh`](queue-resume-20261031.sh) waits for that verified output, checks its HTTP result,
 prompt, image, shape, seed and streaming settings, and runs a matching 60 s control. It tries a 300 s 960x576 render
 only when both controls meet the existing cut, global-flicker, memory and 8 h projection guards. Both queues use
-`resume-events-20261031.log`, leaving the earlier stopped queue untouched. The 16/60/300 s tests and all motion and
+`resume-events-20261031.log`, leaving the earlier stopped queue untouched. The waiting 960x576 60/300 s queues were
+later canceled as described above, and replaced by the 960x544 plan. The 16/60/300 s tests and all motion and
 light settings are experimental; no duration is marked successful until its output is actually verified.
 
 [`queue-resume-long300-20261031.sh`](queue-resume-long300-20261031.sh) waits independently for that decision.

@@ -16,6 +16,7 @@ BASE = "quality16-960-stream"
 LONG = "quality60-960-stream"
 TAG16 = "d16_960x576_s20_seed1101_fl2va"
 TAG60 = "d60_960x576_s20_seed1101_fl2va"
+CANVAS = "960x576"
 HELPER_SHA = "3a3eea8a595a8db58f6220550c7fa704a1fa081b18dbf79ab782f32255e28000"
 
 
@@ -39,7 +40,7 @@ def compare(root, helper):
         raise ValueError("control durations are not 16 and 60 seconds")
     if (a.get("effective_duration"), b.get("effective_duration")) != (16, 60):
         raise ValueError("effective durations are not 16 and 60 seconds")
-    if (a.get("size"), a.get("steps"), a.get("seed"), a.get("task")) != ("960x576", 20, 1101, "fl2va"):
+    if (a.get("size"), a.get("steps"), a.get("seed"), a.get("task")) != (CANVAS, 20, 1101, "fl2va"):
         raise ValueError("unexpected control shape")
     ea, eb = dict(a["extra_params"]), dict(b["extra_params"])
     if ea.pop("duration", None) != 16 or eb.pop("duration", None) != 60 or ea != eb:
@@ -54,7 +55,7 @@ def compare(root, helper):
     if first_short <= 0 or first_long <= 0:
         raise ValueError("invalid first-window phase")
     return {
-        "comparison": "16s vs 60s, same 960x576 FL2VA prompt, 20 steps, seed 1101 and streaming",
+        "comparison": f"16s vs 60s, same {CANVAS} FL2VA prompt, 20 steps, seed 1101 and streaming",
         "first_window_seconds": {"16s": first_short, "60s": first_long},
         "first_window_change_percent": round((first_long / first_short - 1) * 100, 2),
         "wall_seconds": {"16s": float(a["elapsed_s"]), "60s": float(b["elapsed_s"])},

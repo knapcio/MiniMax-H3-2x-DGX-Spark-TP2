@@ -91,7 +91,11 @@ after this spatial experiment; other frame-to-frame changes there are about 0.13
 this clip-specific diagnostic. The new file fully decodes, has 736 video frames and the same audio SHA-256; direct
 YUV frame comparison finds 42 changed luma frames, unchanged chroma throughout and unchanged other decoded frames.
 The remaining signal and the user's motion feedback call for further visual and model-side testing. A separate
-16 s comparison changes only the wording for the figures to very slow small steps; it is queued, not yet rendered.
+16 s comparison changing only the wording for the figures to very slow small steps completed in 2,332.1 s; it passed
+media validation and has no detected repeated global luma drops at the two-drop threshold. The regional screen flags
+12.04–16.29 s, which may also include real motion. On sampled stills the figure's path looks similar to the original;
+the prompt has not established a clear walking-speed improvement. The local enlarged comparison is
+`~/Downloads/h3-prod-smoke/porownanie_ruchu_postaci_16s.mp4`; playback review remains pending.
 
 The broader `scripts/regional_flicker.py` screen compares six regions' frame-to-frame changes against their nearby
 baseline, looking for three or more same-phase spikes every 17 frames. In the history5s source, all three lower
@@ -147,8 +151,10 @@ explicitly asks the shadows to glide over the plain. Next controlled test: keep 
 landscape lighting without strong moving cloud shadows. Compare against the original 16 s clip by eye; prompt wording
 alone cannot guarantee physically aligned shadows. In the original 16 s clip, mean Y in the bottom 35% of the image
 rises from 56.2 to 67.6 over the first 5 s. This confirms a lighting change in that region but does not establish
-whether the ground shadows follow the clouds. The A/B is queued after the current render and calibration; on the
-timeout-recovery path it runs before the 60 s retry. No result is available yet.
+whether the ground shadows follow the clouds. The soft-light 16 s A/B completed in 2,371.4 s and passed media
+validation; the global two-drop screen found no repeated drops. The clip is
+`~/Downloads/h3-prod-smoke/d16_koninck_softlight_EXPERIMENT_EXACT16s.mp4`. Whether its ground light looks more natural
+still needs playback review; the prompt does not measure or enforce cloud-shadow alignment.
 
 ### Experimental soft-ground copies (19:04)
 

@@ -39,6 +39,16 @@ class LengthComparisonTests(unittest.TestCase):
         self.assertEqual(report["wall_seconds"]["60s"], 4400)
         self.assertIn("cannot alone establish", report["caveat"])
 
+    def test_aspect_corrected_canvas_can_be_compared_without_changing_default(self):
+        original = length.CANVAS
+        self.addCleanup(setattr, length, "CANVAS", original)
+        length.CANVAS = "960x544"
+        for run in self.runs.values():
+            run["timing"]["size"] = "960x544"
+        report = length.compare(self.root, self.helper)
+        self.assertIn("960x544", report["comparison"])
+        self.assertEqual(report["first_window_seconds"], {"16s": 900, "60s": 1050})
+
     def test_prompt_or_sampling_change_is_rejected(self):
         for key, value in (("prompt", "different"), ("seed", 42), ("size", "1344x768")):
             with self.subTest(key=key):
