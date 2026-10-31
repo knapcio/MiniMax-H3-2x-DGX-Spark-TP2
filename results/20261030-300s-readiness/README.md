@@ -144,6 +144,21 @@ failure output and logs remain intact. The measured slowest control window proje
 within the checked 28,800 s executor budget with margin. This is an estimate, not a successful render, and the
 known flicker still prevents treating a successful file as a quality pass.
 
+A separate watcher, [`queue-retry300-followups-20261031.py`](queue-retry300-followups-20261031.py), was started on
+the head at 21:51. It verifies the terminal status, HTTP/timing, full-decode report, source image, both memory logs,
+frame geometry, free disk and successful kernel-journal queries before postprocessing. If the runner disappears
+without a terminal status, or a check fails, it records HOLD and launches no later render. It creates a separately
+verified exact-300 s copy and global, regional and ground-light screens, then runs the existing guarded 30 s
+camera/steps and 175-frame-window comparisons in order, followed by the independent
+[`queue-human-pace-direct-bench-20261031.sh`](queue-human-pace-direct-bench-20261031.sh). That variant exercises
+the direct bench API and does not claim a Mac-client smoke; it retains the prior-window, same-service-PID, deployment,
+memory, idle and failure guards. It uses an isolated event log and output namespace, preserving the failed attempt.
+The 15-file runtime bundle is pinned by manifest SHA-256
+`ef2520a1af67c11453b0c60494b846d8060ca2ed5ce287127b1d2305d978cdd1`. These are queued experiments, not measured
+improvements. Eight retry-gate tests, three independent-gait tests and the existing camera/window queue tests pass
+on fake hosts. Three bench tests cover the default worker-memory path, distinct per-output paths and rejection of
+unsafe SSH paths; the private bundle opts into per-output paths so later cases do not overwrite worker samples.
+
 The failed 300 s first window and the earlier successful 16 s 960x544 control used the same 277-frame window and
 seed. Their rank-1 step-0 tensor-byte digests both begin `8a8189fa` (14 tensors), and the four logged FP8 GEMM
 shapes with M=21952 match. This is useful for selecting a short recovery control, but the digest does not cover all

@@ -10,7 +10,14 @@ SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=10)
 OUT=${OUT:-$HOME/h3-tp2-results/$(date +%Y%m%d-%H%M%S)}; mkdir -p "$OUT"
 PROMPT=${PROMPT:-"Slow drifting clouds over rolling green hills at golden hour, soft wind in the grass, gentle light moving across the valley, calm, photoreal, steady camera."}
 img=${2:-}
-WDIR="h3-tp2-results/memwatch"   # on the worker, relative to $HOME
+WDIR=${H3_MEMWATCH_WORKER_DIR:-h3-tp2-results/memwatch}   # on the worker, relative to $HOME
+if [ "${H3_MEMWATCH_PER_OUTPUT:-0}" = 1 ]; then
+  leaf=$(basename "$OUT")
+  [[ "$leaf" =~ ^[a-zA-Z0-9._-]+$ && "$leaf" != . && "$leaf" != .. ]] || { echo 'invalid memory sample output name' >&2; exit 2; }
+  WDIR="$WDIR/$leaf"
+fi
+# This is interpolated into an SSH command, so keep it a simple relative path.
+[[ "$WDIR" =~ ^[a-zA-Z0-9._/-]+$ && "$WDIR" != /* && "/$WDIR/" != *"/../"* ]] || { echo 'invalid worker memory directory' >&2; exit 2; }
 cur_tag=""; rpid=""
 cleanup() {
   [ -n "$cur_tag" ] || return 0
