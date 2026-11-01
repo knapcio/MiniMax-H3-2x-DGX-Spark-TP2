@@ -190,6 +190,12 @@ The first four blocks were also published as a separate **210 s preview** in the
 The preview was re-encoded at CRF 19, fully decodes, and has 5,040 video frames with continuous 24 fps video PTS
 and continuous decoded audio PTS. Sampled RGB differences from its four sources were at most 0.885/255; median
 audio correlations were at least 0.99997 at zero sampled shift. These checks do not establish acting or quality.
+Both 210 s previews also yielded exactly 6,720,000 decoded audio samples at 32 kHz from first PTS 0 to 210 s;
+this was checked independently of the container's declared duration.
+In a visual contact sheet sampled at 0, 30, 60, 90, 120, 150 and 180 s, the same two foreground characters,
+shop and letter remain recognizable; Wokulski still holds the letter in each sampled frame. This supports visual
+continuity at those instants but also shows a very static staging; it does not establish that the action, acting,
+actor likeness, or lip synchronization is convincing between samples. The staged-action experiment remains pending.
 
 A second 210 s preview uses the synthetic driving voices in place of the entire model soundtrack (therefore it
 does not include the generated ambience). Its SHA-256 is
