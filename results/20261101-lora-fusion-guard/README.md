@@ -21,6 +21,15 @@ The fix has not been installed or restarted into the live service.
 
 Before deploying or benchmarking Turbo, run a controlled GPU comparison with the actual wrapped vLLM layers and
 both ranks, check nonzero adapter influence and unwrapped baseline, and measure the fallback's cost. Also compare
-picture, motion and audio: fewer distilled steps change the generated result. On the Spark's pinned vLLM-Omni
-checkout, the documented Turbo request values are **5/9** for four/eight forwards; newer upstream documentation
-uses 4/8, so use the contract of the version actually installed, not the newer numbers by assumption.
+picture, motion and audio: fewer distilled steps change the generated result. The Spark's checked-out recipe still
+lists **5/9** for four/eight forwards, but its actual `pipeline_minimax_h3.py` validates
+`num_inference_steps == spec.denoise_steps`, i.e. **4/8**. The checked code and checked-in recipe disagree; verify
+the request contract on the actual running version rather than trusting either document alone.
+
+For a future comparison, the different LightX2V `minimax_h3_fl2v_turbo_4step_v1.2_768p_bf16.safetensors`
+artifact was downloaded to the Mac from the [publisher's repository](https://huggingface.co/lightx2v/Minimax-h3-Turbo)
+at revision `30f485ed874aa44c8183348ad361c5eabad318da`: 1,383,677,808 bytes, SHA-256
+`c3d4a2cf618efea71b9e21a4baaa12d412f1eb6c2b6f86efacaf0ebb6814b689`. Its safetensors header declares rank-128
+BF16 and alpha 8; 104 tensors target `fc1` and 104 target `fc2`, making the fusion guard relevant. No weights were
+loaded into either Spark and no Turbo test has run. The user rejected an earlier 8-step v1.0 forest render's
+lighting and blur; a different 4-step artifact is an experiment, not evidence that this concern is resolved.
