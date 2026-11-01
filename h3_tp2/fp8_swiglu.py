@@ -178,14 +178,34 @@ def install(level: int = 1) -> None:
         logger.warning("h3_tp2: fused FP8 SwiGLU unavailable (Triton pass not usable in this process); skipped")
         return
     from vllm_omni.diffusion.models.minimax_h3 import minimax_h3_transformer as _tr
+    try:
+        from vllm.lora.layers import BaseLayerWithLoRA
+    except ImportError:
+        BaseLayerWithLoRA = ()  # type: ignore[assignment,misc]  # LoRA support is absent in this vLLM build
 
     cls = _tr.MiniMaxH3MLP
-    if getattr(cls, "_h3_tp2_fused_swiglu", False):
+    if not _install_on(cls, level=level, lora_layer_type=BaseLayerWithLoRA):
         return
+    fp8_gemm.set_stash_hook(_stash_hook)
+    logger.warning("h3_tp2: fused FP8 epilogue + SwiGLU for the MLP ON, level %d%s (matches two-pass + silu_and_mul%s on the tested inputs and build); LoRA-wrapped MLPs use the ordinary path",
+                   level, " (+ fc2 input quant)" if level >= 2 else "", " + vLLM's per-token quant" if level >= 2 else "")
+
+
+def _install_on(cls, *, level: int, lora_layer_type) -> bool:  # noqa: ANN001
+    """Install the MLP wrapper; the caller supplies vLLM's LoRA base class."""
+    if getattr(cls, "_h3_tp2_fused_swiglu", False):
+        return False
     orig_forward = cls.forward
     fuse_quant = level >= 2
 
     def forward(self, x):  # noqa: ANN001
+        # The fused path deliberately discards fc1's returned placeholder.
+        # A LoRA wrapper adds its delta to that result, so discarding it would
+        # discard the adapter as well. Level 2 can similarly bypass fc2's
+        # wrapper through _fc2_direct. Use the ordinary MLP for either case,
+        # including inactive wrappers whose lifecycle we do not control.
+        if isinstance(self.fc1, lora_layer_type) or isinstance(self.fc2, lora_layer_type):
+            return orig_forward(self, x)
         _tls.stash_next = True
         _tls.stash = None
         _tls.expect_n = int(getattr(self.fc1, "output_size_per_partition", 0) or 0)
@@ -222,9 +242,7 @@ def install(level: int = 1) -> None:
 
     cls.forward = forward
     cls._h3_tp2_fused_swiglu = True
-    fp8_gemm.set_stash_hook(_stash_hook)
-    logger.warning("h3_tp2: fused FP8 epilogue + SwiGLU for the MLP ON, level %d%s (matches two-pass + silu_and_mul%s on the tested inputs and build)",
-                   level, " (+ fc2 input quant)" if fuse_quant else "", " + vLLM's per-token quant" if fuse_quant else "")
+    return True
 
 
 def _stash_hook(a, b, scale_a, scale_b, out_dtype, bias):  # noqa: ANN001
