@@ -60,3 +60,9 @@ offline test of its extracted methods with fake bindings reproduced both behavio
 used the first bound scale, while the recorded rounded scale was 0.123. This is a synthetic method-level result, not
 a real-model output or measured quality difference. A safe experiment should use a fresh immutable path/ID and
 verify actual loaded/bound state rather than assume a request or file hash represents the effective adapter.
+
+Startup detail checked on 2026-11-01: the head's `scripts/start-head.sh` sources `scripts/env.sh`, which in turn
+sources `~/.h3-tp2.env`; that file currently assigns `H3_TP2_FP8_FUSE_SWIGLU=1` unconditionally. A systemd
+`Environment=H3_TP2_FP8_FUSE_SWIGLU=0` alone would be overwritten by the sourced file and is not a safe Turbo
+workaround. Any future isolated test boot must set the intended value *after* that source and verify the effective
+setting and installed plugin on both ranks. No startup file or service has been changed for Turbo.
