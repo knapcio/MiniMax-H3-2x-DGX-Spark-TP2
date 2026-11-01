@@ -208,6 +208,16 @@ neither proves a decoder cause nor implies that every change is visible. The sep
 `~/Downloads/h3-prod-smoke/h3-vae-trace-painting-phase-20261031.json` (SHA-256
 `9657fad03e837f09da273ac4eb888462fdc30ab224cdc6e09f1e3ce8e2b06efc`).
 
+On 2026-11-01 an offline CPU probe ran the installed `temporal_chunks.py` callback loop and extracted VAE frame-plan,
+blend and legacy decode methods with a synthetic decoder. Using the inspected FL2VA configuration (17-frame clips,
+temporal ratio 4, token drop 3, no isolated end frames), the callback's blend calls began at output frames 17, 34,
+51, … for 10, 15, 30, 60 and 300 s plans. Their aligned outputs had 13, 20, 42, 84 and 423 such calls respectively;
+the synthetic callback output matched the synthetic full and streaming VAE loops. The relevant source and VAE config
+hashes matched on both nodes. This strengthens the frame-index mapping for this configuration, but is not a real VAE,
+GPU or encoded-video comparison and does not establish what causes visible flicker. In an artificial 16-frame,
+isolated-first-frame configuration, the first blend began at frame 17 while `count * clip_length` predicted 16;
+the trace index must therefore remain approximate for other configurations. A same-latent real decode A/B remains open.
+
 `scripts/compare_temporal_phases.py SOURCE CANDIDATE --start FRAME --end FRAME` compares all phases between two
 fully decoded clips over a half-open frame interval. It checks matching dimensions, average frame rate and decoded
 frame count, and verifies both SHA-256 hashes before and after; the frame-index comparison alone does not establish
