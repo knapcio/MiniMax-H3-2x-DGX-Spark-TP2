@@ -94,6 +94,16 @@ def register() -> None:
 def _apply(role: str) -> None:
     world = int(os.environ.get("H3_TP2_WORLD_SIZE", "2"))
 
+    # Optional per-field limit for video POSTs with large inline audio. Keep
+    # Starlette's original limit everywhere unless this is explicitly enabled.
+    form_limit = os.environ.get("H3_TP2_VIDEO_FORM_LIMIT_MIB", "").strip()
+    if role == "head" and form_limit:
+        from h3_tp2 import video_form_limit as _vfl
+
+        _bytes = int(form_limit) * _vfl.MIB
+        _vfl.install(_bytes)
+        logger.warning("h3_tp2: video POST multipart field limit set to %d bytes", _bytes)
+
     from vllm_omni.platforms import current_omni_platform
 
     plat = current_omni_platform if isinstance(current_omni_platform, type) else type(current_omni_platform)

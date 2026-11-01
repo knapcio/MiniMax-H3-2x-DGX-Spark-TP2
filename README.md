@@ -234,6 +234,13 @@ server can reach, or set `H3_AUDIO_MAX_FIELD_BYTES` only after configuring and v
 FL2VA reference with a Polish MP3 data URL passed media checks and transcription; the file transport itself has been
 tested against a local multipart receiver, not a live H3 request or a 300 s track.
 
+An opt-in server experiment, `H3_TP2_VIDEO_FORM_LIMIT_MIB`, raises the implicit per-field limit only for POST
+`/v1/videos` and `/v1/videos/sync` (allowed range 1–64 MiB); explicit caller limits remain in force. The plugin is
+unchanged when this variable is absent. A local FastAPI 0.136.3 / Starlette 1.10.0 test accepted a field above 1 MiB
+on the video endpoint while an unrelated endpoint kept rejecting it. It has **not** been installed or tested on the
+live service. A larger limit allows more memory per field and does not guarantee that encoding a long soundtrack
+fits GPU or host memory; keep the API private and verify actual long-audio behavior before relying on it.
+
 ### Long clips from a client or an agent: the request
 
 **Status 2026-10-30 morning.** On 2026-10-29 the owner rejected the continuation by eye (a light and texture step at
