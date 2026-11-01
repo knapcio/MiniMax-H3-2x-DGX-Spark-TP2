@@ -198,3 +198,10 @@ original 210 s preview exactly and it fully decodes with continuous video/audio 
 3 and 4 audio, the final lines measured -0.009 / -0.009 dB RMS against their respective sources, with waveform
 correlation 0.99999 and zero measured shift. The original preview remains intact. Neither copy has a listening,
 lip-sync or actor-likeness verdict; the alternate is an explicitly labeled comparison, not a replacement.
+
+Block 5 completed at 23:50 (60 s, SHA-256
+`0d278d2716786e638904ed344701725f2b172cd63799132b5ff8975261454ba1`), and the last 30 s block started at 23:51
+from its verified final frame. The fifth block passed the independent waveform and decoded-frame PTS screen;
+its first-channel output/source interval levels were +0.24 / -1.41 / -2.40 / -3.33 / -2.47 / **-12.52 dB**.
+Whisper WER was 0.018, and the sampled 4→5 boundary differed by 3.6/255 RGB. Sampled frames retain the shop and
+main pair, but show limited action; neither these samples nor ASR establish acting, natural speech or lip sync.
