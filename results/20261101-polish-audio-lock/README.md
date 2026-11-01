@@ -183,3 +183,18 @@ input hashes and the reproducer are saved with the local film analysis. This is 
 audible-quality or causal verdict. The still-running head was started at 12:09, before the source-audio look-lock
 bypass (`c81f1b6` at 19:38); its journal confirms that the audio look-lock ran in the later windows. The bypass is a
 candidate fix, but has not yet been compared on the model, so the cause and its effect remain unproven.
+
+The first four blocks were also published as a separate **210 s preview** in the local film directory
+(`lalka-list-w-sklepie-PODGLAD-210s-EXPERIMENT.mp4`, SHA-256
+`6404c30848fec8474b62b356b96fe1097acf528c0b4ec5c0ef46d11b07b45249`). It is not the requested 300 s result.
+The preview was re-encoded at CRF 19, fully decodes, and has 5,040 video frames with continuous 24 fps video PTS
+and continuous decoded audio PTS. Sampled RGB differences from its four sources were at most 0.885/255; median
+audio correlations were at least 0.99997 at zero sampled shift. These checks do not establish acting or quality.
+
+A second 210 s preview uses the synthetic driving voices in place of the entire model soundtrack (therefore it
+does not include the generated ambience). Its SHA-256 is
+`4a555a763f0bc8be30ffd649a921e293c371933b9a26002331474afe8ef126f7`; its encoded video packets match the
+original 210 s preview exactly and it fully decodes with continuous video/audio PTS. After extracting its block
+3 and 4 audio, the final lines measured -0.009 / -0.009 dB RMS against their respective sources, with waveform
+correlation 0.99999 and zero measured shift. The original preview remains intact. Neither copy has a listening,
+lip-sync or actor-likeness verdict; the alternate is an explicitly labeled comparison, not a replacement.
