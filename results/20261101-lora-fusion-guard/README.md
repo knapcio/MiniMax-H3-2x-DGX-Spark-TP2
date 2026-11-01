@@ -19,6 +19,12 @@ absolute error 0.2736 with the old fusion and 0 with the guard. The deployed fil
 `diffusion/lora/layers/base_linear.py` SHA-256 `9baa38fca241a0b250a9b6f79ab3467da7385ec941b020f34680c451430d64eb`.
 The fix has not been installed or restarted into the live service.
 
+`tests/test_fp8_swiglu_lora_gpu.py` is a prepared isolated-device check: it uses the installed vLLM-Omni LoRA
+`apply()` implementation with small synthetic GPU linears and, for the unwrapped control, the actual Triton
+SwiGLU fusion. Its two wrapped-layer cases also passed on the Mac CPU using the copied, SHA-checked vLLM-Omni
+`apply()` source with a minimal synthetic base class and synthetic linears. It has not yet run on a Spark GPU.
+Even a GPU pass would not establish real H3/Turbo model behavior or two-rank serving correctness.
+
 Before deploying or benchmarking Turbo, run a controlled GPU comparison with the actual wrapped vLLM layers and
 both ranks, check nonzero adapter influence and unwrapped baseline, and measure the fallback's cost. Also compare
 picture, motion and audio: fewer distilled steps change the generated result. The Spark's checked-out recipe still
