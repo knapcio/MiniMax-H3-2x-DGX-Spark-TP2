@@ -294,6 +294,12 @@ the offset to -2 frames. On two first 10 s Polish audio-driven scenes, the scree
 artificial-delay control returned -7. The fixed crop, speaker selection, language and synthetic speech can affect
 the result, so neither a passing control nor a confidence value proves accurate lip sync or natural movement.
 
+For multi-person scenes, macOS users can compile `scripts/face_landmarks_all.swift` with `swiftc -O` and pass it
+sampled image paths to obtain all detected boxes as JSON. `scripts/track_face_detections.py` associates those boxes
+with up to four initial normalized Vision positions and writes one `samples` report per track, compatible with the
+SyncNet screen. Its assignment avoids reusing a face and handles missing detections, but position is not identity:
+crossings, pose changes, occlusions and cuts can swap or lose a track. Check the crops and playback by eye.
+
 For an edited sequence assembled from clips, `scripts/verify_assembled_shots.py` checks declared frame
 counts, rates, geometry and audio start times, then compares three RGB frames and sparse audio windows per ordered
 source. For example:
