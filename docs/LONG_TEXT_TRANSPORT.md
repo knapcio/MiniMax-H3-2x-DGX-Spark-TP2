@@ -49,6 +49,45 @@ prompts when requested. Explicit `continuation_prompts` still take precedence.
 Legacy text is written with bash's builtin `printf`; generated JSON is never
 captured in a shell variable, executable argument or environment entry.
 
+### Base context and explicit window prompts
+
+The inspected H3 pipeline snapshot encodes an explicit `continuation_prompts`
+list **instead of** merging the base `prompt` into each window. Therefore a
+successful upload and a base prompt present in `timing.json` do not prove that
+its instructions reached the text encoder. Each explicit window prompt must
+include the context it needs. The story/dialogue planners already repeat their
+shared context; do not prefix it again unless that duplication is intentional.
+
+For an explicit list containing only per-window actions, the updated client
+offers an opt-in prefix:
+
+```bash
+H3_PROMPT_FILE=/path/to/shared-context.txt \
+H3_EXTRA_JSON_FILE=/path/to/explicit-window-prompts.json \
+H3_CONT_PREFIX_BASE=1 \
+bash scripts/render.sh out.mp4 30 960 544 20 3101 '' /path/to/reference.png first
+```
+
+The extra JSON must set `long_video: true`, use continuation mode, and contain
+a nonempty `continuation_prompts` array of nonempty strings. The base prompt
+must be nonempty. The helper prepends the literal base plus one newline to
+every supplied action, without rewriting either string. The caller still has
+to supply the correct number of windows. The option is off by default and does
+not change existing explicit lists. It does not generate an automatic list:
+`CONT_PROMPTS=auto` already includes the base when it generates one, and the
+prefix option requires an explicit list. If the list already includes the
+context, enabling the option duplicates it. `timing.json` contains the exact
+expanded list and `text_fields.continuation_base_prefix` records the choice.
+Repeated context counts against the multipart byte limit and model resources.
+
+The replacement behavior was reproduced on the saved upstream conditioning
+method with synthetic dependencies, not by loading the active server's model.
+The option prepares text only; it does not establish prompt adherence or a
+safe text-plus-image/audio context length. CPU tests exercised the actual
+client and a local HTTP receiver on macOS and in an isolated Linux directory
+on Spark_06; the Linux test used a stub `env.sh`, not the serving environment.
+No model request was sent and the running film was unaffected.
+
 Both modes create a private `h3-text.*` temporary directory. curl reads
 `prompt=<file` and `extra_params=<file` as **text fields**, not uploaded files.
 Semicolons, UTF-8, CRLF and trailing newlines in the prompt survive verbatim.

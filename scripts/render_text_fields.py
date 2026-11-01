@@ -46,6 +46,21 @@ def prepare(args):
     if not isinstance(overrides, dict):
         raise ValueError('extra_params must be a JSON object')
     extra.update(overrides)
+    if args.prefix_base:
+        if extra.get('long_video') is not True or extra.get('long_video_mode', 'continuation') != 'continuation':
+            raise ValueError('H3_CONT_PREFIX_BASE=1 requires long_video continuation mode')
+        prompts = extra.get('continuation_prompts')
+        if (not isinstance(prompts, list) or not prompts
+                or any(not isinstance(item, str) or not item.strip() for item in prompts)):
+            raise ValueError('H3_CONT_PREFIX_BASE=1 requires a nonempty list of explicit continuation_prompts')
+        if not prompt.strip():
+            raise ValueError('H3_CONT_PREFIX_BASE=1 requires a nonempty base prompt')
+        # Every byte of the base is repeated. Reject a lower bound before
+        # allocating the expanded list; JSON escaping may require still more.
+        minimum = len(prompt.encode('utf-8')) * len(prompts) + sum(len(item.encode('utf-8')) + 1 for item in prompts)
+        if minimum > args.limit:
+            raise ValueError(f'prefixed continuation prompts exceed field limit {args.limit} bytes')
+        extra['continuation_prompts'] = [prompt + '\n' + item for item in prompts]
     target = extra.get('target')
     if target is not None and not isinstance(target, dict):
         raise ValueError('target must be an object')
@@ -76,7 +91,7 @@ def prepare(args):
             extra['continuation_prompts'] = [first] + [rest] * (count - 1)
     # Both files are private snapshots. curl and timing read these same bytes,
     # so later edits of caller-owned files cannot change the submitted request.
-    metadata = {'limit_bytes': args.limit,
+    metadata = {'limit_bytes': args.limit, 'continuation_base_prefix': args.prefix_base,
                 'prompt': write_field(args.directory / 'prompt.txt', prompt, args.limit),
                 'extra_params': write_field(args.directory / 'extra.json', json.dumps(extra, ensure_ascii=False), args.limit)}
     (args.directory / 'text-meta.json').write_text(json.dumps(metadata), encoding='utf-8')
@@ -93,5 +108,7 @@ if __name__ == '__main__':
     parser.add_argument('--where', choices=['first', 'last', 'both'], default='first')
     parser.add_argument('--task', default='')
     parser.add_argument('--auto', action='store_true')
+    parser.add_argument('--prefix-base', action='store_true',
+                        help='prepend the literal base prompt to each explicitly supplied continuation prompt')
     parser.add_argument('--limit', type=int, default=1048576)
     prepare(parser.parse_args())

@@ -73,7 +73,7 @@ os.execv({executable!r}, [{executable!r}, *sys.argv[1:]])
             path.chmod(0o755)
         self.env = os.environ.copy()
         for name in ('EXTRA_JSON', 'H3_PROMPT_FILE', 'H3_EXTRA_JSON_FILE', 'H3_TEXT_MAX_FIELD_BYTES',
-                     'CONT_PROMPTS', 'CONT_PROMPTS_REST', 'CONT_PROMPTS_EXTRA', 'AUDIO_URL', 'H3_AUDIO_FILE',
+                     'CONT_PROMPTS', 'CONT_PROMPTS_REST', 'CONT_PROMPTS_EXTRA', 'H3_CONT_PREFIX_BASE', 'AUDIO_URL', 'H3_AUDIO_FILE',
                      'H3_LORA_JSON', 'H3_AUDIO_FLOW_SHIFT', 'H3_VIDEO_FLOW_SHIFT', 'TASK'):
             self.env.pop(name, None)
         temporary = self.root / 'temp; "quoted",comma\\path'
@@ -138,6 +138,35 @@ os.execv({executable!r}, [{executable!r}, *sys.argv[1:]])
         self.assertIn(prompt.decode(), sent['continuation_prompts'][1])
         self.assertGreater(len(self.parts['prompt']['data']), 131072)
         self.assertGreater(len(self.parts['extra_params']['data']), 4 * 1024 * 1024)
+
+    def test_opt_in_prefixes_literal_base_to_every_explicit_window(self):
+        prompt = ('Kontekst; Zażółć 😀\r\n' * 9000 + '\n').encode('utf-8')
+        actions = ['Najpierw; list.\n', 'Następnie rozmowa.\r\n', 'Na końcu: decyzja.']
+        result = self.render(prompt, {'long_video': True, 'continuation_prompts': actions},
+                             CONT_PROMPTS='auto', H3_CONT_PREFIX_BASE='1')
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        timing, sent = self.verify_transport(prompt)
+        self.assertTrue(timing['text_fields']['continuation_base_prefix'])
+        self.assertEqual(sent['continuation_prompts'], [prompt.decode('utf-8') + '\n' + a for a in actions])
+        self.assertGreater(len(self.parts['extra_params']['data']), 131072)
+
+    def test_prefix_is_opt_in_and_fails_closed_on_invalid_or_oversized_input(self):
+        cases = [
+            (b'base', {'long_video': True}, '1'),
+            (b'base', {'long_video': True, 'continuation_prompts': []}, '1'),
+            (b'base', {'long_video': True, 'continuation_prompts': ['action', '']}, '1'),
+            (b'base', {'continuation_prompts': ['action']}, '1'),
+            (b'base', {'long_video': True, 'long_video_mode': 'other', 'continuation_prompts': ['action']}, '1'),
+            (b'  ', {'long_video': True, 'continuation_prompts': ['action']}, '1'),
+            (b'base', {'long_video': True, 'continuation_prompts': ['action']}, '2'),
+            (b'x' * 400000, {'long_video': True, 'continuation_prompts': ['a', 'b', 'c']}, '1'),
+        ]
+        for base, extra, enabled in cases:
+            with self.subTest(enabled=enabled, size=len(base), extra=extra):
+                result = self.render(base, extra, H3_CONT_PREFIX_BASE=enabled)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(self.received, 0)
+        self.assertFalse(list(Path(self.env['TMPDIR']).glob('h3-text.*')))
 
     def test_generated_extra_over_default_limit_is_rejected_before_http(self):
         result = self.render(b'x' * 40000, {'long_video': True}, duration=300, CONT_PROMPTS='auto')

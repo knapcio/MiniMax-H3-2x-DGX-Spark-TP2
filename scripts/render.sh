@@ -69,6 +69,11 @@ text_args=("--directory=$request_tmp" "--prompt=${H3_PROMPT_FILE:-$request_tmp/p
            "--duration=$dur" "--audio-shift=$audio_shift" "--image=$img" "--where=$where" "--task=${TASK:-}"
            "--limit=${H3_TEXT_MAX_FIELD_BYTES:-1048576}")
 [ "${CONT_PROMPTS:-}" != auto ] || text_args+=(--auto)
+case "${H3_CONT_PREFIX_BASE:-0}" in
+  0) ;;
+  1) text_args+=(--prefix-base) ;;
+  *) echo "render.sh: H3_CONT_PREFIX_BASE must be 0 or 1" >&2; exit 2 ;;
+esac
 python3 "$(dirname "$0")/render_text_fields.py" "${text_args[@]}" \
   || { echo "render.sh: invalid or oversized text fields, nothing submitted" >&2; exit 2; }
 args=(-F "prompt=<$(curl_form_path "$request_tmp/prompt.txt")" --form-string "width=$w" --form-string "height=$h" --form-string "aspect_ratio=16:9" --form-string "fps=24" --form-string "num_inference_steps=$steps" --form-string "flow_shift=$video_shift" --form-string "seed=$seed" -F "extra_params=<$(curl_form_path "$request_tmp/extra.json")")
