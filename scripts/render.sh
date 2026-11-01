@@ -53,6 +53,7 @@ fi
 # restating that the same shot continues.  Runs after the EXTRA_JSON merge and uses the effective duration (upstream
 # precedence: target.duration_seconds, duration_seconds, duration); supplied continuation_prompts are kept as they are.
 # CONT_PROMPTS_EXTRA="<sentence>" is appended to every generated window prompt (experiments on wording).
+# CONT_PROMPTS_REST supplies the later-window wording; {base} explicitly inserts the original prompt if wanted.
 if [ "${CONT_PROMPTS:-}" = auto ]; then
   extra=$(python3 - "$extra" "$prompt" <<'PY'
 import json, math, os, sys
@@ -68,7 +69,10 @@ if e.get("long_video") and e.get("long_video_mode", "continuation") == "continua
         n = 1 if frames <= win else 1 + math.ceil((frames - win) / (win - ov))
         extra = os.environ.get("CONT_PROMPTS_EXTRA", "").strip()   # e.g. "The light and the sky stay exactly as they are."
         first = base.rstrip(". ") + ". One single continuous take from a steady camera, no cuts, no transitions." + (" " + extra if extra else "")
-        rest = "The same continuous shot goes on without any cut or transition, the camera keeps moving the same way: " + base + (" " + extra if extra else "")
+        rest_template = os.environ.get("CONT_PROMPTS_REST", "").strip()
+        rest = (rest_template.replace("{base}", base) if rest_template else
+                "The same continuous shot goes on without any cut or transition, the camera keeps moving the same way: " + base)
+        rest += " " + extra if extra else ""
         e["continuation_prompts"] = [first] + [rest] * (n - 1)
 print(json.dumps(e))
 PY

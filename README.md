@@ -215,6 +215,15 @@ Model download is opt-in; omit `--allow-download` once the chosen faster-whisper
 avoids an observed incompatibility between faster-whisper 1.2.1 and PyAV 19. A synthesized Polish sentence was
 transcribed with one word error out of 14 in the local smoke; that is an integration check, not a quality threshold.
 
+The automatic continuation prompt normally repeats the original prompt in every window, including any `<d>`
+dialogue. In one 15 s Polish scene, speech recognition found the requested line again after the window boundary;
+this is one observation, not a general frequency estimate. If a line is intended to finish in the first window,
+the client can send different later-window wording with `CONT_PROMPTS=auto` and `CONT_PROMPTS_REST='The same shot
+continues; the speaker rests, with quiet room ambience.'`. The rest wording applies to every later window; `{base}`
+in it explicitly inserts the entire original prompt, including dialogue. For dialogue that must continue or change
+across windows, supply an explicit `continuation_prompts` list instead. The dialogue-free continuation is being
+tested and has not yet been established as a fix.
+
 ### Long clips from a client or an agent: the request
 
 **Status 2026-10-30 morning.** On 2026-10-29 the owner rejected the continuation by eye (a light and texture step at

@@ -35,7 +35,7 @@ print("200", end="")
 ''')
         curl.chmod(0o755)
         self.env = os.environ.copy()
-        for name in ("H3_VIDEO_FLOW_SHIFT", "H3_AUDIO_FLOW_SHIFT", "H3_LORA_JSON"):
+        for name in ("H3_VIDEO_FLOW_SHIFT", "H3_AUDIO_FLOW_SHIFT", "H3_LORA_JSON", "CONT_PROMPTS_REST", "CONT_PROMPTS_EXTRA"):
             self.env.pop(name, None)
         self.env.update(H3_VENV=str(self.root), H3_TEST_CAPTURE=str(self.root / "fields.json"),
                         CONT_PROMPTS="auto", TASK="t2va")
@@ -74,6 +74,20 @@ print("200", end="")
     def test_explicit_prompts_are_not_replaced(self):
         prompts = ["custom first", "custom continuation"]
         result, sent, _ = self.run_render({"long_video": True, "continuation_prompts": prompts})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(sent["continuation_prompts"], prompts)
+
+    def test_custom_later_prompt_does_not_repeat_first_window_content(self):
+        result, sent, _ = self.run_render({"long_video": True},
+                                          CONT_PROMPTS_REST="The same scene continues in silence.")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("A landscape.", sent["continuation_prompts"][0])
+        self.assertEqual(sent["continuation_prompts"][1:], ["The same scene continues in silence."] * 2)
+
+    def test_explicit_prompts_win_over_later_prompt_override(self):
+        prompts = ["first", "later"]
+        result, sent, _ = self.run_render({"long_video": True, "continuation_prompts": prompts},
+                                          CONT_PROMPTS_REST="ignored")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(sent["continuation_prompts"], prompts)
 
