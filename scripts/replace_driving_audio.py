@@ -29,6 +29,7 @@ def replace(video: Path, source: Path, destination: Path) -> dict:
     destination = Path(os.path.abspath(destination.expanduser()))
     if video == source or destination in (video, source) or os.path.lexists(destination):
         raise ValueError('destination must be a new file distinct from both inputs')
+    video_sha, source_sha = sha(video), sha(source)
     metadata = exact_duration.probe(video)
     videos = [x for x in metadata['streams'] if x['codec_type'] == 'video']
     if len(videos) != 1:
@@ -57,8 +58,14 @@ def replace(video: Path, source: Path, destination: Path) -> dict:
         if (len(out_v) != 1 or len(out_a) != 1 or int(out_v[0].get('nb_frames') or 0) != frames or
                 (out_v[0]['width'], out_v[0]['height'], out_v[0]['pix_fmt']) !=
                 (stream['width'], stream['height'], stream['pix_fmt']) or
-                Fraction(out_v[0]['avg_frame_rate']) != 24 or abs(float(output['format']['duration']) - duration) > .04):
+                Fraction(out_v[0]['avg_frame_rate']) != 24 or abs(float(out_v[0].get('start_time', 0))) > .001 or
+                abs(float(output['format']['duration']) - duration) > .04 or
+                float(out_a[0].get('duration') or 0) < duration - .04):
             raise ValueError('replacement media structure differs')
+        for key in ('sample_aspect_ratio', 'color_range', 'color_space', 'color_transfer', 'color_primaries'):
+            value = stream.get(key)
+            if value not in (None, 'N/A', 'unknown', 'unspecified') and out_v[0].get(key) != value:
+                raise ValueError('video metadata changed: ' + key)
         if exact_duration.frame_hashes(video, frames) != exact_duration.frame_hashes(temporary, frames):
             raise ValueError('a decoded video frame or timestamp changed')
         timing = audio.track_timing(temporary)
@@ -66,7 +73,9 @@ def replace(video: Path, source: Path, destination: Path) -> dict:
             raise ValueError('replacement audio start is not aligned')
         subprocess.run(['ffmpeg', '-v', 'error', '-xerror', '-nostdin', '-i', str(temporary), '-map', '0:v:0',
                         '-map', '0:a:0', '-f', 'null', '-'], check=True, timeout=3600)
-        result = {'input_video_sha256': sha(video), 'driving_audio_sha256': sha(source), 'output_sha256': sha(temporary),
+        if sha(video) != video_sha or sha(source) != source_sha:
+            raise ValueError('an input changed during processing')
+        result = {'input_video_sha256': video_sha, 'driving_audio_sha256': source_sha, 'output_sha256': sha(temporary),
                   'frames': frames, 'seconds': duration, 'decoded_video_frames_identical': True,
                   'audio_timing': timing, 'audio': 'source transcoded to AAC; replaces H3-generated audio',
                   'limitations': 'Video frame identity does not prove intelligibility, identity or lip sync.'}
