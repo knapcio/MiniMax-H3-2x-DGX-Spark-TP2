@@ -242,6 +242,27 @@ In the one 10 s Polish audio-lock sample, three overlapping speech windows had c
 0.975–0.977 and zero measured offset; this is a single integration check. Silence, mixing, encoding and timestamp
 ambiguity can affect the measurement. It does not assess lip sync, speaker identity, voice quality or the whole clip.
 
+For an optional, experimental audio-to-mouth screen, `scripts/syncnet_probe.py` runs the original
+[SyncNet](https://github.com/joonson/syncnet_python) on a fixed face crop and repeats the measurement after delaying
+the audio by 200 ms. It needs ffmpeg/ffprobe, PyTorch, NumPy, OpenCV, SciPy and `python_speech_features`, a checkout
+of SyncNet commit `907c0b579c2e2d83f0eae1b2ac9e720cde4e5623`, and the separately downloaded
+[`syncnet_v2.model`](https://huggingface.co/ByteDance/LatentSync-1.6/blob/c42c7e6c8e9c213626389fa7d9a3c444b8536353/auxiliary/syncnet_v2.model)
+(SHA-256 `961e8696f888fce4f3f3a6c3d5b3267cf5b343100b238e79b2659bff2c605442`). The helper checks its two imported
+SyncNet source files and weights before loading; the upstream loader uses `weights_only=True`.
+
+It accepts a JSON face report with `samples` containing `time_s_approx`, `detected`, optional `face_count`, and a
+normalized `[x, y, width, height]` `face_box`, with `y` measured from the bottom as in Apple Vision. For example:
+
+```bash
+python scripts/syncnet_probe.py clip.mp4 faces.json --duration 6.5 \
+  --upstream-dir /path/to/syncnet_python --weights /path/to/syncnet_v2.model --report sync.json
+```
+
+The source example returned offset 3 frames at 25 fps and confidence 10.09; delaying its audio by 200 ms changed
+the offset to -2 frames. On two first 10 s Polish audio-driven scenes, the screen returned -2 frames and the
+artificial-delay control returned -7. The fixed crop, speaker selection, language and synthetic speech can affect
+the result, so neither a passing control nor a confidence value proves accurate lip sync or natural movement.
+
 An opt-in server experiment, `H3_TP2_VIDEO_FORM_LIMIT_MIB`, raises the implicit per-field limit only for POST
 `/v1/videos` and `/v1/videos/sync` (allowed range 1–64 MiB); explicit caller limits remain in force. The plugin is
 unchanged when this variable is absent. A local FastAPI 0.136.3 / Starlette 1.10.0 test accepted a field above 1 MiB
