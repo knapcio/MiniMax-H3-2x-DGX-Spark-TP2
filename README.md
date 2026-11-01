@@ -277,6 +277,10 @@ If an experimental render changed its driving soundtrack, an explicit post-proce
 new file, encodes the supplied audio to AAC, and verifies every decoded video frame and timestamp against the input;
 the original is preserved. This is not model-generated audio and does not establish whether mouths or speakers match.
 
+For an optional per-line level experiment, `scripts/balance_dialogue_audio.py` accepts the same timed-dialogue JSON,
+applies bounded gains with short ramps, checks decoded mono sample headroom and verifies every video frame. It writes
+a separate copy and a report; RMS and sample-peak measurements do not replace listening or a true-peak measurement.
+
 For an optional, experimental audio-to-mouth screen, `scripts/syncnet_probe.py` runs the original
 [SyncNet](https://github.com/joonson/syncnet_python) on a fixed face crop and repeats the measurement after delaying
 the audio by 200 ms. It needs ffmpeg/ffprobe, PyTorch, NumPy, OpenCV, SciPy and `python_speech_features`, a checkout
