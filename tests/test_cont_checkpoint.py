@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import tracemalloc
 import unittest
 from unittest import mock
 
@@ -63,6 +64,26 @@ class ContinuationCheckpointTests(unittest.TestCase):
         self.assertNotEqual(fingerprint({'seed': 3}, noncontiguous),
                             fingerprint({'seed': 3}, noncontiguous.contiguous()))
         self.assertEqual(len(fingerprint({}, torch.tensor(1, dtype=torch.bfloat16))), 64)
+
+    def test_input_fingerprint_preserves_previous_digest_for_mixed_tensors(self):
+        base = torch.arange(20, dtype=torch.float32).reshape(4, 5)
+        tensors = {'video': base[1:4, ::2], 'audio': torch.tensor([1., -2., 0.5], dtype=torch.bfloat16),
+                   'index': torch.tensor(3, dtype=torch.int64)}
+        digest = subject.fingerprint_inputs({'preset': 'stable', 'window': 3}, tensors, max_bytes=self.LIMIT)
+        self.assertEqual(digest, 'a446b9353bb34c2260244cbbe8549da58c6708ff70e88117052e2a355f2d9854')
+
+    def test_input_fingerprint_avoids_an_input_sized_python_allocation(self):
+        if tracemalloc.is_tracing():
+            self.skipTest('the test needs an independent Python allocation peak')
+        tensor = torch.zeros(8 * 1024 * 1024, dtype=torch.float32)  # 32 MiB of contiguous input
+        subject.fingerprint_inputs({}, {'x': tensor[:1]}, max_bytes=self.LIMIT)
+        tracemalloc.start()
+        try:
+            subject.fingerprint_inputs({}, {'x': tensor}, max_bytes=64 * 1024**2)
+            _, peak = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
+        self.assertLess(peak, 8 * 1024**2)
 
     def test_request_tree_fingerprint_covers_conditioning_options_and_deployment(self):
         options = {key: None for key in subject.REQUEST_OPTIONS}

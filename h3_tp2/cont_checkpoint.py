@@ -63,8 +63,10 @@ def fingerprint_inputs(metadata: dict[str, Any], tensors: dict[str, torch.Tensor
         info = json.dumps([name, str(tensor.dtype), list(tensor.shape), list(tensor.stride()),
                            tensor.storage_offset(), tensor.device.type, tensor.requires_grad], separators=(',', ':')).encode()
         hasher.update(len(info).to_bytes(8, 'big')); hasher.update(info)
-        data = cpu.reshape(-1).view(torch.uint8).numpy().tobytes()
-        hasher.update(len(data).to_bytes(8, 'big')); hasher.update(data)
+        # Hash the contiguous tensor through its buffer: creating a Python
+        # bytes object here duplicated every input tensor in host memory.
+        data = cpu.reshape(-1).view(torch.uint8).numpy()
+        hasher.update(data.nbytes.to_bytes(8, 'big')); hasher.update(memoryview(data))
     return hasher.hexdigest()
 
 

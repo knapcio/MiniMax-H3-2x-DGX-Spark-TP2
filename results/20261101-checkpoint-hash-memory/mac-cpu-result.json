@@ -1,0 +1,59 @@
+{
+  "after_code_sha256": "5441eda4bb3edc8d1d8793561dbe8a748195b5f14e30ee838db4d264215ee87c",
+  "before_code_sha256": "34d43d752c5567e97a8507c93520293a47dd781e5c612c5166187c6cb86ec58c",
+  "before_ref": "cd1d42c",
+  "caveat": "CPU contiguous-input fingerprint only. RSS is process high-water increase after input allocation; it is not GPU memory, checkpoint write cost or render speed.",
+  "input_mib": 128,
+  "median_peak_rss_increase_mib": {
+    "after": 0.8,
+    "before": 128.81
+  },
+  "median_seconds": {
+    "after": 0.040475,
+    "before": 0.050638
+  },
+  "platform": "macOS-26.5.2-arm64-arm-64bit",
+  "python": "3.12.14",
+  "samples": {
+    "after": [
+      {
+        "peak_rss_increase_mib": 0.78,
+        "seconds": 0.040289,
+        "sha256": "16406247ef34e8ec205210c06574f5e404debb8aed73c7e4f5f7007af88f03cc",
+        "torch": "2.9.1"
+      },
+      {
+        "peak_rss_increase_mib": 0.81,
+        "seconds": 0.040562,
+        "sha256": "16406247ef34e8ec205210c06574f5e404debb8aed73c7e4f5f7007af88f03cc",
+        "torch": "2.9.1"
+      },
+      {
+        "peak_rss_increase_mib": 0.8,
+        "seconds": 0.040475,
+        "sha256": "16406247ef34e8ec205210c06574f5e404debb8aed73c7e4f5f7007af88f03cc",
+        "torch": "2.9.1"
+      }
+    ],
+    "before": [
+      {
+        "peak_rss_increase_mib": 128.81,
+        "seconds": 0.050638,
+        "sha256": "16406247ef34e8ec205210c06574f5e404debb8aed73c7e4f5f7007af88f03cc",
+        "torch": "2.9.1"
+      },
+      {
+        "peak_rss_increase_mib": 128.83,
+        "seconds": 0.050672,
+        "sha256": "16406247ef34e8ec205210c06574f5e404debb8aed73c7e4f5f7007af88f03cc",
+        "torch": "2.9.1"
+      },
+      {
+        "peak_rss_increase_mib": 128.81,
+        "seconds": 0.050325,
+        "sha256": "16406247ef34e8ec205210c06574f5e404debb8aed73c7e4f5f7007af88f03cc",
+        "torch": "2.9.1"
+      }
+    ]
+  }
+}
