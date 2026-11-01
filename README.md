@@ -141,10 +141,10 @@ the same request shape as a 10 s clip works for 16-60 s: add the two `long_video
 
 ```bash
 curl -sS --max-time 30000 -X POST http://127.0.0.1:18093/v1/videos/sync \
-  -F "prompt=The painting comes alive: a wide landscape under a huge sky. The clouds drift slowly, their shadows glide over the plain, the river glints and ripples, leaves tremble in a light breeze, a few birds cross the sky, the tiny figures on the road walk on. The camera is locked on a tripod and does not move at all; one continuous take; soft natural ambience." \
-  -F "width=1344" -F "height=768" -F "aspect_ratio=16:9" -F "fps=24" \
-  -F "num_inference_steps=20" -F "flow_shift=12" -F "seed=1101" \
-  -F 'extra_params={"task": "fl2va", "duration": 30, "audio_flow_shift": 3.0, "frame_indices": [0], "long_video": true, "long_video_mode": "continuation"}' \
+  --form-string "prompt=The painting comes alive: a wide landscape under a huge sky. The clouds drift slowly, their shadows glide over the plain, the river glints and ripples, leaves tremble in a light breeze, a few birds cross the sky, the tiny figures on the road walk on. The camera is locked on a tripod and does not move at all; one continuous take; soft natural ambience." \
+  --form-string "width=1344" --form-string "height=768" --form-string "aspect_ratio=16:9" --form-string "fps=24" \
+  --form-string "num_inference_steps=20" --form-string "flow_shift=12" --form-string "seed=1101" \
+  --form-string 'extra_params={"task": "fl2va", "duration": 30, "audio_flow_shift": 3.0, "frame_indices": [0], "long_video": true, "long_video_mode": "continuation"}' \
   -F "input_reference=@painting.png" -o clip.mp4 -w "HTTP %{http_code}\n"
 ```
 
@@ -362,10 +362,10 @@ returns the MP4 (with audio) in the response body.
 
 ```bash
 curl -sS --max-time 30000 -X POST http://127.0.0.1:18093/v1/videos/sync \
-  -F "prompt=An old forest with a small stream. Leaves sway in a light breeze, the stream ripples and glistens, a woman in a white dress walks slowly along it. Steady camera, one continuous take, natural forest ambience." \
-  -F "width=960" -F "height=576" -F "aspect_ratio=16:9" -F "fps=24" \
-  -F "num_inference_steps=20" -F "flow_shift=12" -F "seed=1101" \
-  -F 'extra_params={"task": "ref2va", "duration": 30, "audio_flow_shift": 3.0, "long_video": true, "long_video_mode": "continuation"}' \
+  --form-string "prompt=An old forest with a small stream. Leaves sway in a light breeze, the stream ripples and glistens, a woman in a white dress walks slowly along it. Steady camera, one continuous take, natural forest ambience." \
+  --form-string "width=960" --form-string "height=576" --form-string "aspect_ratio=16:9" --form-string "fps=24" \
+  --form-string "num_inference_steps=20" --form-string "flow_shift=12" --form-string "seed=1101" \
+  --form-string 'extra_params={"task": "ref2va", "duration": 30, "audio_flow_shift": 3.0, "long_video": true, "long_video_mode": "continuation"}' \
   -F "input_reference=@picture.jpg" -o clip.mp4 -w "HTTP %{http_code}\n"
 ```
 
