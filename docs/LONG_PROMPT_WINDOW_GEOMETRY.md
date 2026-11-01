@@ -58,6 +58,25 @@ window's new frames. It rejects dialogue crossing a handover. The input times
 choose an owner window; they are not converted into intra-window timing tokens.
 Exact delivery still requires separately timed audio and verification.
 
+`scripts/inspect_prompt_tokens.py` can count text tokens for a prompt or for
+each explicit window using a local copy of the H3 tokenizer, without loading
+model weights. For example:
+
+```sh
+python scripts/inspect_prompt_tokens.py --tokenizer-dir /path/to/FL2VA/tokenizer \
+  --plan plan.json --report prompt-tokens.json
+```
+
+It reports per-window counts and their sum, with hashes instead of prompt text.
+The sum is the amount of separately encoded text, not the size of a single
+shared narrative context. The active six-request Lalka plan has 30 window
+prompts, 176–192 text tokens each (5,563 across all 30). Four Polish/Unicode
+examples, including one 2,401-token example, produced identical token IDs on
+Spark_06 and the local tokenizer copy despite different Transformers versions.
+The tokenizer's configured `model_max_length` is 262,144, but this is metadata,
+not a verified usable prompt budget: the presentation also contains image/audio
+tokens and actual memory, model and instruction-following limits remain unknown.
+
 Existing results support caution: the 30 s per-window sample removed a dissolve
 and retained motion but still lost about 8 dB of generated audio. The 60 s
 345-frame sample had smooth joins yet two cuts *inside* windows and an
