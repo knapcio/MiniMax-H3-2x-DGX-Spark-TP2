@@ -41,3 +41,10 @@ flagged the failed control. Resetting timestamps from the sample count before th
 200 ms; a regression fixture compares the decoded PCM samples, and the real first shot's 1–5 s interval then produced
 -2 frames versus -7 for the delayed control. The earlier start-at-zero controls were separately checked by waveform
 correlation and did have the intended 200 ms delay. These measurements remain exploratory, not a lip-sync verdict.
+
+When looking for a garden soundbed, a separate 12–14.8 s extraction from the earlier 15 s *native-audio* Izabela
+sample (`2a233a5e7586b03ac831090c7f1e709668efec90ab6fb03f04e56e08f07dc96b`) produced speech-like, incoherent
+Whisper output under both automatic-language and forced-Polish settings. The earlier whole-clip forced-Polish
+transcript had WER 0.0 for the requested sentence and did not report that tail. ASR can hallucinate or miss speech,
+so this is a tail requiring listening, not proof of an extra line or its language. The tail was not used as an
+ambient bed. This observation also illustrates why a clean whole-clip transcript alone cannot certify silent pauses.
