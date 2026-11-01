@@ -109,3 +109,43 @@ that sends large text from files, and set any server field limit only to match
 the server's verified configuration. `scripts/inspect_prompt_tokens.py`
 counts text tokens in the resulting window list if the local model tokenizer
 is available; that count does not establish a safe multimodal context size.
+
+## Expected scene state across actions
+
+`plan_stateful_story.py` optionally augments that segmented plan with an
+author-supplied state for objects or other persistent scene details. Each beat
+can declare the state it expects before an action and the state it intends
+afterward. For example, `story.json` could contain:
+
+```json
+{
+  "initial_state": {"letter": "in Wokulski's hand", "place": "the shop"},
+  "beats": [
+    {"start": 2, "end": 8, "action": "He places the letter on the counter.",
+     "before": {"letter": "in Wokulski's hand"}, "after": {"letter": "on the counter"}}
+  ]
+}
+```
+
+```sh
+python scripts/plan_stateful_story.py --seconds 30 --continuity-file continuity.txt \
+  --story story.json --segment-frames 360 360 --output stateful-plan.json
+```
+
+Each prompt includes the **expected stable** state at the start of its new
+frames and, when an action is active, its intended end state. An `after` value
+becomes an assumed stable state only after that beat's end, rounded up to an
+output frame. When an action spans a window or request boundary, keys named in
+its `before` or `after` are marked in progress instead of asserting their old
+or target values as current. The last completed state is kept as plan metadata.
+Unknown state keys and `before` values that contradict preceding planned
+transitions are rejected. Changes that the author does not declare cannot be
+tracked this way. States and beat text consume prompt space; the planner caps
+itself at 512 windows.
+
+This is a planning aid, not a scene tracker. Every `state_verified_from_video`
+is false: the model may fail an action, so later assumed states can be wrong.
+Check the actual result and replan subsequent requests from the observed state
+when needed. The model also sees overlapping guide frames, and textual timing
+does not enforce exactly when an action occurs. This option has CPU planning
+tests only; it does not change existing planners or active renders.
