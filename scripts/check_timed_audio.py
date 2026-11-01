@@ -13,6 +13,7 @@ import subprocess
 import sys
 
 import compare_driving_audio as audio
+import audio_frame_timing
 
 
 def assess(source: Path, output: Path, intervals: list[dict], *, rate: int = 8000,
@@ -37,7 +38,10 @@ def assess(source: Path, output: Path, intervals: list[dict], *, rate: int = 800
     cap = max(end for _, end, _ in checked) + search + 1
     reference, rendered = audio.decode(source, rate, cap), audio.decode(output, rate, cap)
     source_time, output_time = audio.track_timing(source), audio.track_timing(output)
-    a, b = source_time['audio_relative_to_timeline_s'], output_time['audio_relative_to_timeline_s']
+    frame_timing = {'source': audio_frame_timing.inspect(source), 'output': audio_frame_timing.inspect(output)}
+    timing_valid = all(x['continuous'] for x in frame_timing.values())
+    a = audio_frame_timing.relative_start(frame_timing['source'], source_time)
+    b = audio_frame_timing.relative_start(frame_timing['output'], output_time)
     rows = []
     for start, end, speaker in checked:
         position = round((start + padding) * rate)
@@ -46,7 +50,7 @@ def assess(source: Path, output: Path, intervals: list[dict], *, rate: int = 800
         shift = None if sample['shift_samples'] is None else sample['shift_samples'] / rate
         presentation_shift = None if shift is None or a is None or b is None else shift + b - a
         corr = sample['correlation']
-        passed = (sample['status'] == 'measured' and corr is not None and corr >= min_correlation
+        passed = (timing_valid and sample['status'] == 'measured' and corr is not None and corr >= min_correlation
                   and presentation_shift is not None and abs(presentation_shift) <= max_delay)
         rows.append({'start_s': start, 'end_s': end, 'speaker': speaker, 'status': sample['status'],
                      'correlation': None if corr is None else round(corr, 5),
@@ -54,10 +58,12 @@ def assess(source: Path, output: Path, intervals: list[dict], *, rate: int = 800
                      'presentation_shift_seconds': None if presentation_shift is None else round(presentation_shift, 5),
                      'pass': passed})
     return {'source_sha256': audio.sha(source), 'output_sha256': audio.sha(output), 'pass': all(x['pass'] for x in rows),
-            'source_timing': source_time, 'output_timing': output_time, 'sample_rate': rate,
+            'source_timing': source_time, 'output_timing': output_time, 'frame_timing': frame_timing, 'sample_rate': rate,
             'thresholds': {'min_correlation': min_correlation, 'max_presentation_shift_s': max_delay,
                            'search_s': search, 'window_s': window, 'padding_s': padding},
-            'intervals': rows, 'limitations': ('A sparse waveform match is not a naturalness, speaker-identity, '
+            'intervals': rows, 'limitations': ('Decoded audio PTS continuity and first-frame offsets are checked; '
+                                              'video timing and perceptual synchronization are not. '
+                                              'A sparse waveform match is not a naturalness, speaker-identity, '
                                               'visual-continuity or lip-synchronization verdict.')}
 
 

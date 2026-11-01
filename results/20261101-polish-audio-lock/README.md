@@ -103,3 +103,11 @@ below -45 dBFS in intervals at least 0.8 s long (audio duration 29.984 s); the l
 This measures near-silence, not conversational pauses over background sound or whether the pacing works. The first
 clip has not been assessed in full playback, and these long gaps may make the conversation feel slow. The screen
 is also scheduled for subsequent blocks so the result is available without changing their audio.
+
+An independent timestamp audit found that comparing decoded sample arrays can miss an offset or an internal PTS
+gap: raw sample decoding discards timestamps, and an MP4 packet duration can stretch over a gap. The first clip's
+decoded AAC frames and all six source MP3s have continuous frame timestamps. `check_timed_audio.py` now validates
+decoded-frame PTS against sample counts, as well as the absolute offset and waveform correlations. On Spark_06 an
+isolated future-gate candidate passed the real first block and rejected both a 1 s initial offset and a 1 s internal
+gap. The immutable gate of the **already running** film was not replaced; the separate collector now applies the
+stronger screen to each result. This remains an audio timing screen, not proof of natural speech or lip sync.
