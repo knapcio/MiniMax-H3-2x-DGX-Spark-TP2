@@ -261,6 +261,17 @@ In the one 10 s Polish audio-lock sample, three overlapping speech windows had c
 0.975–0.977 and zero measured offset; this is a single integration check. Silence, mixing, encoding and timestamp
 ambiguity can affect the measurement. It does not assess lip sync, speaker identity, voice quality or the whole clip.
 
+To screen each time-stamped line rather than fixed sparse windows, supply either the planner's report (its
+`dialogue` list) or a JSON array of `{ "start": 0.5, "end": 3.2, "speaker": "A" }` objects:
+
+```bash
+python scripts/check_timed_audio.py source.mp3 rendered.mp4 --intervals plan.json --report lines-audio.json
+```
+
+The default threshold requires correlation at least 0.65 and a presentation offset at most 250 ms for each
+interval; the CLI exits 1 if any line fails and 2 for invalid inputs. A synthetic noise test passed the source and
+rejected silence and a 500 ms delay. These are screening thresholds, not proof of intelligibility or lip sync.
+
 For an optional, experimental audio-to-mouth screen, `scripts/syncnet_probe.py` runs the original
 [SyncNet](https://github.com/joonson/syncnet_python) on a fixed face crop and repeats the measurement after delaying
 the audio by 200 ms. It needs ffmpeg/ffprobe, PyTorch, NumPy, OpenCV, SciPy and `python_speech_features`, a checkout
