@@ -318,6 +318,11 @@ two-shot H3 assembly, RGB mean absolute differences at the six sampled frames we
 median sampled audio correlations were at least 0.999. Re-encoding creates small differences. This sparse check
 helps find assembly mistakes, but does not establish natural motion, scene continuity or speech quality.
 
+`scripts/screen_segment_join.py first.mp4 second.mp4 --report join.json --contact join.png` also compares decoded
+RGB frames around a join and saves a six-frame contact sheet. Its suggested-attention flag is only a screening
+heuristic: an intentional cut or real motion can be large, and a small jump does not guarantee continuity of
+characters, action or story. A synthetic test distinguishes a matching join from a color change.
+
 An opt-in server experiment, `H3_TP2_VIDEO_FORM_LIMIT_MIB`, raises the implicit per-field limit only for POST
 `/v1/videos` and `/v1/videos/sync` (allowed range 1–64 MiB); explicit caller limits remain in force. The plugin is
 unchanged when this variable is absent. A local FastAPI 0.136.3 / Starlette 1.10.0 test accepted a field above 1 MiB
