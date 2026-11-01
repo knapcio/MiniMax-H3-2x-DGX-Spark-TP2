@@ -92,22 +92,31 @@ if [ -n "${H3_AUDIO_FILE:-}" ]; then
   audio_tmp=$(mktemp -d "${TMPDIR:-/tmp}/h3-audio.XXXXXX") || exit 2
   trap 'rm -rf -- "$audio_tmp"' EXIT
   audio_meta="$audio_tmp/meta.json"
-  python3 - "$H3_AUDIO_FILE" "$audio_tmp/reference.json" "$audio_meta" <<'PY' || { echo "render.sh: invalid audio file, nothing submitted" >&2; exit 2; }
+  python3 - "$H3_AUDIO_FILE" "$audio_tmp/reference.json" "$audio_meta" "${H3_AUDIO_MAX_FIELD_BYTES:-1048576}" <<'PY' || { echo "render.sh: invalid or oversized audio file, nothing submitted" >&2; exit 2; }
 import base64, hashlib, json, sys
 from pathlib import Path
-source, reference, meta = map(Path, sys.argv[1:])
+source, reference, meta = map(Path, sys.argv[1:4])
+limit = int(sys.argv[4])
 types = {".wav": "audio/wav", ".mp3": "audio/mpeg", ".flac": "audio/flac", ".ogg": "audio/ogg", ".m4a": "audio/mp4"}
 mime = types.get(source.suffix.lower())
-if not mime or not source.is_file() or source.stat().st_size == 0:
+if not mime or not source.is_file() or source.stat().st_size == 0 or limit <= 0:
     raise ValueError("audio must be a nonempty WAV, MP3, FLAC, OGG or M4A file")
+size_on_disk = source.stat().st_size
+prefix = '{"audio_url":"data:' + mime + ';base64,'
+field_bytes = len(prefix) + 4 * ((size_on_disk + 2) // 3) + 2
+if field_bytes > limit:
+    raise ValueError(f"audio reference field needs {field_bytes} bytes, limit is {limit}; use a reachable AUDIO_URL or raise the limit only if the server is configured for it")
 digest, size = hashlib.sha256(), 0
 with source.open("rb") as inp, reference.open("w", encoding="ascii") as out:
-    out.write('{"audio_url":"data:' + mime + ';base64,')
+    out.write(prefix)
     while chunk := inp.read(3 * 1024 * 1024):
         digest.update(chunk); size += len(chunk)
         out.write(base64.b64encode(chunk).decode("ascii"))
     out.write('"}')
-meta.write_text(json.dumps({"kind": "inline-audio-file", "bytes": size, "sha256": digest.hexdigest(), "mime": mime}))
+if size != size_on_disk:
+    raise ValueError("audio file size changed while reading")
+meta.write_text(json.dumps({"kind": "inline-audio-file", "bytes": size, "field_bytes": field_bytes,
+                            "sha256": digest.hexdigest(), "mime": mime}))
 PY
   args+=(-F "audio_reference=<$audio_tmp/reference.json")
 elif [ -n "${AUDIO_URL:-}" ]; then

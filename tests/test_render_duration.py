@@ -40,7 +40,7 @@ print("200", end="")
 ''')
         curl.chmod(0o755)
         self.env = os.environ.copy()
-        for name in ("H3_VIDEO_FLOW_SHIFT", "H3_AUDIO_FLOW_SHIFT", "H3_LORA_JSON", "CONT_PROMPTS_REST", "CONT_PROMPTS_EXTRA", "H3_AUDIO_FILE", "AUDIO_URL"):
+        for name in ("H3_VIDEO_FLOW_SHIFT", "H3_AUDIO_FLOW_SHIFT", "H3_LORA_JSON", "CONT_PROMPTS_REST", "CONT_PROMPTS_EXTRA", "H3_AUDIO_FILE", "H3_AUDIO_MAX_FIELD_BYTES", "AUDIO_URL"):
             self.env.pop(name, None)
         self.env.update(H3_VENV=str(self.root), H3_TEST_CAPTURE=str(self.root / "fields.json"),
                         H3_TEST_AUDIO_CAPTURE=str(self.root / "audio.bin"), TMPDIR=str(self.root),
@@ -101,12 +101,22 @@ print("200", end="")
         source = self.root / "voice.wav"
         data = bytes(range(256)) * 12300 + b"12"  # crosses the streaming chunk boundary
         source.write_bytes(data)
-        result, _, timing = self.run_render({"audio_mode": "lock_source"}, H3_AUDIO_FILE=str(source))
+        result, _, timing = self.run_render({"audio_mode": "lock_source"}, H3_AUDIO_FILE=str(source),
+                                            H3_AUDIO_MAX_FIELD_BYTES=str(8 * 1024 * 1024))
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((self.root / "audio.bin").read_bytes(), data)
         self.assertEqual(timing["audio_reference_file"]["sha256"], hashlib.sha256(data).hexdigest())
         self.assertEqual(timing["audio_reference_file"]["bytes"], len(data))
         self.assertIsNone(timing["audio_reference"])
+        self.assertFalse(list(self.root.glob("h3-audio.*")))
+
+    def test_audio_over_default_server_field_limit_fails_before_request(self):
+        source = self.root / "voice.wav"
+        source.write_bytes(b"a" * (1024 * 1024))
+        result, _, _ = self.run_render({}, H3_AUDIO_FILE=str(source))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("limit is 1048576", result.stderr)
+        self.assertFalse((self.root / "fields.json").exists())
         self.assertFalse(list(self.root.glob("h3-audio.*")))
 
     def test_conflicting_audio_inputs_fail_before_request(self):
