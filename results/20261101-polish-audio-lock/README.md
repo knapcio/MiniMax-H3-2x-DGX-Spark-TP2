@@ -218,3 +218,33 @@ from its verified final frame. The fifth block passed the independent waveform a
 its first-channel output/source interval levels were +0.24 / -1.41 / -2.40 / -3.33 / -2.47 / **-12.52 dB**.
 Whisper WER was 0.018, and the sampled 4→5 boundary differed by 3.6/255 RGB. Sampled frames retain the shop and
 main pair, but show limited action; neither these samples nor ASR establish acting, natural speech or lip sync.
+
+## The complete 300 s experiment (2026-11-02)
+
+The sixth 30 s block completed at 00:18 from block 5's verified final frame. Its SHA-256 is
+`559e3768d8424bd678f375f244a368d99abd8fb082db380293b08ac3fecefee2`. Whisper recognized the final Polish
+line, with WER 0.037 for the block; this is not a listening judgment. Its three first-channel output/source
+interval levels were +0.37 / -3.75 / **-7.23 dB**. The 5→6 sampled frame boundary was 3.925/255 RGB, with the
+same shop and foreground pair visible on both sides. Decoded audio in this original block ended 16 ms before its
+30 s video interval, within the explicitly selected 50 ms tolerance.
+
+The assembled original is `lalka-list-w-sklepie-300s-EXPERIMENT.mp4`, SHA-256
+`2dea192688247f38b13d41ef4ea5b0afddca4bd6a3fee0093a60779a6efee1a8`. It has six linked blocks with exact
+durations 30/60/60/60/60/30 s. All 7,200 video-frame PTS are exactly 24 fps from 0 to 300 s; audio decoded
+to 9,600,000 samples at 32 kHz from 0 to 300 s. The original blocks were checked separately because assembly
+may pad audio. Three sampled frames per block differ from their source by at most 1.021/255 RGB, and the lowest
+median sampled audio correlation is 0.99995 at zero measured shift. The five sampled block boundaries range
+from 3.12 to 3.93/255 RGB. None of those checks replaces full playback or proves continuity of action.
+
+Two separate, explicitly experimental 300 s copies use the same encoded video packets and timestamps as the
+original. The source-voice copy SHA-256 is `40caa3df484890396a3da8e3ba544853d742c59bfde72269cc3d76b74ee938e0`;
+it replaces the whole model soundtrack with the synthetic driving track and therefore omits model-generated
+ambience. The balanced-voice copy SHA-256 is `c7a3698d573ce9f546fbc6ed30a6a7a627f160ad9a4350779830831a3ae8d08f`;
+its source is the experimentally gain-adjusted model audio. Both have 9,600,000 decoded audio samples. The
+30 planned speech intervals in each alternative pass their corresponding waveform/timing comparison, but
+perceived volume, artifacts and lip sync still require listening and viewing.
+
+In ten still frames sampled every 30 s from the completed film, the main pair and shop remain recognizable and
+the man continues to hold the letter. This is substantially more continuous than disconnected scenes, but the
+staging is very static; the sampled frames cannot verify action between them, performer likeness or acting.
+The measured speech fading and lack of action remain open problems; no full-playback quality verdict is claimed.
