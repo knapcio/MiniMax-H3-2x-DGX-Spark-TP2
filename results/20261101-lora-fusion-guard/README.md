@@ -66,3 +66,9 @@ sources `~/.h3-tp2.env`; that file currently assigns `H3_TP2_FP8_FUSE_SWIGLU=1` 
 `Environment=H3_TP2_FP8_FUSE_SWIGLU=0` alone would be overwritten by the sourced file and is not a safe Turbo
 workaround. Any future isolated test boot must set the intended value *after* that source and verify the effective
 setting and installed plugin on both ranks. No startup file or service has been changed for Turbo.
+
+On the current boot the head and worker startup logs both explicitly report fused SwiGLU **ON**. The head service's
+`/proc/<pid>/environ` shows the setting as `1`, but the local diffusion worker's proc environment omitted the H3
+variables altogether, despite its log reporting the fusion ON. The cause of that discrepancy was not established;
+absence from a worker's proc environment is therefore not evidence that a setting or patch is inactive. A future
+test needs a positive per-rank startup/runtime check of the loaded patch, not only inspection of proc environment.
