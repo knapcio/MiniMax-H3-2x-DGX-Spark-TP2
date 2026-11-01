@@ -240,8 +240,10 @@ def lock_to_reference(ref_stats: tuple[torch.Tensor, torch.Tensor], new_window: 
     gain = (s_ref / sd.clamp_min(1e-6)).clamp(0.5, 2.0)
     gain = 1.0 + (strength if std_strength is None else std_strength) * (gain - 1.0)   # std_strength 0 = mean only
     m_target = m + strength * (m_ref - m)
-    # ramped: no correction at the first free frame (it continues the pinned tail exactly), the full correction at the
-    # window's end; a whole-window correction stepped the brightness at the hand-over (-8.5 luma at seam 2, 03:27)
+    # Ramped: the first free frame gets 1/n_ramp of the correction; the pinned
+    # overlap stays untouched. Full correction begins at the n_ramp-th free
+    # frame. A whole-window correction previously stepped brightness at the
+    # hand-over (-8.5 luma at seam 2, 03:27).
     n_free = free.shape[2]
     # ``ramp``: the fraction of the free frames over which the correction reaches full strength (1.0 = the whole
     # window; 0.25 = full after a quarter, then held: holds the look for most of the window, still continuous)

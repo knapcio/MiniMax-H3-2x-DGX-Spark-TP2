@@ -316,7 +316,7 @@ def _apply(role: str) -> None:
         from vllm_omni.diffusion.models.minimax_h3 import continuation as _cont
         from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _pp
 
-        _orig_dc = _cont.diffuse_continuation
+        _orig_experiment_dc = _cont.diffuse_continuation
         _step = int(step) if step else 0
         _cap = float(toff[4:]) if toff.startswith("cap:") else None
         _fixed = None if (not toff or toff.startswith("cap:")) else float(toff)
@@ -327,7 +327,9 @@ def _apply(role: str) -> None:
         if _anchor_src not in ("first", "tail"):
             raise RuntimeError("H3_TP2_ANCHOR_SOURCE must be first (opening frames of window 1) or tail (last frames of the previous window)")
 
-        def _dc(diffuse, kwargs, **kw):  # noqa: ANN001
+        # Capture this hook's predecessor now: later hooks are installed in
+        # the same _apply() scope and must not retarget this closure.
+        def _dc(diffuse, kwargs, *, _original_dc=_orig_experiment_dc, **kw):  # noqa: ANN001
             counter = {"i": 0, "anchor": None}
             if _anchor_v:
                 first = min(int(kwargs["num_frames"]), int(kw.get("window_frames", 277)))
@@ -354,10 +356,10 @@ def _apply(role: str) -> None:
                     counter["anchor"] = _cont.minimax_h3_patchify_video_latent(src, patch_size=(1, 2, 2))
                 return video, audio
 
-            return _orig_dc(_diffuse, kwargs, **kw)
+            return _original_dc(_diffuse, kwargs, **kw)
 
         _cont.diffuse_continuation = _dc
-        if getattr(_pp, "diffuse_continuation", None) is _orig_dc:
+        if getattr(_pp, "diffuse_continuation", None) is _orig_experiment_dc:
             _pp.diffuse_continuation = _dc
         logger.warning("h3_tp2: EXPERIMENT continuation seed step=%s temporal offset=%s anchor frames=%s source=%s (changes outputs)",
                        _step, toff or "upstream", anchor or "none", _anchor_src)
@@ -481,7 +483,7 @@ def _apply(role: str) -> None:
         from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _pp9e
 
         if not getattr(_pp9e, "_h3_tp2_cont_match_patched", False):
-            _orig_dc = _pp9e.diffuse_continuation
+            _orig_match_dc = _pp9e.diffuse_continuation
             _apply_match = os.environ.get("H3_TP2_CONT_MATCH", "0").strip() == "1"
             _xfade = os.environ.get("H3_TP2_CONT_XFADE", "0").strip() == "1"
             # H3_TP2_CONT_EDIT=1|2: the previous window's tail becomes pinned TARGET rows of the new window through
@@ -554,6 +556,13 @@ def _apply(role: str) -> None:
                     diffuse = _cm.wrap_diffuse(diffuse, apply=_apply_match, overlap_v_hint=_ct._video_t(overlap_frames),
                                                retries=_retries, max_ratio=_max_ratio, lock=_lock, lock_strength=_lock_strength, lock_ramp=_lock_ramp, lock_audio=_lock_audio, lock_std=_lock_std, lock_ref=_lock_ref)
                     windows = _ct.plan_continuation_windows(kwargs["num_frames"], window_frames, overlap_frames)
+                    if (len(windows) > 1 and kwargs.get("task") == "fl2va"
+                            and -1 in (kwargs.get("keyframe_frame_indices") or [])):
+                        raise _ct.OmniClientError(
+                            "MiniMax H3 multi-window FL2VA continuation currently supports only a starting frame "
+                            "(frame_indices=[0]); final-frame conditioning (index -1) is not yet supported by "
+                            "this continuation extension. Use a single window for final-frame conditioning."
+                        )
                     if text_conditioning is not None and len(text_conditioning) != len(windows):
                         raise _ct.OmniClientError("MiniMax H3 requires one text conditioning per continuation window")
                     media_time_origin = max(item[0].shape[0] for item in text_conditioning) if text_conditioning else None
@@ -620,8 +629,8 @@ def _apply(role: str) -> None:
                         raise RuntimeError("MiniMax H3 continuation produced inconsistent cumulative AV lengths")
                     return video, audio
             else:
-                def _dc(diffuse, kwargs, **kw):  # noqa: ANN001
-                    return _orig_dc(_cm.wrap_diffuse(diffuse, apply=_apply_match), kwargs, **kw)
+                def _dc(diffuse, kwargs, *, _original_dc=_orig_match_dc, **kw):  # noqa: ANN001
+                    return _original_dc(_cm.wrap_diffuse(diffuse, apply=_apply_match), kwargs, **kw)
 
             _pp9e.diffuse_continuation = _dc
             _pp9e._h3_tp2_cont_match_patched = True
