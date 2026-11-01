@@ -32,6 +32,28 @@ timing, lip sync, perceptual loudness or naturalness. Channel layout, silence,
 mixing and speech movements within an interval influence the ratios. Use the
 existing waveform/PTS screen and full playback separately.
 
+## Check for fades inside a line
+
+A single RMS value for an entire line can hide a quiet ending. The optional
+`slice_dialogue_intervals.py` prepares shorter consecutive intervals for the
+same screen without changing the media:
+
+```sh
+python scripts/slice_dialogue_intervals.py --intervals dialogue.json \
+  --slice-seconds 0.5 --output dialogue-slices.json
+python scripts/screen_speech_levels.py source.mp3 render.mp4 \
+  --intervals dialogue-slices.json --report speech-slices.json
+```
+
+The plan retains speaker labels and links each slice to its source interval.
+Very short final remainders under 10 ms are merged into the preceding slice;
+the plan permits at most 1,000 slices and never overwrites its output. A quiet
+source slice can make the aggregate screen `INCOMPLETE`, even when other slices
+are measured. Do not treat that status as an audible-quality judgment.
+Alignment shifts and source pauses can strongly affect short-slice RMS, so
+check waveform alignment separately before interpreting a decline. No default
+threshold, listening verdict, causal claim or model change is implied.
+
 ## Example from the in-progress Lalka film
 
 For its third 60 s block, first-channel output/source RMS differences across
