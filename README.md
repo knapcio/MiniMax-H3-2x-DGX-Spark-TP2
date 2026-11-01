@@ -248,7 +248,10 @@ not its path or audio bytes. The checked server's FastAPI/Starlette stack defaul
 text field, including base64 expansion. The client therefore refuses larger inline fields by default; use a URL the
 server can reach, or set `H3_AUDIO_MAX_FIELD_BYTES` only after configuring and verifying a higher server limit. A 10 s
 FL2VA reference with a Polish MP3 data URL passed media checks and transcription; the file transport itself has been
-tested against a local multipart receiver, not a live H3 request or a 300 s track.
+tested against a local multipart receiver, not a live H3 request or a 300 s track. The continuation wrapper now skips
+its ambient audio look-lock when locked source rows are present: the old code could otherwise change later source
+latents. This correction has CPU tests but has not yet been deployed or verified with a real multi-window GPU render;
+always compare the delivered audio and timing against the source.
 
 To screen whether the supplied audio is present in the result, use NumPy and ffmpeg/ffprobe with
 `python scripts/compare_driving_audio.py source.mp3 rendered.mp4 --report audio-check.json`. It compares sparse
@@ -313,7 +316,8 @@ the first hand-over, the subject doubled, a wash-out and a looping walk at 60 s)
 upstream's latent-edit path instead of a guide block (`H3_TP2_CONT_EDIT=2`); a latent seam check re-samples a window
 that cuts right after the prefix (`H3_TP2_CONT_RETRY=2`); a per-channel latent look-lock pulls every window's free
 frames back to the first window's exposure and contrast, ramped over the window's first quarter
-(`H3_TP2_CONT_LOCK=first`, `H3_TP2_CONT_LOCK_RAMP=0.25`), and the same for the audio latents (`H3_TP2_CONT_LOCK_AUDIO=1`).
+(`H3_TP2_CONT_LOCK=first`, `H3_TP2_CONT_LOCK_RAMP=0.25`), and the same for generated audio latents
+(`H3_TP2_CONT_LOCK_AUDIO=1`; disabled for a locked source in the corrected wrapper).
 Measured on a 60 s clip: five hand-overs with +0.3..+0.8 luma and no inter-frame spike, no cut, light 43-62 over the
 minute (47-88 before), detail at most 442 (1084 before), motion 5-9 throughout, audio level flat. The owner's eye on the
 16 s version passed ("no jump noticed"); the 60 s review is pending. `H3_TP2_CONT_EDIT=0`, `CONT_RETRY=0`,

@@ -119,7 +119,12 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
                 video = match_window(state["prev"][:, :, -ov:], video, ov, apply=apply, index=state["index"])
                 if lock == "first" and state["ref"] is not None:
                     video = lock_to_reference(state["ref"], video, ov, lock_strength, index=state["index"], ramp=lock_ramp, std_strength=lock_std)
-                if lock == "first" and lock_audio and state["ref_audio"] is not None and isinstance(audio, torch.Tensor) and audio.dim() == 3:
+                # The ambient look-lock must not alter latents explicitly
+                # supplied by audio_mode=lock_source. Otherwise later windows
+                # are re-colored toward window one's audio statistics even
+                # though the caller requested the driving soundtrack.
+                if (lock == "first" and lock_audio and args.get("locked_audio_rows") is None
+                        and state["ref_audio"] is not None and isinstance(audio, torch.Tensor) and audio.dim() == 3):
                     ov_a = _overlap_audio(args)
                     if ov_a:
                         audio = lock_audio_to_reference(state["ref_audio"], audio, ov_a, lock_strength, index=state["index"], ramp=lock_ramp)

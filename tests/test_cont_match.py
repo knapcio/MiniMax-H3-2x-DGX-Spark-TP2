@@ -16,7 +16,7 @@ class LookLockReferenceTests(unittest.TestCase):
         self.assertTrue(torch.equal(ref_slice(audio, "tail", dim=2), audio[..., -3:]))
 
     @staticmethod
-    def render_two_windows(mode=None):
+    def render_two_windows(mode=None, locked_source=False):
         first_video = torch.arange(64, dtype=torch.float32).reshape(1, 2, 8, 2, 2) / 20
         next_video = first_video + 3
         next_video[:, :, :2] = first_video[:, :, -2:]
@@ -31,7 +31,8 @@ class LookLockReferenceTests(unittest.TestCase):
         options = {} if mode is None else {"lock_ref": mode}
         run = wrap_diffuse(diffuse, apply=False, lock="first", lock_audio=True, lock_ramp=0.25, max_ratio=100, **options)
         out_first = run(seed=1)
-        out_second = run(seed=2, ref_blocks=[{"kind": "latent_guide", "latent_t": 2}], audio_condition_lengths=[2])
+        source = {"locked_audio_rows": torch.zeros((16, 32))} if locked_source else {}
+        out_second = run(seed=2, ref_blocks=[{"kind": "latent_guide", "latent_t": 2}], audio_condition_lengths=[2], **source)
         return (first_video, first_audio), (next_video, next_audio), out_first, out_second
 
     def test_default_equals_explicit_window_reference(self):
@@ -51,6 +52,13 @@ class LookLockReferenceTests(unittest.TestCase):
         self.assertFalse(torch.equal(output_tail[1][..., 2:], output_window[1][..., 2:]))
         self.assertTrue(torch.isfinite(output_tail[0]).all())
         self.assertTrue(torch.isfinite(output_tail[1]).all())
+
+    def test_locked_source_audio_is_not_recolored_by_the_ambient_look_lock(self):
+        _, following, _, locked_output = self.render_two_windows(locked_source=True)
+        _, _, _, native_output = self.render_two_windows(locked_source=False)
+        self.assertTrue(torch.equal(locked_output[1], following[1]))
+        self.assertFalse(torch.equal(native_output[1], following[1]))
+        self.assertTrue(torch.equal(locked_output[0], native_output[0]))
 
 
 if __name__ == "__main__":

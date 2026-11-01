@@ -304,3 +304,6 @@
 - 2026-10-30 18:27: exact-duration copies on the 24 fps frame grid are now available via `scripts/exact_duration.py`.
   It verifies every retained decoded video frame and copied AAC packet/timestamp; audio can finish one packet early.
   Separate 10, 15, 16, 30 and 60 s sample copies verified, originals preserved (`results/20261030-exact-duration/`).
+- 2026-11-01: fixed the continuation audio look-lock overriding `audio_mode=lock_source` in later windows: the ambient
+  lock now skips requests with locked source rows. A CPU regression test verifies source audio is untouched by that
+  wrapper while native audio and video locking retain their behavior. Not deployed or validated on a real GPU render.
