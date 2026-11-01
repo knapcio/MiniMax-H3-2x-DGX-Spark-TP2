@@ -118,10 +118,14 @@ same-seed frame digest (`h3_tp2 frames sha256` in the head journal, framemd5 in 
   `H3_TP2_FP8_FUSE_SWIGLU=2` also quantises the SwiGLU output per token inside the same kernel (one program per row) and
   hands fc2's scaled-mm kernel the FP8 activation and scales directly, reproducing vLLM's compiled per-token quant bit
   for bit (tested against it), so the bf16 [M, ffn] activation is never written either.
-- `H3_TP2_VAE_STACK_TILES=1`: the H3 VAE's own batched tile path (`stack_tiling`) raised only around the decode (the
-  reference-image encode keeps the per-tile path, so the diffusion stays bit-identical), at most
-  `H3_TP2_VAE_TILE_BATCH` (default 4) tiles per decoder call. The first try (flag on for encode and decode, no cap)
-  changed the clip and peaked 32 GB higher: results/20261029-vae-stack-tiles/.
+- `H3_TP2_VAE_STACK_TILES=1`: the legacy batched tile experiment raises the model's shared `stack_tiling` flag
+  around decode and caps decoder batches at `H3_TP2_VAE_TILE_BATCH` (default 4). Overlapping encode/decode or
+  decodes can leak this shared flag; the actual scheduler's concurrency has not been established. The first try
+  (flag on for encode and decode, no cap) changed the clip and peaked 32 GB higher: results/20261029-vae-stack-tiles/.
+- `H3_TP2_VAE_STACK_TILES=2`: a separate experimental decode-scoped batching path that does not mutate the shared
+  flag. Its cap is 1–4 tiles (default 4), multiplied by the input samples per tile. It has CPU coverage only;
+  real CUDA/TP2 time, memory and picture quality are unqualified. Default `0` leaves both variants off. See
+  [VAE_SCOPED_TILE_EXPERIMENT.md](VAE_SCOPED_TILE_EXPERIMENT.md).
 - Continuation experiments (vLLM-Omni >= 0.30, all change the output): `H3_TP2_WINDOW_SEED_STEP=<n>` (seed + k*n in
   window k), `H3_TP2_WINDOW_TEMPORAL_OFFSET=<x|cap:x>` (the per-window RoPE time origin), `H3_TP2_REF_SHORT_EDGE=<px>`
   (reference image resized to this short edge instead of 2048), `H3_TP2_ANCHOR_FRAMES=<17n+5>` (the first window's

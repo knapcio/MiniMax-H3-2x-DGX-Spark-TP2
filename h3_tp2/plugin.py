@@ -434,6 +434,17 @@ def _apply(role: str) -> None:
             if hasattr(_vae.MiniMaxH3VideoVAE, _m):
                 setattr(_vae.MiniMaxH3VideoVAE, _m, _with_stack(_m))
 
+    # "2" is an opt-in research variant that avoids mutating the shared
+    # model.stack_tiling flag during decode. It has CPU prototype coverage
+    # only: real CUDA/TP2 timing, memory and image quality remain unverified.
+    elif os.environ.get("H3_TP2_VAE_STACK_TILES", "0") == "2":
+        from vllm_omni.diffusion.models.minimax_h3 import vae as _vae
+        from h3_tp2 import vae_tile_scope as _vae_scope
+
+        _tile_batch = int(os.environ.get("H3_TP2_VAE_TILE_BATCH", "4"))
+        _vae_scope.install(_vae.MiniMaxH3VideoVAE, cap=_tile_batch)
+        logger.warning("h3_tp2: experimental scoped video VAE tile decode (up to %d tiles); CUDA/TP2 unqualified", _tile_batch)
+
     # 9d) H3_TP2_CONT_PROMPTS=auto (default; "off" disables): a long_video continuation request without its own
     #     continuation_prompts gets one prompt per window (first: the prompt + "one single continuous take"; the rest:
     #     "the same continuous shot goes on ..." + the prompt), the wording measured on 2026-10-27/28 that keeps the shot
