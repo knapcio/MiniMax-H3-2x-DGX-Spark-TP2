@@ -166,3 +166,10 @@ the last line's RMS was 0.0143 versus 0.1135 in the driving audio. The separate 
 0.01 dB of the source on those intervals. These are RMS comparisons, not listening or lip-sync verdicts, and do
 not establish the cause. An optional numeric speech-level screen is documented in `docs/SPEECH_LEVEL_SCREEN.md`;
 it has no default quality threshold and does not alter existing film gates.
+
+Block 4 completed at 22:56 (60 s, SHA-256
+`58e1a464e9880f333f8ffe4af0e2595479b8d4ca176d4752d5b30443779f0a61`); block 5 started at 22:57.
+Its dialogue passed the independent waveform and frame-PTS screen, Whisper WER was 0.066, and the sampled join
+difference was 3.5/255 RGB. The first-channel output/source interval levels were +0.28 / -5.11 / -4.35 / -0.54 /
++0.01 / -11.55 dB. The original and a separate source-voice copy were collected. These measurements and sampled
+frames do not establish playback quality, actor likeness or lip synchronization.
