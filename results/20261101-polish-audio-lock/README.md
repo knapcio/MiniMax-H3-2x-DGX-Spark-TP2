@@ -136,3 +136,18 @@ at CRF 19, contains 2,160 frames at 24 fps and fully decodes. Sparse sampled fra
 source clips by 0.71–0.79/255 mean RGB; median sampled audio correlations were 1.00000 and 0.99997 with zero
 measured offset. The sample screen verifies neither every frame nor perceived continuity or speech quality. This
 is an interim preview, not the requested 300 s movie.
+
+The third linked block completed at 22:03 (60 s, SHA-256
+`4efdcfb349e10815171ef59da0eca7828bd49ea6767cec746229f640ef92a608`); the fourth started at 22:03.
+Its six timed speech intervals passed the independent waveform and decoded-frame PTS screen; the second join's
+sampled boundary difference was 3.46/255. Sampled images retain both people and the shop, while the dialogue and
+camera remain slow and largely static. An independent 90 s review measured seven of eight planned inter-line gaps
+over six seconds and found few changes of action. This is evidence for testing pacing and staging, not a verdict
+on full-playback quality.
+
+The original first three clips also form `lalka-list-w-sklepie-PODGLAD-150s-EXPERIMENT.mp4`, SHA-256
+`271db549c2c3c843c094099ae3d1bccb6ca383af7604f4aeb8fab5fe25723cb8`. It contains 3,600 frames at 24 fps,
+was re-encoded at CRF 19, fully decodes, and its decoded audio PTS are continuous from zero. Sampled maximum RGB
+differences from the three source clips were 0.79 / 0.79 / 0.88 on a 255 scale; median audio correlations were
+1.00000 / 0.99997 / 0.99997 at zero measured shifts. These samples do not establish acting, lip sync or
+perceived continuity. The preview is not the requested 300 s movie.
