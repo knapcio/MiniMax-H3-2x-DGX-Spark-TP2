@@ -44,3 +44,14 @@ Before any deployment, exercise the actual continuation loop with a fault after 
 idle pair for a controlled small real-model run and process restart. Compare uninterrupted and resumed AV, test
 partial/corrupt files, different inputs, cancellation and peer loss, and measure memory/disk costs. A synthetic
 CPU-only match is not a real-model recovery test. The active 300 s render has no checkpoints and cannot resume.
+
+## Fresh-process CPU test, 2026-11-01
+
+`tests/test_cont_checkpoint_process_restart.py` starts two Gloo ranks in separate OS processes on the Mac, using
+separate rank-local directories and the synthetic diffusion fixture that compares against the extracted serving-loop
+body. Once both have durably saved window 2, the test terminates both processes and starts a fresh pair. Both restore
+window 2 and reproduce the uninterrupted synthetic AV. A separate clean restart has the same result; corrupting
+rank 1's window-2 data makes both fresh processes reject that window, restore window 1 and reproduce the synthetic AV.
+All 23 checkpoint tests passed on Python 3.12.14 / PyTorch 2.9.1 CPU. These tests use local loopback and synthetic
+tensors; they do not establish real-model reproducibility, GPU/NCCL recovery, actual host restarts, safe cancellation
+during a write, a complete deployment identity, or a durable serving/job workflow. No live H3 files were changed.

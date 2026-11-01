@@ -530,6 +530,25 @@ The prototype refuses the separate upstream-only branch where both edit and cros
 synthetic diffusion and a stand-in planner/packing API; they are not real H3 model, GPU/NCCL, process-restart or
 cancellation tests. Serving and the active 300 s render remain unchanged and non-resumable.
 
+On 2026-11-01, `tests/test_cont_checkpoint_process_restart.py` exercised **fresh OS processes**, with two
+Gloo/CPU ranks on the Mac and separate local checkpoint directories. After both ranks saved window 2, both
+processes were forcibly terminated and two new processes recovered that common window; the resumed synthetic
+AV matched the uninterrupted synthetic loop exactly. In a separate run, corruption of rank 1's window-2
+data made both new processes fall back to window 1 and produce the same synthetic AV. A clean, orderly restart
+also passed. All 23 checkpoint tests passed in a separate Python 3.12 / PyTorch 2.9.1 CPU environment. This is
+not a test of a running H3 server, actual model output, GPU/NCCL, cancellation during checkpoint writes or
+recovery after a real host restart; the checkpoint loop remains unwired and the running 300 s request cannot resume.
+
+On 2026-11-01, after the user resumed the work and both nodes restarted, a 5 s 960x544 FL2VA smoke passed media
+checks and a fresh 300 s attempt began at 12:22. Its first window took 535.2 s of diffusion and window 2/29 began
+at 12:31; no completed 300 s output or visual verdict existed at the time of this note. An isolated guarded queue
+waits for verified completion before running quality and speed comparisons. At the user's request, its first two
+follow-ups are a 10 s FL2VA animation of a [film still from the official press package](https://lalka.edu.pl/o-filmie/)
+showing Marcin Dorociński as Wokulski, and a 15 s text-to-video train scene inspired by the 2026 *Lalka* cast.
+The first begins with a film reference; the second is a new interpretation, not a copy of a particular film shot.
+Both require review for actor resemblance, character continuity, movement and sound. The longer-lived comparison
+queue also includes other scenes and no experimental setting is automatically promoted.
+
 ## Window-size planning from existing 960x544 samples (2026-10-31)
 
 `scripts/estimate_continuation.py` reproduces the deployed 17n+5 frame alignment and window plan. For a 300 s request
