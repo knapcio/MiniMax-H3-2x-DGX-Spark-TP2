@@ -1,0 +1,335 @@
+{
+  "capability": [
+    12,
+    1
+  ],
+  "cases": [
+    {
+      "backends": {
+        "flashinfer_fa2": {
+          "metadata": {
+            "backend": "fa2",
+            "fp16_qk_reduction": false
+          },
+          "status": "ok",
+          "timing": {
+            "median_ms": 0.08028800040483475,
+            "milliseconds": [
+              0.14182400703430176,
+              0.08028800040483475,
+              0.07939200103282928
+            ],
+            "warmup_seconds": 16.457605565999984
+          },
+          "vs_cudnn": {
+            "max_abs": 0.001953125,
+            "mean_abs": 2.7742640148582204e-05,
+            "nonfinite_values": 0,
+            "relative_l2": 0.0013386261996382967,
+            "values": 1835008
+          },
+          "vs_fp32_math": {
+            "max_abs": 0.001903533935546875,
+            "mean_abs": 0.00012106617214158177,
+            "nonfinite_values": 0,
+            "relative_l2": 0.0021740239891187042,
+            "values": 1835008
+          }
+        },
+        "flashinfer_fmha_v2_fp16_qk": {
+          "metadata": {
+            "backend": "fmha_v2",
+            "fp16_qk_reduction": true
+          },
+          "status": "ok",
+          "timing": {
+            "median_ms": 0.13014400005340576,
+            "milliseconds": [
+              0.22595199942588806,
+              0.13014400005340576,
+              0.1292800009250641
+            ],
+            "warmup_seconds": 55.94196306399999
+          },
+          "vs_cudnn": {
+            "max_abs": 0.0009765625,
+            "mean_abs": 5.904853748818693e-08,
+            "nonfinite_values": 0,
+            "relative_l2": 6.328894781816587e-05,
+            "values": 1835008
+          },
+          "vs_fp32_math": {
+            "max_abs": 0.001903533935546875,
+            "mean_abs": 0.0001217369073336678,
+            "nonfinite_values": 0,
+            "relative_l2": 0.0021861363417848886,
+            "values": 1835008
+          }
+        }
+      },
+      "cudnn": {
+        "timing": {
+          "median_ms": 0.0950080007314682,
+          "milliseconds": [
+            0.17843200266361237,
+            0.0950080007314682,
+            0.08963199704885483
+          ],
+          "warmup_seconds": 0.40931068300000106
+        },
+        "vs_fp32_math": {
+          "max_abs": 0.001903533935546875,
+          "mean_abs": 0.00012173786360238279,
+          "nonfinite_values": 0,
+          "relative_l2": 0.002186141917036604,
+          "values": 1835008
+        }
+      },
+      "head_dim": 128,
+      "heads": 28,
+      "qk_scale": 1.0,
+      "sequence": 512
+    },
+    {
+      "backends": {
+        "flashinfer_fa2": {
+          "metadata": {
+            "backend": "fa2",
+            "fp16_qk_reduction": false
+          },
+          "status": "ok",
+          "timing": {
+            "median_ms": 0.08326400071382523,
+            "milliseconds": [
+              0.09071999788284302,
+              0.08326400071382523,
+              0.07788799703121185
+            ],
+            "warmup_seconds": 0.0001336029999947641
+          },
+          "vs_cudnn": {
+            "max_abs": 0.015625,
+            "mean_abs": 5.495357410317021e-05,
+            "nonfinite_values": 0,
+            "relative_l2": 0.0005875237725955516,
+            "values": 1835008
+          },
+          "vs_fp32_math": {
+            "max_abs": 0.015408039093017578,
+            "mean_abs": 0.0008018126578203269,
+            "nonfinite_values": 0,
+            "relative_l2": 0.0014416396118687243,
+            "values": 1835008
+          }
+        },
+        "flashinfer_fmha_v2_fp16_qk": {
+          "metadata": {
+            "backend": "fmha_v2",
+            "fp16_qk_reduction": true
+          },
+          "status": "ok",
+          "timing": {
+            "median_ms": 0.12726399302482605,
+            "milliseconds": [
+              0.1403840035200119,
+              0.12726399302482605,
+              0.12678399682044983
+            ],
+            "warmup_seconds": 0.00017334300002858072
+          },
+          "vs_cudnn": {
+            "max_abs": 0.015625,
+            "mean_abs": 4.738026291306596e-07,
+            "nonfinite_values": 0,
+            "relative_l2": 5.0409337741805475e-05,
+            "values": 1835008
+          },
+          "vs_fp32_math": {
+            "max_abs": 0.015408039093017578,
+            "mean_abs": 0.0008039854333869048,
+            "nonfinite_values": 0,
+            "relative_l2": 0.0014443443621743447,
+            "values": 1835008
+          }
+        }
+      },
+      "cudnn": {
+        "timing": {
+          "median_ms": 0.10060799866914749,
+          "milliseconds": [
+            0.10819199681282043,
+            0.10060799866914749,
+            0.09987200051546097
+          ],
+          "warmup_seconds": 0.00019318100009968475
+        },
+        "vs_fp32_math": {
+          "max_abs": 0.015408039093017578,
+          "mean_abs": 0.0008039966757808413,
+          "nonfinite_values": 0,
+          "relative_l2": 0.0014443642194585733,
+          "values": 1835008
+        }
+      },
+      "head_dim": 128,
+      "heads": 28,
+      "qk_scale": 4.0,
+      "sequence": 512
+    },
+    {
+      "backends": {
+        "flashinfer_fa2": {
+          "metadata": {
+            "backend": "fa2",
+            "fp16_qk_reduction": false
+          },
+          "status": "ok",
+          "timing": {
+            "median_ms": 0.08691199868917465,
+            "milliseconds": [
+              0.08691199868917465,
+              0.0801599994301796,
+              0.08950400352478027
+            ],
+            "warmup_seconds": 0.00010858100006316818
+          },
+          "vs_cudnn": {
+            "max_abs": 0.015625,
+            "mean_abs": 4.620401471454118e-06,
+            "nonfinite_values": 0,
+            "relative_l2": 0.000158944337546262,
+            "values": 1835008
+          },
+          "vs_fp32_math": {
+            "max_abs": 0.014270782470703125,
+            "mean_abs": 9.436479636601039e-05,
+            "nonfinite_values": 0,
+            "relative_l2": 0.0004476021717252104,
+            "values": 1835008
+          }
+        },
+        "flashinfer_fmha_v2_fp16_qk": {
+          "metadata": {
+            "backend": "fmha_v2",
+            "fp16_qk_reduction": true
+          },
+          "status": "ok",
+          "timing": {
+            "median_ms": 0.12825599312782288,
+            "milliseconds": [
+              0.1390720009803772,
+              0.12643200159072876,
+              0.12825599312782288
+            ],
+            "warmup_seconds": 0.00030928099999982805
+          },
+          "vs_cudnn": {
+            "max_abs": 0.015625,
+            "mean_abs": 3.640133659895842e-07,
+            "nonfinite_values": 0,
+            "relative_l2": 3.926108196441222e-05,
+            "values": 1835008
+          },
+          "vs_fp32_math": {
+            "max_abs": 0.014270782470703125,
+            "mean_abs": 9.455980866083078e-05,
+            "nonfinite_values": 0,
+            "relative_l2": 0.0004483792385470156,
+            "values": 1835008
+          }
+        }
+      },
+      "cudnn": {
+        "timing": {
+          "median_ms": 0.0989760011434555,
+          "milliseconds": [
+            0.10224000364542007,
+            0.09849599748849869,
+            0.0989760011434555
+          ],
+          "warmup_seconds": 0.00013649799996073853
+        },
+        "vs_fp32_math": {
+          "max_abs": 0.014270782470703125,
+          "mean_abs": 9.454620469893728e-05,
+          "nonfinite_values": 0,
+          "relative_l2": 0.0004483307605700337,
+          "values": 1835008
+        }
+      },
+      "head_dim": 128,
+      "heads": 28,
+      "qk_scale": 16.0,
+      "sequence": 512
+    },
+    {
+      "backends": {
+        "flashinfer_fa2": {
+          "metadata": {
+            "backend": "fa2",
+            "fp16_qk_reduction": false
+          },
+          "status": "ok",
+          "timing": {
+            "median_ms": 296.4548034667969,
+            "milliseconds": [
+              311.2001037597656,
+              296.4548034667969,
+              294.5883483886719
+            ],
+            "warmup_seconds": 0.2961702470000773
+          },
+          "vs_cudnn": {
+            "max_abs": 0.000244140625,
+            "mean_abs": 7.454518751141973e-07,
+            "nonfinite_values": 0,
+            "relative_l2": 0.0006771203987531943,
+            "values": 155516928
+          }
+        },
+        "flashinfer_fmha_v2_fp16_qk": {
+          "metadata": {
+            "backend": "fmha_v2",
+            "fp16_qk_reduction": true
+          },
+          "status": "ok",
+          "timing": {
+            "median_ms": 499.1061706542969,
+            "milliseconds": [
+              497.50518798828125,
+              499.1061706542969,
+              505.643798828125
+            ],
+            "warmup_seconds": 0.5582927169999721
+          },
+          "vs_cudnn": {
+            "max_abs": 0.000244140625,
+            "mean_abs": 7.28977626128561e-08,
+            "nonfinite_values": 0,
+            "relative_l2": 0.00020391455090323842,
+            "values": 155516928
+          }
+        }
+      },
+      "cudnn": {
+        "timing": {
+          "median_ms": 311.0572509765625,
+          "milliseconds": [
+            324.2591247558594,
+            311.0572509765625,
+            308.794921875
+          ],
+          "warmup_seconds": 0.34924512399993546
+        }
+      },
+      "head_dim": 128,
+      "heads": 28,
+      "qk_scale": 1.0,
+      "sequence": 43392
+    }
+  ],
+  "caveat": "Synthetic inputs only; the long sequence is inferred from a GEMM shape and must be verified against actual attention inputs. FMHA-v2 uses FP16 QK reduction. No render-quality or whole-request speed claim follows.",
+  "cudnn": 92000,
+  "device": "NVIDIA GB10",
+  "torch": "2.13.0+cu130"
+}
