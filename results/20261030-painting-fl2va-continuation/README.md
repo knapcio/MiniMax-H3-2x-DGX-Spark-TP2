@@ -18,6 +18,21 @@ both the unchanged source and the experimental copy require playback review. The
 `20217c490c260abdf35bc2482277baa0b1c55ea3f4575b4a54fbe0ad098d3459` and repair SHA-256 is
 `848571dc1e2ecb28e0fd848684ce5f1ca713afde35ce7a65061ad3876431452a`.
 
+### A 30 s soft-light / slow-figure prompt (2026-11-01)
+
+A 960x544, 20-step, seed-1101 FL2VA continuation with the combined soft-light/slow-figure prompt completed in
+1,593.0 s. The exact 30 s copy has 720 verified frames, SHA-256
+`3a40bc83a3f15b78261851b979b759143f1a4a694b2a31012bc02d6d656fdf6b`; its audio ends 16 ms before the frame
+boundary. It is `d30_koninck_prompt_spokojny_EXPERIMENT_20261101.mp4` locally. The global >=2 YAVG / two-period
+screen found no run; the more sensitive regional screen flagged a sequence in several regions at 12.04–14.17 s and
+in the upper-middle at 25.50–28.33 s. These screens can both miss artifacts and flag real motion.
+
+The bottom 37.5% mean gray rises from 47.24 at 0 s to 73.73 at 12 s, falls to 49.32 at 22 s and rises to 72.30 at
+29 s. Sampled frames visibly show substantial foreground lighting changes despite the soft-light instruction.
+This measure includes scene motion and cannot determine whether cloud shadows physically correspond to the clouds;
+the figures' walking speed and the audio still need playback review. The matched 30 s camera-wording and 10-step
+controls have not yet completed, so this single render does not establish prompt causality or a quality/speed tradeoff.
+
 ### Screenshot border on the painting (2026-11-01)
 
 The owner noticed a bottom stripe in the Koninck clips but not in the *Lalka* sample. The exact painting input
