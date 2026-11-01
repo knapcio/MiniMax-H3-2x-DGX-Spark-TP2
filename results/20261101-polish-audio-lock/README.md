@@ -151,3 +151,11 @@ was re-encoded at CRF 19, fully decodes, and its decoded audio PTS are continuou
 differences from the three source clips were 0.79 / 0.79 / 0.88 on a 255 scale; median audio correlations were
 1.00000 / 0.99997 / 0.99997 at zero measured shifts. These samples do not establish acting, lip sync or
 perceived continuity. The preview is not the requested 300 s movie.
+
+As an exploratory negative control on block 3, each of its six dialogue intervals was also evaluated against
+the *other* position-tracked face using the same audio, time interval and SyncNet weights. The intended-position
+crop had a higher model confidence in all six cases; the artificial 200 ms delay control responded as expected
+for six intended crops and no other-position crops. This is consistent with the model distinguishing the two
+positions in these samples, but the crops are not identity recognition, confidence is not a probability, and
+short synthetic speech or pose can bias either score. It does not establish lip sync, acting or listening quality.
+The per-line results are saved in the local film's `analiza/fragment-03-syncnet-porownanie.json`.
