@@ -33,3 +33,11 @@ need human/audio review before a full-film mix.
 `scripts/compare_driving_audio.py` is an optional diagnostic for sparse waveform alignment, per-second levels and
 file digests. It accounts for available stream timestamps and tests an offset WAV-to-MP4 fixture. It does not
 change serving or infer audio/visual synchronization.
+
+The optional SyncNet screen was later extended to sample an interval starting inside a clip. Its first implementation
+of the artificial 200 ms control actually produced only 128 ms of delay: after a mid-file trim, ffmpeg's `adelay`
+created some silence packets without timestamps, and the next trim discarded part of them. The screen correctly
+flagged the failed control. Resetting timestamps from the sample count before the final trim yields a verified
+200 ms; a regression fixture compares the decoded PCM samples, and the real first shot's 1–5 s interval then produced
+-2 frames versus -7 for the delayed control. The earlier start-at-zero controls were separately checked by waveform
+correlation and did have the intended 200 ms delay. These measurements remain exploratory, not a lip-sync verdict.

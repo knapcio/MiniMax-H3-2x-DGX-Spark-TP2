@@ -258,6 +258,7 @@ python scripts/syncnet_probe.py clip.mp4 faces.json --duration 6.5 \
   --upstream-dir /path/to/syncnet_python --weights /path/to/syncnet_v2.model --report sync.json
 ```
 
+Add `--start 10.5` to examine an interval later in the clip; both picture and audio are trimmed to the same start.
 The source example returned offset 3 frames at 25 fps and confidence 10.09; delaying its audio by 200 ms changed
 the offset to -2 frames. On two first 10 s Polish audio-driven scenes, the screen returned -2 frames and the
 artificial-delay control returned -7. The fixed crop, speaker selection, language and synthetic speech can affect

@@ -27,9 +27,9 @@ def sha(path: Path) -> str:
         return hashlib.file_digest(f, 'sha256').hexdigest()
 
 
-def crop_from_landmarks(path: Path, width: int, height: int, duration: float) -> dict:
+def crop_from_landmarks(path: Path, width: int, height: int, duration: float, *, start: float = 0) -> dict:
     data = json.loads(path.read_text())
-    rows = [row for row in data['samples'] if row.get('time_s_approx', math.inf) < duration]
+    rows = [row for row in data['samples'] if start <= row.get('time_s_approx', math.inf) < start + duration]
     if not rows:
         raise ValueError('no face samples in speech interval')
     boxes = [row['face_box'] for row in rows if row.get('detected') and row.get('face_box')]
@@ -59,18 +59,22 @@ def crop_from_landmarks(path: Path, width: int, height: int, duration: float) ->
             'samples_with_multiple_faces': sum(row.get('face_count', 0) > 1 for row in rows)}
 
 
-def make_crop(source: Path, dest: Path, crop: dict, duration: float, audio_delay_ms: int) -> None:
-    video = (f"[0:v:0]fps=25,crop={crop['side']}:{crop['side']}:{crop['x']}:{crop['y']},"
+def make_crop(source: Path, dest: Path, crop: dict, duration: float, audio_delay_ms: int, *, start: float = 0) -> None:
+    video = (f"[0:v:0]trim=start={start}:duration={duration},setpts=PTS-STARTPTS,fps=25,"
+             f"crop={crop['side']}:{crop['side']}:{crop['x']}:{crop['y']},"
              'scale=224:224:flags=bicubic,setsar=1[v]')
     delay = f'adelay={audio_delay_ms}:all=1,' if audio_delay_ms else ''
-    audio = f'[0:a:0]aresample=16000,{delay}apad=whole_dur={duration},atrim=duration={duration},asetpts=PTS-STARTPTS[a]'
+    # adelay may generate silence packets without PTS after a mid-file trim.
+    # Reconstruct timestamps before atrim so those packets are not discarded.
+    audio = (f'[0:a:0]atrim=start={start}:duration={duration},asetpts=PTS-STARTPTS,aresample=16000,'
+             f'{delay}asetpts=N/SR/TB,apad=whole_dur={duration},atrim=duration={duration},asetpts=N/SR/TB[a]')
     subprocess.run(['ffmpeg', '-v', 'error', '-xerror', '-nostdin', '-n', '-i', str(source),
                     '-filter_complex', video + ';' + audio, '-map', '[v]', '-map', '[a]', '-t', str(duration),
                     '-c:v', 'ffv1', '-pix_fmt', 'yuv420p', '-c:a', 'pcm_s16le', str(dest)],
                    check=True, timeout=180)
 
 
-def evaluate(video: Path, landmarks: Path, duration: float, *, upstream: Path, weights: Path) -> dict:
+def evaluate(video: Path, landmarks: Path, duration: float, *, upstream: Path, weights: Path, start: float = 0) -> dict:
     upstream = upstream.resolve(strict=True)
     weights = weights.resolve(strict=True)
     for name, expected in CODE_SHA.items():
@@ -78,7 +82,7 @@ def evaluate(video: Path, landmarks: Path, duration: float, *, upstream: Path, w
             raise ValueError('SyncNet source differs from the pinned digest: ' + name)
     if sha(weights) != WEIGHTS_SHA:
         raise ValueError('SyncNet weights differ from the pinned digest')
-    if not 2 <= duration <= 15:
+    if not math.isfinite(start) or start < 0 or not 2 <= duration <= 15:
         raise ValueError('speech sample must be 2–15 seconds')
     # Both streams must have the same exact duration at the model's 25 fps.
     requested_duration = duration
@@ -87,9 +91,9 @@ def evaluate(video: Path, landmarks: Path, duration: float, *, upstream: Path, w
                             'stream=width,height,duration', '-of', 'json', str(video)],
                            check=True, capture_output=True, text=True, timeout=60)
     stream = json.loads(probe.stdout)['streams'][0]
-    if float(stream['duration']) + .001 < duration:
+    if float(stream['duration']) + .001 < start + duration:
         raise ValueError('speech sample exceeds video duration')
-    crop = crop_from_landmarks(landmarks, int(stream['width']), int(stream['height']), duration)
+    crop = crop_from_landmarks(landmarks, int(stream['width']), int(stream['height']), duration, start=start)
     if 'SyncNetInstance' in sys.modules or 'SyncNetModel' in sys.modules:
         raise ValueError('SyncNet modules must not be preloaded from a different location')
     sys.path.insert(0, str(upstream))
@@ -104,7 +108,7 @@ def evaluate(video: Path, landmarks: Path, duration: float, *, upstream: Path, w
         directory = Path(d)
         for name, delay in (('original', 0), ('audio_delayed_200ms', 200)):
             cropped = directory / (name + '.mkv')
-            make_crop(video, cropped, crop, duration, delay)
+            make_crop(video, cropped, crop, duration, delay, start=start)
             opt = argparse.Namespace(tmp_dir=str(directory / 'work'), reference=name, batch_size=8, vshift=15)
             offset, confidence, distances = model.evaluate(opt, videofile=str(cropped))
             if not math.isfinite(float(confidence)):
@@ -113,7 +117,8 @@ def evaluate(video: Path, landmarks: Path, duration: float, *, upstream: Path, w
                              'windows': len(distances)}
     delta = results['audio_delayed_200ms']['offset_frames_25fps'] - results['original']['offset_frames_25fps']
     return {'video': str(video), 'video_sha256': sha(video), 'face_report_sha256': sha(landmarks),
-            'model_sha256': WEIGHTS_SHA, 'code_sha256': CODE_SHA, 'requested_duration_seconds': requested_duration,
+            'model_sha256': WEIGHTS_SHA, 'code_sha256': CODE_SHA, 'start_seconds': start,
+            'requested_duration_seconds': requested_duration,
             'duration_seconds': duration, 'face_crop': crop,
             'results': results, 'control_offset_delta_frames': delta,
             'control_recovered_expected_shift': abs(delta + 5) <= 1,
@@ -127,12 +132,14 @@ def main() -> int:
     parser.add_argument('video', type=Path)
     parser.add_argument('face_report', type=Path)
     parser.add_argument('--duration', type=float, required=True)
+    parser.add_argument('--start', type=float, default=0, help='speech interval start in seconds')
     parser.add_argument('--report', type=Path, required=True)
     parser.add_argument('--upstream-dir', type=Path, required=True, help='pinned joonson/syncnet_python checkout')
     parser.add_argument('--weights', type=Path, required=True, help='pinned syncnet_v2.model')
     args = parser.parse_args()
     try:
-        result = evaluate(args.video, args.face_report, args.duration, upstream=args.upstream_dir, weights=args.weights)
+        result = evaluate(args.video, args.face_report, args.duration, upstream=args.upstream_dir,
+                          weights=args.weights, start=args.start)
         with args.report.open('x') as f:
             json.dump(result, f, indent=2)
             f.write('\n')
