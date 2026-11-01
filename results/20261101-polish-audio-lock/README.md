@@ -85,6 +85,14 @@ std 0.3812 to 0.4004), though the speech screens above remained close to the sou
 in the repository with a CPU regression; it is not deployed or GPU-validated. The subsequent 60 s block started
 with the previous clip's final-frame SHA-256 `0d41c72f9ee892310d3f5c105db4089f7f76e71e059a8fff3c215477f382f85b`.
 
+On the first 30 s clip, stereo decoded sample peaks were below 1.0, but the two identical channels produced 489 mono
+downmix samples above 1.0 at 48 kHz; this is a potential downmix issue, not proof of audible clipping. Per-line stereo
+RMS was 0.124 / 0.190 / 0.074. A separate `balance_dialogue_audio.py` experiment applies bounded per-line gains and
+preserves all 720 decoded video frames. Its line RMS values in the mono screen were 0.127 / 0.127 / 0.117, with a
+mono sample peak of 0.917; FFmpeg measured stereo true peak -3.8 dBFS versus -1.2 before. Line waveform correlations
+to the original were at least 0.9999 at zero measured shift, and Whisper recognized the intended words in this run.
+The experimental copy has not been approved by listening and is not automatically applied to the film.
+
 The first submission failed immediately with HTTP 400: curl `-F` treated a semicolon in text and JSON as form
 metadata and truncated the fields. `2827d04` changed text fields to `--form-string`; an actual multipart receiver
 and the subsequent live H3 request verified the fix. A previously run camera-default comparison had the same prompt
