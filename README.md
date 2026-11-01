@@ -234,6 +234,13 @@ server can reach, or set `H3_AUDIO_MAX_FIELD_BYTES` only after configuring and v
 FL2VA reference with a Polish MP3 data URL passed media checks and transcription; the file transport itself has been
 tested against a local multipart receiver, not a live H3 request or a 300 s track.
 
+To screen whether the supplied audio is present in the result, use NumPy and ffmpeg/ffprobe with
+`python scripts/compare_driving_audio.py source.mp3 rendered.mp4 --report audio-check.json`. It compares sparse
+mono waveform windows and reports correlation, gain and estimated offset, accounting for available stream start
+timestamps. In the one 10 s Polish audio-lock sample, three overlapping speech windows had correlations of
+0.975–0.977 and zero measured offset; this is a single integration check. Silence, mixing, encoding and timestamp
+ambiguity can affect the measurement. It does not assess lip sync, speaker identity, voice quality or the whole clip.
+
 An opt-in server experiment, `H3_TP2_VIDEO_FORM_LIMIT_MIB`, raises the implicit per-field limit only for POST
 `/v1/videos` and `/v1/videos/sync` (allowed range 1–64 MiB); explicit caller limits remain in force. The plugin is
 unchanged when this variable is absent. A local FastAPI 0.136.3 / Starlette 1.10.0 test accepted a field above 1 MiB
