@@ -142,6 +142,18 @@ def compare(reference: np.ndarray, output: np.ndarray, sample_rate: int, *, wind
     return rows
 
 
+def signal_levels(samples: np.ndarray, sample_rate: int) -> dict:
+    """Simple decoded levels at the analysis rate, not a true-peak meter."""
+    if sample_rate < 1 or not len(samples):
+        raise ValueError("cannot measure empty audio or an invalid sample rate")
+    magnitudes = np.abs(samples)
+    rms = [round(float(np.sqrt(np.mean(samples[i:i + sample_rate].astype(np.float64) ** 2))), 7)
+           for i in range(0, len(samples), sample_rate)]
+    return {"peak_abs_at_analysis_rate": round(float(magnitudes.max()), 6),
+            "samples_above_full_scale_at_analysis_rate": int(np.count_nonzero(magnitudes > 1)),
+            "rms_by_second": rms}
+
+
 def sha(path: Path) -> str:
     with path.open("rb") as f:
         return hashlib.file_digest(f, "sha256").hexdigest()
@@ -177,10 +189,13 @@ def main() -> int:
                   "reference_decoded_seconds": round(len(reference) / args.sample_rate, 4),
                   "output_decoded_seconds": round(len(output) / args.sample_rate, 4),
                   "decode_cap_seconds": args.cap_seconds,
-                  "reference_timing": reference_timing, "output_timing": output_timing, "segments": rows,
+                  "reference_timing": reference_timing, "output_timing": output_timing,
+                  "reference_levels": signal_levels(reference, args.sample_rate),
+                  "output_levels": signal_levels(output, args.sample_rate), "segments": rows,
                   "limitations": ("Sparse mono waveform comparisons, not a listening or lip-sync verdict. "
                                   "Quiet source segments have no reliable offset; correlated music, "
                                   "mixed sound or reordered material can confuse the search. "
+                                  "Levels use downsampled audio and are not a true-peak measurement. "
                                   "Presentation shifts rely on container timestamps and may be unavailable. "
                                   "Material beyond the decode cap is not checked.")}
         text = json.dumps(result, indent=2) + "\n"

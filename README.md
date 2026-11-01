@@ -237,7 +237,8 @@ tested against a local multipart receiver, not a live H3 request or a 300 s trac
 To screen whether the supplied audio is present in the result, use NumPy and ffmpeg/ffprobe with
 `python scripts/compare_driving_audio.py source.mp3 rendered.mp4 --report audio-check.json`. It compares sparse
 mono waveform windows and reports correlation, gain and estimated offset, accounting for available stream start
-timestamps. In the one 10 s Polish audio-lock sample, three overlapping speech windows had correlations of
+timestamps, plus approximate per-second levels at the analysis sample rate. These levels are not a true-peak meter.
+In the one 10 s Polish audio-lock sample, three overlapping speech windows had correlations of
 0.975–0.977 and zero measured offset; this is a single integration check. Silence, mixing, encoding and timestamp
 ambiguity can affect the measurement. It does not assess lip sync, speaker identity, voice quality or the whole clip.
 

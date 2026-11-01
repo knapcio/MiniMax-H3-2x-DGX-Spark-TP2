@@ -46,6 +46,14 @@ class CompareDrivingAudioTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             module.compare(reference[:10], reference[:10], 8000)
 
+    def test_reports_quiet_seconds_and_above_scale_samples(self):
+        result = module.signal_levels(np.array([0, 0, .5, 1.1, 0, 0], dtype=np.float32), 2)
+        self.assertEqual(result["rms_by_second"][0], 0)
+        self.assertEqual(result["rms_by_second"][2], 0)
+        self.assertGreater(result["rms_by_second"][1], 0)
+        self.assertEqual(result["samples_above_full_scale_at_analysis_rate"], 1)
+        self.assertAlmostEqual(result["peak_abs_at_analysis_rate"], 1.1)
+
     def test_container_timestamps_count_toward_audio_delay(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
