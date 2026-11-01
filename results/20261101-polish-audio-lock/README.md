@@ -173,3 +173,13 @@ Its dialogue passed the independent waveform and frame-PTS screen, Whisper WER w
 difference was 3.5/255 RGB. The first-channel output/source interval levels were +0.28 / -5.11 / -4.35 / -0.54 /
 +0.01 / -11.55 dB. The original and a separate source-voice copy were collected. These measurements and sampled
 frames do not establish playback quality, actor likeness or lip synchronization.
+
+The final dialogue line in each of blocks 2–4 was also compared in consecutive 0.5 s slices at 8 kHz mono, with a
+±120 ms waveform search and decoded audio PTS checked first. The strongest correlations occurred within 0.125 ms of
+zero offset in every eligible slice (source RMS at least 0.005): the fading is not explained by a large time shift.
+For block 2 the fitted gain starts at -3.1 dB and is -16.9 to -22.0 dB in later slices; block 3 starts at -9.0 dB and
+then ranges -24.6 to -28.9 dB; block 4 starts at -3.7 dB and later ranges -18.5 to -21.3 dB. Per-slice reports,
+input hashes and the reproducer are saved with the local film analysis. This is a waveform measurement, not an
+audible-quality or causal verdict. The still-running head was started at 12:09, before the source-audio look-lock
+bypass (`c81f1b6` at 19:38); its journal confirms that the audio look-lock ran in the later windows. The bypass is a
+candidate fix, but has not yet been compared on the model, so the cause and its effect remain unproven.
