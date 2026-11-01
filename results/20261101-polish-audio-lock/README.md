@@ -129,3 +129,10 @@ synchronization have not been judged in playback, so the original remains the ma
 separate source-speech comparisons for later blocks and, if all six pass, an optional 300 s copy. A six-part
 synthetic assembly preserved 288 video frames and passed all six waveform/PTS checks; the real 300 s assembly is
 still pending.
+
+A separate `lalka-list-w-sklepie-PODGLAD-90s-EXPERIMENT.mp4` joins the original first two clips into a single
+90 s preview, SHA-256 `e661487d55ced60355a0076e2eb00234e1f7fa6b05a7186caecec1a4be552701`. It was re-encoded
+at CRF 19, contains 2,160 frames at 24 fps and fully decodes. Sparse sampled frames differed from the respective
+source clips by 0.71–0.79/255 mean RGB; median sampled audio correlations were 1.00000 and 0.99997 with zero
+measured offset. The sample screen verifies neither every frame nor perceived continuity or speech quality. This
+is an interim preview, not the requested 300 s movie.
