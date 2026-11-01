@@ -11,8 +11,9 @@ or clones of the actors.
 | Five-minute assembly, shot 1 of 30 | `46d5f9671cde1b6de7194ae2b6bb9ea6f035895e6f3fa0b9102f9a150261e6cb` | Whisper-small recovered the intended line (WER 0.0); waveform correlations were 0.979–0.987 and estimated presentation offsets 0 s. All 40 sampled frames had a face; a montage showed mouth motion during the line and a calmer mouth afterward. |
 
 The first assembly shot took 487.8 s on the checked pair, plus export/verification, with a 16 ms audio gap at the
-exact 10 s boundary. The planned five-minute film consists of 30 independently rendered 10 s shots; production was
-still in progress at this checkpoint. These sparse waveform measurements do not prove that the mouth is accurately
+exact 10 s boundary. The initial five-minute plan consisted of 30 independently rendered 10 s shots; the owner
+rejected the resulting 20 s preview because adjacent scenes had no continuity. That plan was stopped after shot 8
+and replaced by the linked story below. These sparse waveform measurements do not prove that the mouth is accurately
 synchronized, the performance is natural, the actor's likeness is maintained or the audio is perceptually clean.
 
 The first assembly shot's driving audio was padded with silence. Its decoded output was almost silent during seconds
@@ -57,5 +58,34 @@ prepared to check each line, source-waveform timing, face samples and the planne
 
 The separate `scripts/plan_dialogue_windows.py` produces explicit continuation prompts from time-stamped dialogue.
 It assigns a line once to a window's newly generated frames and rejects one that crosses a handover. CPU fixtures cover
-10, 15, 30, 60 and 300 s plans and invalid or overlapping entries. The helper itself is not connected to serving or
-used by the staged request, and it cannot guarantee when or whether a model speaks.
+10, 15, 30, 60 and 300 s plans and invalid or overlapping entries. It is not connected to serving and cannot guarantee
+when or whether a model speaks; the linked story below uses it to prepare its per-window request prompts.
+
+## Linked two-person story: first 30 s (2026-11-01 20:15)
+
+The replacement 300 s plan is one original Polish conversation between Wokulski and Izabela in a Warsaw shop,
+split into 30/60/60/60/60/30 s requests. Each later request takes the actual final frame of the preceding clip as
+its first-frame reference. The opening reference was generated from supplied actor/still references; voices are
+synthetic Piper voices, not the actors' voices. Frame inheritance is not a guarantee of identity, scene or story
+continuity. The remaining 270 s is in progress and is **not yet a completed film**.
+
+The first 30 s FL2VA request (960x544, 20 steps, three windows, elapsed 1600.3 s) produced 720 exact frames,
+SHA-256 `c50da4341c432b4b446915d205ba891810f63e97946fd795800fcefd33b771d0`; its copied AAC ends 16 ms early.
+The first and second latent seam ratios were 1.00 and 0.98. In a sampled contact sheet both characters and their
+shop remain present, and close samples show mouth motion on the intended speaker while the other listens. The
+separate positional face tracks detected both faces in 60/60 sampled frames. This is not a full playback review.
+
+Whisper-small gave WER 0.033 (one word difference); the three timed speech portions correlated 0.9848, 0.9663
+and 0.9639 with the driving audio at zero measured offset. Speaker-specific SyncNet screens returned -1, 0 and -2
+frames at 25 fps, and their artificial 200 ms controls recovered the expected shift in all three. The screens
+are fallible and neither they nor still frames prove natural acting, actor identity or accurate lip synchronization.
+
+The live journal confirmed the old ambient audio look-lock also modified later locked-source latents (window 2
+std 0.3812 to 0.4004), though the speech screens above remained close to the source. `c81f1b6` fixes that interaction
+in the repository with a CPU regression; it is not deployed or GPU-validated. The subsequent 60 s block started
+with the previous clip's final-frame SHA-256 `0d41c72f9ee892310d3f5c105db4089f7f76e71e059a8fff3c215477f382f85b`.
+
+The first submission failed immediately with HTTP 400: curl `-F` treated a semicolon in text and JSON as form
+metadata and truncated the fields. `2827d04` changed text fields to `--form-string`; an actual multipart receiver
+and the subsequent live H3 request verified the fix. A previously run camera-default comparison had the same prompt
+truncation, so it is not a valid matched baseline. Corrected comparisons are queued after this film.
