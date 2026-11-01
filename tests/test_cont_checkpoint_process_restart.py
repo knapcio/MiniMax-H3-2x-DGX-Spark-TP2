@@ -17,7 +17,7 @@ WORKER = ROOT / 'tests/distributed_checkpoint_restart_cpu.py'
 
 
 class ProcessRestartTests(unittest.TestCase):
-    def run_ranks(self, root, phase, common_window, *, kill_after_save=False):
+    def run_ranks(self, root, phase, common_window, *, kill_after_save=False, stop_window=2, total_frames=617):
         with socket.socket() as sock:
             sock.bind(('127.0.0.1', 0)); port = sock.getsockname()[1]
         env = os.environ.copy()
@@ -27,7 +27,8 @@ class ProcessRestartTests(unittest.TestCase):
         try:
             for rank in (0, 1):
                 command = [sys.executable, str(WORKER), '--phase', phase, '--rank', str(rank), '--port', str(port),
-                           '--root', str(root), '--common-window', str(common_window)]
+                           '--root', str(root), '--common-window', str(common_window), '--stop-window', str(stop_window),
+                           '--total-frames', str(total_frames)]
                 if kill_after_save: command.append('--wait-after-save')
                 processes.append(subprocess.Popen(command, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                                   text=True))
@@ -59,20 +60,22 @@ class ProcessRestartTests(unittest.TestCase):
                     process.kill(); process.wait(timeout=10)
         return [json.loads((root / f'{phase}-rank-{rank}.json').read_text()) for rank in (0, 1)]
 
-    def check_restart(self, corrupt_rank_one, *, kill_after_save=False):
+    def check_restart(self, corrupt_rank_one, *, kill_after_save=False, stop_window=2, total_frames=617):
         with tempfile.TemporaryDirectory(prefix='h3-cpu-process-restart-') as temp:
-            root = Path(temp); common = 1 if corrupt_rank_one else 2
-            saved = self.run_ranks(root, 'save', common, kill_after_save=kill_after_save)
+            root = Path(temp); common = stop_window - 1 if corrupt_rank_one else stop_window
+            saved = self.run_ranks(root, 'save', common, kill_after_save=kill_after_save,
+                                   stop_window=stop_window, total_frames=total_frames)
             if corrupt_rank_one:
-                state = root / 'rank-1' / ('1' * 32) / 'rank-0001-window-000002.safetensors'
+                state = root / 'rank-1' / ('1' * 32) / f'rank-0001-window-{stop_window:06d}.safetensors'
                 with state.open('r+b') as out:
                     out.seek(-1, 2); old = out.read(1); out.seek(-1, 2); out.write(bytes([old[0] ^ 1]))
-            resumed = self.run_ranks(root, 'resume', common)
+            resumed = self.run_ranks(root, 'resume', common, stop_window=stop_window, total_frames=total_frames)
             for before, after in zip(saved, resumed, strict=True):
                 self.assertNotEqual(before['pid'], after['pid'])
                 self.assertEqual(before['expected_av_sha256'], after['expected_av_sha256'])
-                self.assertEqual(before['rendered_windows'], 2)
-                self.assertEqual(after['rendered_windows'], 3 - common)
+                self.assertEqual(before['rendered_windows'], stop_window)
+                self.assertEqual(before['total_windows'], after['total_windows'])
+                self.assertEqual(after['rendered_windows'], before['total_windows'] - common)
 
     @unittest.skipUnless(dist.is_gloo_available(), 'Gloo backend required')
     def test_two_fresh_ranks_resume_latest_common_window(self):
@@ -85,6 +88,10 @@ class ProcessRestartTests(unittest.TestCase):
     @unittest.skipUnless(dist.is_gloo_available(), 'Gloo backend required')
     def test_fresh_ranks_resume_after_both_previous_processes_are_killed(self):
         self.check_restart(corrupt_rank_one=False, kill_after_save=True)
+
+    @unittest.skipUnless(dist.is_gloo_available(), 'Gloo backend required')
+    def test_300_second_plan_recovers_after_window_20(self):
+        self.check_restart(corrupt_rank_one=False, kill_after_save=True, stop_window=20, total_frames=7213)
 
 
 if __name__ == '__main__':

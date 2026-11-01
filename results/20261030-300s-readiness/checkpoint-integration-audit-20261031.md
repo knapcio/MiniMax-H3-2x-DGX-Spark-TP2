@@ -52,6 +52,8 @@ separate rank-local directories and the synthetic diffusion fixture that compare
 body. Once both have durably saved window 2, the test terminates both processes and starts a fresh pair. Both restore
 window 2 and reproduce the uninterrupted synthetic AV. A separate clean restart has the same result; corrupting
 rank 1's window-2 data makes both fresh processes reject that window, restore window 1 and reproduce the synthetic AV.
-All 23 checkpoint tests passed on Python 3.12.14 / PyTorch 2.9.1 CPU. These tests use local loopback and synthetic
+With the synthetic 300 s / 29-window plan, both processes were killed after window 20 and the new pair completed the
+remaining windows with AV identical to the uninterrupted synthetic run. All 24 checkpoint tests passed on Python
+3.12.14 / PyTorch 2.9.1 CPU. These tests use local loopback and synthetic
 tensors; they do not establish real-model reproducibility, GPU/NCCL recovery, actual host restarts, safe cancellation
 during a write, a complete deployment identity, or a durable serving/job workflow. No live H3 files were changed.

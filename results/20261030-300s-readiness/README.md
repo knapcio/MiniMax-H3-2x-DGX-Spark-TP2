@@ -535,7 +535,9 @@ Gloo/CPU ranks on the Mac and separate local checkpoint directories. After both 
 processes were forcibly terminated and two new processes recovered that common window; the resumed synthetic
 AV matched the uninterrupted synthetic loop exactly. In a separate run, corruption of rank 1's window-2
 data made both new processes fall back to window 1 and produce the same synthetic AV. A clean, orderly restart
-also passed. All 23 checkpoint tests passed in a separate Python 3.12 / PyTorch 2.9.1 CPU environment. This is
+also passed. With the 29-window synthetic plan for 300 s, both processes were killed after window 20; the fresh
+pair resumed and matched uninterrupted synthetic AV through window 29. All 24 checkpoint tests passed in a
+separate Python 3.12 / PyTorch 2.9.1 CPU environment. This is
 not a test of a running H3 server, actual model output, GPU/NCCL, cancellation during checkpoint writes or
 recovery after a real host restart; the checkpoint loop remains unwired and the running 300 s request cannot resume.
 
