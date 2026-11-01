@@ -1,5 +1,15 @@
 # VAE batched tile decode (`stack_tiling`), first try: -34 % decode, +32 GB peak, and it changed the clip
 
+**Concurrency finding, 2026-11-01:** a later CPU audit executed the copied wrapper and checkpoint tile-dispatch
+code with synthetic tensors. If decode and encode overlap on the same model, the shared `stack_tiling` flag can
+leak into encode, bypass the four-tile cap through the encoder's aggregator, and increase its batch. Two overlapping
+decodes can also leave the flag enabled afterward; an inherited patched method can recurse in a subclass case.
+These are reproducible CPU concurrency cases, not evidence that the current scheduler actually runs requests in
+parallel. The option is off by default. A separate context-scoped prototype is under independent review and has not
+been deployed or tested for CUDA/TP2 numerical equivalence. Do not generalize the historical timings below into a
+safe concurrent or 60 s result. Evidence is retained in `diagnostics/h3-vae-stack-review-20261101/` in the enclosing
+workspace.
+
 `H3_TP2_VAE_STACK_TILES=1` (the checkpoint's own `stack_tiling` flag, batched tiles per rank), 5 s 960x576 Ref2VA, 20
 steps, seed 1101, stock GEMM, same request as `v030-fp8-base-2`.
 
