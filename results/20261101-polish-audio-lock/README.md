@@ -159,3 +159,10 @@ for six intended crops and no other-position crops. This is consistent with the 
 positions in these samples, but the crops are not identity recognition, confidence is not a probability, and
 short synthetic speech or pose can bias either score. It does not establish lip sync, acting or listening quality.
 The per-line results are saved in the local film's `analiza/fragment-03-syncnet-porownanie.json`.
+
+The waveform screen is insensitive to pure attenuation. In block 3, a separate first-channel comparison found
+the six output/source speech-interval RMS differences +0.28 / -4.91 / -7.76 / -6.96 / -7.97 / **-17.98 dB**;
+the last line's RMS was 0.0143 versus 0.1135 in the driving audio. The separate source-voice copy measured within
+0.01 dB of the source on those intervals. These are RMS comparisons, not listening or lip-sync verdicts, and do
+not establish the cause. An optional numeric speech-level screen is documented in `docs/SPEECH_LEVEL_SCREEN.md`;
+it has no default quality threshold and does not alter existing film gates.
