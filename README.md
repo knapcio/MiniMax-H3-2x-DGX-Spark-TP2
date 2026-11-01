@@ -179,7 +179,8 @@ ratio when either dimension is omitted; supplying both `--width` and `--height` 
 the 5, 16 and 60 s controls passed media checks on the pair; repeated luma drops were detected in the longer two, so
 these results are not a general quality guarantee.
 The workspace client also accepts `--experimental-long --long --first-frame --duration 300` and requests streamed
-MP4 encoding, but a 300 s render has not yet been verified. Its longer client timeout does not change the server's
+MP4 encoding. One 960x544 painting request completed and passed media checks in 16,207.9 s; its sky progressively
+deformed and the result is not a general quality guarantee. Its longer client timeout does not change the server's
 own limits, and a failed request has no continuation checkpoint.
 The workspace client refuses to replace an existing output. It saves the response under a unique temporary name,
 checks the requested dimensions, 24 fps, frame count and approximate duration of both audio and video, and fully decodes the result
@@ -190,6 +191,24 @@ Add `--exact-duration` to trim the result to the nearest 24 fps frame after gene
 decoded frames and AAC packets before publication; the audio can end up to one AAC packet before the target. This
 optional step tries a fast stream copy for H.264 without B-frames and falls back to lossless video re-encoding if
 needed. Verification still decodes the retained frames. A failed trim preserves the raw response separately.
+
+### Optional speech screen
+
+`scripts/speech_qa.py` transcribes an audio/video file and, when given the intended dialogue, reports a word error
+rate. It can help identify missing or garbled speech across clip lengths; automatic transcription can itself mishear
+or hallucinate, and it does not assess delivery, speaker identity or lip synchronization. Run it in a separate Python
+3.12 environment so its dependencies do not change the serving stack:
+
+```bash
+python3.12 -m venv .speech-venv
+.speech-venv/bin/pip install 'faster-whisper==1.2.1' 'av>=11,<17'
+.speech-venv/bin/python scripts/speech_qa.py clip.mp4 --language pl \
+  --reference-file dialogue.txt --allow-download --output speech-report.json
+```
+
+Model download is opt-in; omit `--allow-download` once the chosen faster-whisper model is cached. The PyAV cap
+avoids an observed incompatibility between faster-whisper 1.2.1 and PyAV 19. A synthesized Polish sentence was
+transcribed with one word error out of 14 in the local smoke; that is an integration check, not a quality threshold.
 
 ### Long clips from a client or an agent: the request
 
