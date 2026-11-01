@@ -67,6 +67,13 @@ sources `~/.h3-tp2.env`; that file currently assigns `H3_TP2_FP8_FUSE_SWIGLU=1` 
 workaround. Any future isolated test boot must set the intended value *after* that source and verify the effective
 setting and installed plugin on both ranks. No startup file or service has been changed for Turbo.
 
+`scripts/stage_unfused_head.py` can create a **separate, unstarted** launcher after verifying the original
+`start-head.sh` and `env.sh` SHA-256 values. The copy inserts `H3_TP2_FP8_FUSE_SWIGLU=0` after sourcing the
+unchanged environment script. A fake executable test verified this precedence and identical command arguments;
+the builder also produced a copy from the head's inspected files, but it was not run against a model or installed
+in systemd. A future test must still verify both ranks' actual loaded state, manage service restoration, and avoid
+interrupting other work. This setting does not itself disable the separate two-pass FP8 GEMM.
+
 On the current boot the head and worker startup logs both explicitly report fused SwiGLU **ON**. The head service's
 `/proc/<pid>/environ` shows the setting as `1`, but the local diffusion worker's proc environment omitted the H3
 variables altogether, despite its log reporting the fusion ON. The cause of that discrepancy was not established;
