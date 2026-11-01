@@ -18,6 +18,23 @@ both the unchanged source and the experimental copy require playback review. The
 `20217c490c260abdf35bc2482277baa0b1c55ea3f4575b4a54fbe0ad098d3459` and repair SHA-256 is
 `848571dc1e2ecb28e0fd848684ce5f1ca713afde35ce7a65061ad3876431452a`.
 
+### Screenshot border on the painting (2026-11-01)
+
+The owner noticed a bottom stripe in the Koninck clips but not in the *Lalka* sample. The exact painting input
+(`567138222c7e0793e8e774a80b188695f862ca2430ae70a969444fec23cbdd5d`) has 11 solid-white bottom rows and rounded
+screenshot corners. In the 300 s exact output, all pixels of the bottom four rows are brighter than gray 220 at
+0 s and 30 s; those rows later change with the generated scene. This supports the input border as the source of this
+specific stripe; it does not rule out other model artifacts in other inputs.
+
+A separate 2284x1294 input crop removes the screenshot frame while keeping the original PNG untouched; its SHA-256
+is `88bb56a5ae135f06e13106808ad31781a8fd731205ff50430d5d2605527ef29f`. A separately re-encoded 300 s review copy
+crops the bottom six rows and scales back to 960x544. At 0 s and 30 s none of its bottom-four-row grayscale pixels
+exceed 220. It has 7,200 frames at 24 fps, fully decodes, and its AAC packet bytes and timestamps match the input;
+SHA-256 `ffa2287ce802bf63fb409697ed3a01ad65d42ead3b8c9f606115b1d0633be0a2`. It is stored locally as
+`d300_koninck_bez_bialego_paska_EXPERIMENT_EXACT300s.mp4`. The crop discards six rows for the entire video, also
+where the stripe later fades; it does not correct the cloud deformation or replace a new render with a clean input.
+No global auto-crop is enabled: a white border may be intentional for another scene.
+
 Two additional 960x544 cinematic experiments passed media validation: a 10 s FL2VA animation of an official
 *Lalka* still with Marcin Dorociński as Wokulski (487.1 s request time), and a 15 s T2VA train scene with three
 requested characters (719.1 s). Exact-length copies are saved in `~/Downloads/h3-prod-smoke/`. Sampled stills show
