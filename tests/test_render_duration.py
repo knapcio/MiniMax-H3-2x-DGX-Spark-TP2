@@ -27,7 +27,7 @@ class RenderDurationTests(unittest.TestCase):
         curl.write_text('''#!/usr/bin/env python3
 import json, os, pathlib, sys
 args = sys.argv[1:]
-fields = [args[i + 1] for i, arg in enumerate(args[:-1]) if arg == "-F"]
+fields = [args[i + 1] for i, arg in enumerate(args[:-1]) if arg in ("-F", "--form-string")]
 pathlib.Path(os.environ["H3_TEST_CAPTURE"]).write_text(json.dumps(fields))
 pathlib.Path(args[args.index("-o") + 1]).write_bytes(b"fake video")
 pathlib.Path(args[args.index("-D") + 1]).write_text("HTTP/1.1 200 OK\\n")
@@ -35,11 +35,13 @@ print("200", end="")
 ''')
         curl.chmod(0o755)
         self.env = os.environ.copy()
+        for name in ("H3_VIDEO_FLOW_SHIFT", "H3_AUDIO_FLOW_SHIFT", "H3_LORA_JSON"):
+            self.env.pop(name, None)
         self.env.update(H3_VENV=str(self.root), H3_TEST_CAPTURE=str(self.root / "fields.json"),
                         CONT_PROMPTS="auto", TASK="t2va")
 
-    def run_render(self, extra):
-        env = dict(self.env, EXTRA_JSON=json.dumps(extra))
+    def run_render(self, extra, **updates):
+        env = dict(self.env, EXTRA_JSON=json.dumps(extra), **updates)
         out = self.root / "result.mp4"
         result = subprocess.run(["bash", str(REPO / "scripts/render.sh"), str(out), "30", "1344", "768",
                                  "20", "1101", "A landscape."], env=env, text=True, capture_output=True)
@@ -74,6 +76,47 @@ print("200", end="")
         result, sent, _ = self.run_render({"long_video": True, "continuation_prompts": prompts})
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(sent["continuation_prompts"], prompts)
+
+    def test_baseline_sampler_defaults_are_preserved(self):
+        result, sent, timing = self.run_render({})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        fields = json.loads((self.root / "fields.json").read_text())
+        self.assertIn("flow_shift=12", fields)
+        self.assertFalse(any(field.startswith("lora=") for field in fields))
+        self.assertEqual(sent["audio_flow_shift"], 3.0)
+        self.assertEqual(timing["video_flow_shift_form"], 12.0)
+        self.assertIsNone(timing["lora"])
+
+    def test_adapter_and_shifts_are_sent_and_path_not_recorded(self):
+        adapter = {"name": "test-adapter", "path": "/path/to/private.safetensors", "scale": 1.0}
+        result, sent, timing = self.run_render({}, H3_VIDEO_FLOW_SHIFT="6", H3_AUDIO_FLOW_SHIFT="3",
+                                                H3_LORA_JSON=json.dumps(adapter))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        fields = json.loads((self.root / "fields.json").read_text())
+        self.assertIn("flow_shift=6", fields)
+        self.assertEqual(json.loads(next(field[5:] for field in fields if field.startswith("lora="))), adapter)
+        self.assertEqual(sent["audio_flow_shift"], 3)
+        self.assertEqual(timing["video_flow_shift_after_extra_merge"], 6.0)
+        self.assertEqual(timing["lora"]["name"], "test-adapter")
+        self.assertNotIn("private.safetensors", json.dumps(timing))
+
+    def test_extra_params_can_override_form_shift_and_is_recorded(self):
+        result, sent, timing = self.run_render({"flow_shift": 8}, H3_VIDEO_FLOW_SHIFT="6")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(sent["flow_shift"], 8)
+        self.assertEqual(timing["video_flow_shift_form"], 6.0)
+        self.assertEqual(timing["video_flow_shift_after_extra_merge"], 8)
+
+    def test_invalid_sampler_or_adapter_is_not_submitted(self):
+        bad = ({"H3_VIDEO_FLOW_SHIFT": "NaN"}, {"H3_AUDIO_FLOW_SHIFT": "0"},
+               {"H3_LORA_JSON": "[]"}, {"H3_LORA_JSON": '{"name":"missing-path"}'},
+               {"H3_LORA_JSON": '{"name":"x","path":"/a","scale":NaN}'},
+               {"H3_LORA_JSON": '{"name":"x","path":"/a","int_id":0}'})
+        for updates in bad:
+            with self.subTest(updates=updates):
+                result, _, _ = self.run_render({}, **updates)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse((self.root / "fields.json").exists())
 
 
 if __name__ == "__main__":

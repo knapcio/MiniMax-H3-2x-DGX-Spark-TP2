@@ -285,6 +285,13 @@ bash ~/h3-tp2/scripts/verify-output.sh ~/clip.mp4 10 1344 768                   
 bash ~/h3-tp2/scripts/bench-matrix.sh "5:1344:768:50:1101 10:1344:768:50:1101"                  # the table above, with memory sampling on both nodes; STATUS per case
 ```
 
+For a compatible server and adapter, `render.sh` accepts `H3_VIDEO_FLOW_SHIFT`, `H3_AUDIO_FLOW_SHIFT` and
+`H3_LORA_JSON='{"name":"adapter-name","path":"/absolute/path/on/both/nodes","scale":1.0}'`. Its defaults remain
+video/audio shifts 12/3 without an adapter. `EXTRA_JSON` can override the shifts; the timing record reports the
+form shift and its value after that merge, and omits the adapter path. Authenticate the actual loaded adapter
+separately. In particular, the current fused-MLP/LoRA interaction requires the checks documented in
+[`results/20261101-lora-fusion-guard/`](results/20261101-lora-fusion-guard/README.md) before using Turbo.
+
 The API is the stock vLLM-Omni one (`POST /v1/videos/sync`, `extra_params` with `task`, `duration`, `frame_indices`),
 so existing clients only need the host. The memory guards kill the rank when MemAvailable stays under 4 GiB for two
 samples: on GB10 the NVIDIA driver cannot fail an allocation gracefully and the whole host livelocks instead (that is
