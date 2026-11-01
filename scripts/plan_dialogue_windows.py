@@ -68,6 +68,9 @@ def plan(seconds, scene, dialogue, *, window=277, overlap=22, lock_source=False)
         direction = (' '.join(sentences) if sentences else 'No new dialogue is spoken in this part.')
         prompts.append(scene + ' ' + direction)
     extra = {'long_video': True, 'long_video_mode': 'continuation', 'preencode_mp4': True,
+             # The prompt assignments and the server must use the same frame
+             # boundaries, even when their window counts happen to match.
+             'continuation_window_frames': window, 'continuation_overlap_frames': overlap,
              'continuation_prompts': prompts}
     if lock_source:
         extra['audio_mode'] = 'lock_source'
