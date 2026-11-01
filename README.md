@@ -224,6 +224,13 @@ in it explicitly inserts the entire original prompt, including dialogue. For dia
 across windows, supply an explicit `continuation_prompts` list instead. The dialogue-free continuation is being
 tested and has not yet been established as a fix.
 
+For a local driving soundtrack, `H3_AUDIO_FILE=/path/to/audio.wav` lets `scripts/render.sh` send the audio as a
+multipart reference without putting its potentially large base64 data in a single shell argument. WAV, MP3, FLAC,
+OGG and M4A extensions are accepted by the client; set `EXTRA_JSON` with `"audio_mode":"lock_source"` when that
+mode is wanted. Choose either `H3_AUDIO_FILE` or `AUDIO_URL`. The timing record stores the file's SHA-256 and size,
+not its path or audio bytes. A 10 s FL2VA reference with a Polish MP3 data URL passed media checks and transcription;
+the file transport itself has been tested against a local multipart receiver, not a live H3 request or a 300 s track.
+
 ### Long clips from a client or an agent: the request
 
 **Status 2026-10-30 morning.** On 2026-10-29 the owner rejected the continuation by eye (a light and texture step at

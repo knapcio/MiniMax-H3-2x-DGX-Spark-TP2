@@ -81,15 +81,46 @@ fi
 args=(-F "prompt=$prompt" -F "width=$w" -F "height=$h" -F "aspect_ratio=16:9" -F "fps=24" -F "num_inference_steps=$steps" -F "flow_shift=$video_shift" -F "seed=$seed" -F "extra_params=$extra")
 [ -n "$lora_json" ] && args+=(--form-string "lora=$lora_json")
 [ -n "$img" ] && args+=(-F "input_reference=@$img")
-# AUDIO_URL: a driving soundtrack for Ref2VA (audio_mode=lock_source in EXTRA_JSON); http(s) or data: URL per upstream docs
-[ -n "${AUDIO_URL:-}" ] && args+=(--form-string "audio_reference=$(python3 -c 'import json,sys; print(json.dumps({"audio_url": sys.argv[1]}))' "$AUDIO_URL")")
+# AUDIO_URL or H3_AUDIO_FILE: a driving soundtrack (audio_mode=lock_source in
+# EXTRA_JSON). For a file, curl reads the JSON field from a temporary file;
+# passing a long data URL as one command-line argument can exceed ARG_MAX.
+audio_meta=""
+if [ -n "${AUDIO_URL:-}" ] && [ -n "${H3_AUDIO_FILE:-}" ]; then
+  echo "render.sh: choose AUDIO_URL or H3_AUDIO_FILE, not both" >&2; exit 2
+fi
+if [ -n "${H3_AUDIO_FILE:-}" ]; then
+  audio_tmp=$(mktemp -d "${TMPDIR:-/tmp}/h3-audio.XXXXXX") || exit 2
+  trap 'rm -rf -- "$audio_tmp"' EXIT
+  audio_meta="$audio_tmp/meta.json"
+  python3 - "$H3_AUDIO_FILE" "$audio_tmp/reference.json" "$audio_meta" <<'PY' || { echo "render.sh: invalid audio file, nothing submitted" >&2; exit 2; }
+import base64, hashlib, json, sys
+from pathlib import Path
+source, reference, meta = map(Path, sys.argv[1:])
+types = {".wav": "audio/wav", ".mp3": "audio/mpeg", ".flac": "audio/flac", ".ogg": "audio/ogg", ".m4a": "audio/mp4"}
+mime = types.get(source.suffix.lower())
+if not mime or not source.is_file() or source.stat().st_size == 0:
+    raise ValueError("audio must be a nonempty WAV, MP3, FLAC, OGG or M4A file")
+digest, size = hashlib.sha256(), 0
+with source.open("rb") as inp, reference.open("w", encoding="ascii") as out:
+    out.write('{"audio_url":"data:' + mime + ';base64,')
+    while chunk := inp.read(3 * 1024 * 1024):
+        digest.update(chunk); size += len(chunk)
+        out.write(base64.b64encode(chunk).decode("ascii"))
+    out.write('"}')
+meta.write_text(json.dumps({"kind": "inline-audio-file", "bytes": size, "sha256": digest.hexdigest(), "mime": mime}))
+PY
+  args+=(-F "audio_reference=<$audio_tmp/reference.json")
+elif [ -n "${AUDIO_URL:-}" ]; then
+  args+=(--form-string "audio_reference=$(python3 -c 'import json,sys; print(json.dumps({"audio_url": sys.argv[1]}))' "$AUDIO_URL")")
+fi
 t0=$(date +%s.%N)
 code=$(curl -sS --max-time "${H3_RENDER_TIMEOUT_S:-14400}" -X POST "http://$H3_API_HOST:$H3_API_PORT/v1/videos/sync" "${args[@]}" -D "$out.headers" -o "$out" -w "%{http_code}"); crc=$?
 t1=$(date +%s.%N)
 el=$(python3 -c "print(round($t1-$t0,1))")
-python3 - "$out" "$code" "$crc" "$el" "$dur" "$w" "$h" "$steps" "$seed" "$img" "$where" "$extra" "$prompt" "${AUDIO_URL:-}" "$video_shift" "$lora_json" <<'PY' > "$out.timing.json" || { echo "render.sh: timing.json failed" >&2; exit 3; }
+python3 - "$out" "$code" "$crc" "$el" "$dur" "$w" "$h" "$steps" "$seed" "$img" "$where" "$extra" "$prompt" "${AUDIO_URL:-}" "$video_shift" "$lora_json" "$audio_meta" <<'PY' > "$out.timing.json" || { echo "render.sh: timing.json failed" >&2; exit 3; }
 import json, sys
-o, code, crc, el, dur, w, h, steps, seed, img, where, extra, prompt, audio, video_shift, lora_json = sys.argv[1:]
+from pathlib import Path
+o, code, crc, el, dur, w, h, steps, seed, img, where, extra, prompt, audio, video_shift, lora_json, audio_meta = sys.argv[1:]
 e = json.loads(extra)
 lora = json.loads(lora_json) if lora_json else None
 if lora is not None:
@@ -105,7 +136,8 @@ print(json.dumps({"out": o, "http": code, "curl_rc": int(crc), "elapsed_s": floa
                   "task": e.get("task"), "image": img, "frame_indices": where if (img and e.get("task") == "fl2va") else None,
                   "video_flow_shift_form": float(video_shift),
                   "video_flow_shift_after_extra_merge": e.get("flow_shift", float(video_shift)), "lora": lora,
-                  "extra_params": e, "audio_reference": audio or None, "prompt": prompt}))
+                  "extra_params": e, "audio_reference": audio or None,
+                  "audio_reference_file": json.loads(Path(audio_meta).read_text()) if audio_meta else None, "prompt": prompt}))
 PY
 cat "$out.timing.json"
 grep -i -E "x-stage-durations|x-peak-memory" "$out.headers" || true

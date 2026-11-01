@@ -1,6 +1,7 @@
 """Exercise render.sh's actual form and timing record without contacting a server."""
 
 import json
+import hashlib
 import os
 from pathlib import Path
 import subprocess
@@ -25,9 +26,13 @@ class RenderDurationTests(unittest.TestCase):
         date.chmod(0o755)
         curl = bindir / "curl"
         curl.write_text('''#!/usr/bin/env python3
-import json, os, pathlib, sys
+import base64, json, os, pathlib, sys
 args = sys.argv[1:]
 fields = [args[i + 1] for i, arg in enumerate(args[:-1]) if arg in ("-F", "--form-string")]
+for field in fields:
+    if field.startswith("audio_reference=<"):
+        payload = json.loads(pathlib.Path(field.split("<", 1)[1]).read_text())
+        pathlib.Path(os.environ["H3_TEST_AUDIO_CAPTURE"]).write_bytes(base64.b64decode(payload["audio_url"].split(",", 1)[1]))
 pathlib.Path(os.environ["H3_TEST_CAPTURE"]).write_text(json.dumps(fields))
 pathlib.Path(args[args.index("-o") + 1]).write_bytes(b"fake video")
 pathlib.Path(args[args.index("-D") + 1]).write_text("HTTP/1.1 200 OK\\n")
@@ -35,9 +40,10 @@ print("200", end="")
 ''')
         curl.chmod(0o755)
         self.env = os.environ.copy()
-        for name in ("H3_VIDEO_FLOW_SHIFT", "H3_AUDIO_FLOW_SHIFT", "H3_LORA_JSON", "CONT_PROMPTS_REST", "CONT_PROMPTS_EXTRA"):
+        for name in ("H3_VIDEO_FLOW_SHIFT", "H3_AUDIO_FLOW_SHIFT", "H3_LORA_JSON", "CONT_PROMPTS_REST", "CONT_PROMPTS_EXTRA", "H3_AUDIO_FILE", "AUDIO_URL"):
             self.env.pop(name, None)
         self.env.update(H3_VENV=str(self.root), H3_TEST_CAPTURE=str(self.root / "fields.json"),
+                        H3_TEST_AUDIO_CAPTURE=str(self.root / "audio.bin"), TMPDIR=str(self.root),
                         CONT_PROMPTS="auto", TASK="t2va")
 
     def run_render(self, extra, **updates):
@@ -90,6 +96,25 @@ print("200", end="")
                                           CONT_PROMPTS_REST="ignored")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(sent["continuation_prompts"], prompts)
+
+    def test_audio_file_larger_than_single_argument_is_submitted_and_recorded_by_hash(self):
+        source = self.root / "voice.wav"
+        data = bytes(range(256)) * 12300 + b"12"  # crosses the streaming chunk boundary
+        source.write_bytes(data)
+        result, _, timing = self.run_render({"audio_mode": "lock_source"}, H3_AUDIO_FILE=str(source))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.root / "audio.bin").read_bytes(), data)
+        self.assertEqual(timing["audio_reference_file"]["sha256"], hashlib.sha256(data).hexdigest())
+        self.assertEqual(timing["audio_reference_file"]["bytes"], len(data))
+        self.assertIsNone(timing["audio_reference"])
+        self.assertFalse(list(self.root.glob("h3-audio.*")))
+
+    def test_conflicting_audio_inputs_fail_before_request(self):
+        source = self.root / "voice.wav"
+        source.write_bytes(b"audio")
+        result, _, _ = self.run_render({}, H3_AUDIO_FILE=str(source), AUDIO_URL="https://example.invalid/a.wav")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse((self.root / "fields.json").exists())
 
     def test_baseline_sampler_defaults_are_preserved(self):
         result, sent, timing = self.run_render({})
