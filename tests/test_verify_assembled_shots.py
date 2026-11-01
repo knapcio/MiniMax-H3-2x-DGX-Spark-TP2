@@ -14,20 +14,21 @@ spec.loader.exec_module(module)
 
 
 class AssemblyChecks(unittest.TestCase):
-    def make_shot(self, path, color, frequency):
-        subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', f'color=c={color}:s=160x96:r=24:d=2',
-                        '-f', 'lavfi', '-i', f'sine=frequency={frequency}:sample_rate=32000:duration=2',
+    def make_shot(self, path, color, frequency, duration=2):
+        subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', f'color=c={color}:s=160x96:r=24:d={duration}',
+                        '-f', 'lavfi', '-i', f'sine=frequency={frequency}:sample_rate=32000:duration={duration}',
                         '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '0', '-threads', '1',
-                        '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '96k', '-t', '2', str(path)], check=True)
+                        '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '96k', '-t', str(duration), str(path)], check=True)
 
-    def make_film(self, path, shots):
+    def make_film(self, path, shots, durations=None):
+        durations = durations or [2] * len(shots)
         cmd = ['ffmpeg', '-v', 'error', '-filter_complex_threads', '1']
         for shot in shots:
             cmd.extend(['-i', str(shot)])
         filters = []
-        for i in range(len(shots)):
-            filters.extend([f'[{i}:v]trim=end_frame=48,setpts=PTS-STARTPTS[v{i}]',
-                            f'[{i}:a]apad=whole_dur=2,atrim=duration=2,asetpts=PTS-STARTPTS[a{i}]'])
+        for i, seconds in enumerate(durations):
+            filters.extend([f'[{i}:v]trim=end_frame={seconds * 24},setpts=PTS-STARTPTS[v{i}]',
+                            f'[{i}:a]apad=whole_dur={seconds},atrim=duration={seconds},asetpts=PTS-STARTPTS[a{i}]'])
         filters.append(''.join(f'[v{i}][a{i}]' for i in range(len(shots))) +
                        f'concat=n={len(shots)}:v=1:a=1[v][a]')
         cmd.extend(['-filter_complex', ';'.join(filters), '-map', '[v]', '-map', '[a]', '-c:v', 'libx264',
@@ -49,6 +50,26 @@ class AssemblyChecks(unittest.TestCase):
             swapped = module.assess(movie, [shots[1], shots[0], shots[2]], shot_seconds=2, fps=24)
             self.assertGreater(swapped['shots'][0]['video_samples'][0]['rgb_mean_absolute_difference'], 10)
             self.assertLess(swapped['shots'][0]['median_audio_correlation'], .2)
+
+    def test_variable_shot_durations_and_offsets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            durations = [2, 3, 2]
+            shots = [root / f'shot-{i}.mp4' for i in range(3)]
+            for path, color, frequency, seconds in zip(shots, ('red', 'green', 'blue'), (337, 619, 997), durations, strict=True):
+                self.make_shot(path, color, frequency, seconds)
+            movie = root / 'film.mp4'
+            self.make_film(movie, shots, durations)
+            result = module.assess(movie, shots, shot_seconds=durations, fps=24)
+            self.assertEqual(result['shot_durations'], durations)
+            self.assertIsNone(result['shot_seconds'])
+            for row in result['shots']:
+                self.assertLess(max(x['rgb_mean_absolute_difference'] for x in row['video_samples']), 3)
+                self.assertGreater(row['median_audio_correlation'], .9)
+            swapped = module.assess(movie, [shots[2], shots[1], shots[0]], shot_seconds=durations, fps=24)
+            self.assertGreater(swapped['shots'][2]['video_samples'][0]['rgb_mean_absolute_difference'], 10)
+            with self.assertRaises(ValueError):
+                module.assess(movie, shots, shot_seconds=[2, 3], fps=24)
 
 
 if __name__ == '__main__':

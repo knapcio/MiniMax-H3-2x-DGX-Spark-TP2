@@ -280,7 +280,7 @@ the offset to -2 frames. On two first 10 s Polish audio-driven scenes, the scree
 artificial-delay control returned -7. The fixed crop, speaker selection, language and synthetic speech can affect
 the result, so neither a passing control nor a confidence value proves accurate lip sync or natural movement.
 
-For an edited sequence assembled from equal-length clips, `scripts/verify_assembled_shots.py` checks declared frame
+For an edited sequence assembled from clips, `scripts/verify_assembled_shots.py` checks declared frame
 counts, rates, geometry and audio start times, then compares three RGB frames and sparse audio windows per ordered
 source. For example:
 
@@ -288,6 +288,9 @@ source. For example:
 python scripts/verify_assembled_shots.py film.mp4 --shot first.mp4 --shot second.mp4 \
   --shot-seconds 10 --report assembly.json
 ```
+
+Supply one `--shot-seconds` for all shots, or repeat it once per shot in order when durations differ, such as
+`--shot first.mp4 --shot second.mp4 --shot-seconds 30 --shot-seconds 60`. Offsets are accumulated in frames.
 
 NumPy, ffmpeg and ffprobe are required; each `--shot` must be supplied in the intended order. A synthetic test
 distinguishes swapped red and green shots even though their grayscale brightness is similar. On a separate 20 s
