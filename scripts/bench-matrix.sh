@@ -7,8 +7,14 @@ source "$(dirname "$0")/env.sh"
 S="$(cd "$(dirname "$0")" && pwd)"
 WORKER_SSH=${WORKER_SSH:-knapcio@$WORKER_IP}
 SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=10)
+if [ -n "${H3_PROMPT_FILE:-}" ]; then
+  [ -z "${PROMPT:-}" ] || { echo 'choose H3_PROMPT_FILE or PROMPT, not both' >&2; exit 2; }
+  PROMPT=""  # Explicit seventh-argument placeholder; do not substitute the default scene.
+else
+  PROMPT=${PROMPT:-"Slow drifting clouds over rolling green hills at golden hour, soft wind in the grass, gentle light moving across the valley, calm, photoreal, steady camera."}
+fi
+export -n PROMPT
 OUT=${OUT:-$HOME/h3-tp2-results/$(date +%Y%m%d-%H%M%S)}; mkdir -p "$OUT"
-PROMPT=${PROMPT:-"Slow drifting clouds over rolling green hills at golden hour, soft wind in the grass, gentle light moving across the valley, calm, photoreal, steady camera."}
 img=${2:-}
 WDIR=${H3_MEMWATCH_WORKER_DIR:-h3-tp2-results/memwatch}   # on the worker, relative to $HOME
 if [ "${H3_MEMWATCH_PER_OUTPUT:-0}" = 1 ]; then

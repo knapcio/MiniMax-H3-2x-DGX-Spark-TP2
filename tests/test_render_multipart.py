@@ -39,7 +39,8 @@ class RealMultipartTests(unittest.TestCase):
             prompt = 'The woman listens; Wokulski says <d>[Polish] Dzień dobry.</d>'
             extra = {'long_video': True, 'audio_mode': 'lock_source', 'continuation_prompts': [prompt, 'Later; continue.']}
             env = os.environ.copy()
-            for key in ('AUDIO_URL', 'H3_AUDIO_MAX_FIELD_BYTES', 'CONT_PROMPTS', 'CONT_PROMPTS_REST', 'CONT_PROMPTS_EXTRA'):
+            for key in ('AUDIO_URL', 'H3_AUDIO_MAX_FIELD_BYTES', 'CONT_PROMPTS', 'CONT_PROMPTS_REST', 'CONT_PROMPTS_EXTRA',
+                        'H3_PROMPT_FILE', 'H3_EXTRA_JSON_FILE', 'H3_TEXT_MAX_FIELD_BYTES'):
                 env.pop(key, None)
             env.update({'H3_API_HOST': '127.0.0.1', 'H3_API_PORT': str(server.server_port),
                         'H3_AUDIO_FILE': str(source), 'EXTRA_JSON': json.dumps(extra), 'TASK': 'fl2va'})

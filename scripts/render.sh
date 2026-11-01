@@ -5,6 +5,36 @@
 set -uo pipefail
 source "$(dirname "$0")/env.sh"
 out=$1; dur=$2; w=$3; h=$4; steps=$5; seed=$6; prompt=$7; img=${8:-}; where=${9:-first}
+# Content remains in shell memory or private files, never in child argv/env.
+# File inputs use an empty seventh positional argument; ambiguous sources fail.
+if [ -n "${H3_PROMPT_FILE:-}" ] && [ -n "$prompt" ]; then
+  echo "render.sh: choose H3_PROMPT_FILE or the positional prompt, not both" >&2; exit 2
+fi
+if [ -n "${H3_EXTRA_JSON_FILE:-}" ] && [ -n "${EXTRA_JSON:-}" ]; then
+  echo "render.sh: choose H3_EXTRA_JSON_FILE or EXTRA_JSON, not both" >&2; exit 2
+fi
+export -n EXTRA_JSON CONT_PROMPTS_EXTRA CONT_PROMPTS_REST
+request_tmp=$(mktemp -d "${TMPDIR:-/tmp}/h3-text.XXXXXX") || exit 2
+audio_tmp=""
+cleanup() {
+  rm -rf -- "$request_tmp"
+  [ -z "$audio_tmp" ] || rm -rf -- "$audio_tmp"
+}
+trap cleanup EXIT
+# printf is a bash builtin: even legacy inputs are not copied into an exec argument.
+printf '%s' "$prompt" > "$request_tmp/prompt.input"
+printf '%s' "${EXTRA_JSON:-}" > "$request_tmp/extra.input"
+printf '%s' "${CONT_PROMPTS_EXTRA:-}" > "$request_tmp/words.input"
+printf '%s' "${CONT_PROMPTS_REST:-}" > "$request_tmp/rest.input"
+unset prompt EXTRA_JSON CONT_PROMPTS_EXTRA CONT_PROMPTS_REST
+# curl parses <path and @path using its form grammar. Quote the path itself,
+# including literal quotes/backslashes, so punctuation in TMPDIR is harmless.
+curl_form_path() {
+  local path=$1
+  path=${path//\\/\\\\}
+  path=${path//\"/\\\"}
+  printf '"%s"' "$path"
+}
 # Optional request-level sampler/adapter settings. Defaults preserve existing
 # requests. An adapter requires an object accepted by /v1/videos: name, path,
 # optional scale and ID. Its path is not written into the timing record.
@@ -33,56 +63,17 @@ if sys.argv[3]:
                                    or not 1 <= int(adapter_id) < 2**63):
         raise ValueError("LoRA int_id must be a positive 63-bit integer")
 PY
-# TASK=ref2va switches to the Ref2VA partition's request shape (reference image, no frame_indices); EXTRA_JSON merges
-# more extra_params, e.g. '{"long_video": true, "long_video_mode": "continuation"}' for the continuation mode.
-TASK=${TASK:-}
-if [ "$TASK" = ref2va ]; then
-  extra="{\"task\": \"ref2va\", \"duration\": $dur, \"audio_flow_shift\": $audio_shift}"
-elif [ -n "$img" ]; then
-  case "$where" in first) fi='[0]';; last) fi='[-1]';; both) fi='[0, -1]';; esac
-  extra="{\"task\": \"fl2va\", \"duration\": $dur, \"audio_flow_shift\": $audio_shift, \"frame_indices\": $fi}"
-else
-  extra="{\"task\": \"t2va\", \"duration\": $dur, \"audio_flow_shift\": $audio_shift}"
-fi
-if [ -n "${EXTRA_JSON:-}" ]; then
-  extra=$(python3 -c 'import json,sys; a=json.loads(sys.argv[1]); b=json.loads(sys.argv[2]); assert isinstance(b, dict), "EXTRA_JSON must be a JSON object"; a.update(b); print(json.dumps(a))' "$extra" "$EXTRA_JSON") \
-    || { echo "render.sh: invalid EXTRA_JSON, nothing submitted" >&2; exit 2; }
-fi
-# CONT_PROMPTS=auto: for a continuation request, build one prompt per window from "$prompt" (window plan as upstream:
-# frames aligned to 17n+5, windows of continuation_window_frames (277) with continuation_overlap_frames (22) overlap),
-# restating that the same shot continues.  Runs after the EXTRA_JSON merge and uses the effective duration (upstream
-# precedence: target.duration_seconds, duration_seconds, duration); supplied continuation_prompts are kept as they are.
-# CONT_PROMPTS_EXTRA="<sentence>" is appended to every generated window prompt (experiments on wording).
-# CONT_PROMPTS_REST supplies the later-window wording; {base} explicitly inserts the original prompt if wanted.
-if [ "${CONT_PROMPTS:-}" = auto ]; then
-  extra=$(python3 - "$extra" "$prompt" <<'PY'
-import json, math, os, sys
-e, base = json.loads(sys.argv[1]), sys.argv[2]
-if e.get("long_video") and e.get("long_video_mode", "continuation") == "continuation" and not e.get("continuation_prompts"):
-    target = e.get("target")
-    if target is not None and not isinstance(target, dict):
-        raise ValueError("target must be an object")
-    dur = (target if target is not None else {}).get("duration_seconds", e.get("duration_seconds", e.get("duration")))
-    if dur is not None:  # null selects the server's num_frames/default path
-        frames = int(round(float(dur) * 24)); frames = ((frames - 5 + 16) // 17) * 17 + 5
-        win, ov = int(e.get("continuation_window_frames", 277)), int(e.get("continuation_overlap_frames", 22))
-        n = 1 if frames <= win else 1 + math.ceil((frames - win) / (win - ov))
-        extra = os.environ.get("CONT_PROMPTS_EXTRA", "").strip()   # e.g. "The light and the sky stay exactly as they are."
-        first = base.rstrip(". ") + ". One single continuous take from a steady camera, no cuts, no transitions." + (" " + extra if extra else "")
-        rest_template = os.environ.get("CONT_PROMPTS_REST", "").strip()
-        rest = (rest_template.replace("{base}", base) if rest_template else
-                "The same continuous shot goes on without any cut or transition, the camera keeps moving the same way: " + base)
-        rest += " " + extra if extra else ""
-        e["continuation_prompts"] = [first] + [rest] * (n - 1)
-print(json.dumps(e))
-PY
-) || { echo "render.sh: CONT_PROMPTS=auto failed" >&2; exit 2; }
-fi
-# All text fields are literal. With curl -F, a semicolon inside a prompt or
-# JSON string is parsed as form metadata and silently truncates its value.
-args=(--form-string "prompt=$prompt" --form-string "width=$w" --form-string "height=$h" --form-string "aspect_ratio=16:9" --form-string "fps=24" --form-string "num_inference_steps=$steps" --form-string "flow_shift=$video_shift" --form-string "seed=$seed" --form-string "extra_params=$extra")
+# Prepare both field snapshots in one process. Automatic window prompts and
+# JSON merges stay inside Python memory/files; only paths/scalars cross exec.
+text_args=("--directory=$request_tmp" "--prompt=${H3_PROMPT_FILE:-$request_tmp/prompt.input}" "--extra=${H3_EXTRA_JSON_FILE:-$request_tmp/extra.input}"
+           "--duration=$dur" "--audio-shift=$audio_shift" "--image=$img" "--where=$where" "--task=${TASK:-}"
+           "--limit=${H3_TEXT_MAX_FIELD_BYTES:-1048576}")
+[ "${CONT_PROMPTS:-}" != auto ] || text_args+=(--auto)
+python3 "$(dirname "$0")/render_text_fields.py" "${text_args[@]}" \
+  || { echo "render.sh: invalid or oversized text fields, nothing submitted" >&2; exit 2; }
+args=(-F "prompt=<$(curl_form_path "$request_tmp/prompt.txt")" --form-string "width=$w" --form-string "height=$h" --form-string "aspect_ratio=16:9" --form-string "fps=24" --form-string "num_inference_steps=$steps" --form-string "flow_shift=$video_shift" --form-string "seed=$seed" -F "extra_params=<$(curl_form_path "$request_tmp/extra.json")")
 [ -n "$lora_json" ] && args+=(--form-string "lora=$lora_json")
-[ -n "$img" ] && args+=(-F "input_reference=@$img")
+[ -n "$img" ] && args+=(-F "input_reference=@$(curl_form_path "$img")")
 # AUDIO_URL or H3_AUDIO_FILE: a driving soundtrack (audio_mode=lock_source in
 # EXTRA_JSON). For a file, curl reads the JSON field from a temporary file;
 # passing a long data URL as one command-line argument can exceed ARG_MAX.
@@ -92,7 +83,6 @@ if [ -n "${AUDIO_URL:-}" ] && [ -n "${H3_AUDIO_FILE:-}" ]; then
 fi
 if [ -n "${H3_AUDIO_FILE:-}" ]; then
   audio_tmp=$(mktemp -d "${TMPDIR:-/tmp}/h3-audio.XXXXXX") || exit 2
-  trap 'rm -rf -- "$audio_tmp"' EXIT
   audio_meta="$audio_tmp/meta.json"
   python3 - "$H3_AUDIO_FILE" "$audio_tmp/reference.json" "$audio_meta" "${H3_AUDIO_MAX_FIELD_BYTES:-1048576}" <<'PY' || { echo "render.sh: invalid or oversized audio file, nothing submitted" >&2; exit 2; }
 import base64, hashlib, json, sys
@@ -120,7 +110,7 @@ if size != size_on_disk:
 meta.write_text(json.dumps({"kind": "inline-audio-file", "bytes": size, "field_bytes": field_bytes,
                             "sha256": digest.hexdigest(), "mime": mime}))
 PY
-  args+=(-F "audio_reference=<$audio_tmp/reference.json")
+  args+=(-F "audio_reference=<$(curl_form_path "$audio_tmp/reference.json")")
 elif [ -n "${AUDIO_URL:-}" ]; then
   args+=(--form-string "audio_reference=$(python3 -c 'import json,sys; print(json.dumps({"audio_url": sys.argv[1]}))' "$AUDIO_URL")")
 fi
@@ -128,11 +118,12 @@ t0=$(date +%s.%N)
 code=$(curl -sS --max-time "${H3_RENDER_TIMEOUT_S:-14400}" -X POST "http://$H3_API_HOST:$H3_API_PORT/v1/videos/sync" "${args[@]}" -D "$out.headers" -o "$out" -w "%{http_code}"); crc=$?
 t1=$(date +%s.%N)
 el=$(python3 -c "print(round($t1-$t0,1))")
-python3 - "$out" "$code" "$crc" "$el" "$dur" "$w" "$h" "$steps" "$seed" "$img" "$where" "$extra" "$prompt" "${AUDIO_URL:-}" "$video_shift" "$lora_json" "$audio_meta" <<'PY' > "$out.timing.json" || { echo "render.sh: timing.json failed" >&2; exit 3; }
+python3 - "$out" "$code" "$crc" "$el" "$dur" "$w" "$h" "$steps" "$seed" "$img" "$where" "$request_tmp/extra.json" "$request_tmp/prompt.txt" "${AUDIO_URL:-}" "$video_shift" "$lora_json" "$audio_meta" "$request_tmp/text-meta.json" <<'PY' > "$out.timing.json" || { echo "render.sh: timing.json failed" >&2; exit 3; }
 import json, sys
 from pathlib import Path
-o, code, crc, el, dur, w, h, steps, seed, img, where, extra, prompt, audio, video_shift, lora_json, audio_meta = sys.argv[1:]
-e = json.loads(extra)
+o, code, crc, el, dur, w, h, steps, seed, img, where, extra_file, prompt_file, audio, video_shift, lora_json, audio_meta, text_meta = sys.argv[1:]
+e = json.loads(Path(extra_file).read_bytes())
+prompt = Path(prompt_file).read_bytes().decode("utf-8")
 lora = json.loads(lora_json) if lora_json else None
 if lora is not None:
     lora = {"name": lora.get("name") or lora.get("lora_name") or lora.get("adapter"),
@@ -147,7 +138,7 @@ print(json.dumps({"out": o, "http": code, "curl_rc": int(crc), "elapsed_s": floa
                   "task": e.get("task"), "image": img, "frame_indices": where if (img and e.get("task") == "fl2va") else None,
                   "video_flow_shift_form": float(video_shift),
                   "video_flow_shift_after_extra_merge": e.get("flow_shift", float(video_shift)), "lora": lora,
-                  "extra_params": e, "audio_reference": audio or None,
+                  "extra_params": e, "text_fields": json.loads(Path(text_meta).read_bytes()), "audio_reference": audio or None,
                   "audio_reference_file": json.loads(Path(audio_meta).read_text()) if audio_meta else None, "prompt": prompt}))
 PY
 cat "$out.timing.json"

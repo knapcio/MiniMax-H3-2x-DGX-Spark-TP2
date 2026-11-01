@@ -26,12 +26,20 @@ class RenderDurationTests(unittest.TestCase):
         date.chmod(0o755)
         curl = bindir / "curl"
         curl.write_text('''#!/usr/bin/env python3
-import base64, json, os, pathlib, sys
+import base64, json, os, pathlib, shlex, sys
 args = sys.argv[1:]
-fields = [args[i + 1] for i, arg in enumerate(args[:-1]) if arg in ("-F", "--form-string")]
+fields = []
+for i, arg in enumerate(args[:-1]):
+    if arg not in ("-F", "--form-string"):
+        continue
+    field = args[i + 1]
+    name, value = field.split("=", 1)
+    if arg == "-F" and value.startswith("<"):
+        field = name + "=" + pathlib.Path(shlex.split(value[1:])[0]).read_bytes().decode("utf-8")
+    fields.append(field)
 for field in fields:
-    if field.startswith("audio_reference=<"):
-        payload = json.loads(pathlib.Path(field.split("<", 1)[1]).read_text())
+    if field.startswith("audio_reference="):
+        payload = json.loads(field.split("=", 1)[1])
         pathlib.Path(os.environ["H3_TEST_AUDIO_CAPTURE"]).write_bytes(base64.b64decode(payload["audio_url"].split(",", 1)[1]))
 pathlib.Path(os.environ["H3_TEST_CAPTURE"]).write_text(json.dumps(fields))
 pathlib.Path(args[args.index("-o") + 1]).write_bytes(b"fake video")
@@ -40,7 +48,7 @@ print("200", end="")
 ''')
         curl.chmod(0o755)
         self.env = os.environ.copy()
-        for name in ("H3_VIDEO_FLOW_SHIFT", "H3_AUDIO_FLOW_SHIFT", "H3_LORA_JSON", "CONT_PROMPTS_REST", "CONT_PROMPTS_EXTRA", "H3_AUDIO_FILE", "H3_AUDIO_MAX_FIELD_BYTES", "AUDIO_URL"):
+        for name in ("H3_VIDEO_FLOW_SHIFT", "H3_AUDIO_FLOW_SHIFT", "H3_LORA_JSON", "CONT_PROMPTS_REST", "CONT_PROMPTS_EXTRA", "H3_AUDIO_FILE", "H3_AUDIO_MAX_FIELD_BYTES", "AUDIO_URL", "H3_PROMPT_FILE", "H3_EXTRA_JSON_FILE", "H3_TEXT_MAX_FIELD_BYTES"):
             self.env.pop(name, None)
         self.env.update(H3_VENV=str(self.root), H3_TEST_CAPTURE=str(self.root / "fields.json"),
                         H3_TEST_AUDIO_CAPTURE=str(self.root / "audio.bin"), TMPDIR=str(self.root),
