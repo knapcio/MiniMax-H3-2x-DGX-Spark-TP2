@@ -16,6 +16,11 @@ with a real GPU render. The already running film uses its original pinned code.
 - The look-lock formula is unchanged: its hidden overlap stays untouched, but
   the first *free* latent frame receives `1/n_ramp` of the correction. A former
   comment claiming zero correction on that frame was incorrect.
+- Retry scores are measured before match/look-lock, which can increase the
+  returned window's latent seam after selection. The optional
+  [`H3_TP2_SEAM_POSTCHECK`](SEAM_POSTCHECK.md) observes the corrected window
+  without changing selection; it does not measure a downstream crossfade or
+  establish decoded visual quality.
 
 A separate source-level observation remains open. In the inspected upstream
 snapshot `pipeline_minimax_h3.py` SHA-256

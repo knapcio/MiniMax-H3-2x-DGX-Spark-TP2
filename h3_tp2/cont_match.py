@@ -11,6 +11,8 @@ untouched).  The matched window then continues from the exposure and contrast it
 from __future__ import annotations
 
 import logging
+import math
+import os
 
 import torch
 
@@ -59,6 +61,27 @@ def seam_ratio(video: torch.Tensor, overlap_v: int) -> tuple[float, float, float
     return boundary, median, boundary / max(median, 1e-6)
 
 
+def _log_post_correction_seam(video: torch.Tensor, overlap_v: int, index: int) -> None:
+    """Observe the returned window, independently of correction and retry selection."""
+    try:
+        with torch.no_grad():
+            boundary, median, ratio = seam_ratio(video.detach(), overlap_v)
+        if not all(math.isfinite(value) for value in (boundary, median, ratio)):
+            raise ValueError("nonfinite post-correction seam measurement")
+        logger.info(
+            "h3_tp2 seam postcheck window %d: returned window after match/look-lock stage, "
+            "before downstream crossfade: boundary %.4f median %.4f ratio %.2f "
+            "(diagnostic only; not the retry score)", index, boundary, median, ratio,
+        )
+    except Exception as exc:  # noqa: BLE001
+        # Even a diagnostic logging failure must not turn an observation into
+        # a render failure. The normal AV correction has already run.
+        try:
+            logger.warning("h3_tp2 seam postcheck window %d skipped (%s)", index, exc)
+        except Exception:  # noqa: BLE001
+            pass
+
+
 def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, retries: int = 0, max_ratio: float = 2.0,
                  lock: str = "", lock_strength: float = 1.0, lock_ramp: float = 1.0, lock_audio: bool = False,
                  lock_std: float | None = None, lock_ref: str = "window"):  # noqa: ANN001
@@ -68,6 +91,9 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
     (up to ``retries`` times); the attempt with the lowest ratio is kept.
     """
     state = {"prev": None, "index": 0, "ref": None, "ref_audio": None}
+    # Read once per request wrapper, covering both plugin continuation routes.
+    # Disabled: no extra tensor operations, measurements or log records.
+    postcheck = os.environ.get("H3_TP2_SEAM_POSTCHECK", "0").strip() == "1"
 
     def _overlap_audio(args):  # noqa: ANN001
         lengths = args.get("audio_condition_lengths") or []
@@ -136,6 +162,8 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
             state["ref"] = _stats(ref_slice(video, lock_ref, dim=2))
             if isinstance(audio, torch.Tensor) and audio.dim() == 3:
                 state["ref_audio"] = audio_stats(ref_slice(audio, lock_ref, dim=2))
+        if postcheck and ov:
+            _log_post_correction_seam(video, ov, state["index"])
         state["prev"] = video
         return video, audio
 
