@@ -14,9 +14,20 @@ from pathlib import Path
 import sys
 
 
-def strings_from_plan(data: object) -> list[str]:
+def strings_from_plan(data: object, *, segment: int | None = None) -> list[str]:
     if not isinstance(data, dict):
         raise ValueError('plan must be a JSON object')
+    if segment is not None:
+        segments = data.get('segments')
+        if (type(segment) is not int or segment < 1 or not isinstance(segments, list)
+                or segment > len(segments)):
+            raise ValueError('--segment requires a valid 1-based segment in a segmented plan')
+        selected = segments[segment - 1]
+        if not isinstance(selected, dict) or type(selected.get('index')) is not int or selected['index'] != segment:
+            raise ValueError('segmented plan index differs from its position')
+        data = selected
+    elif 'segments' in data:
+        raise ValueError('segmented plan requires --segment N; each request is encoded separately')
     extra = data.get('extra_params', data)
     if not isinstance(extra, dict):
         raise ValueError('extra_params must be a JSON object')
@@ -54,16 +65,21 @@ def main() -> int:
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument('--prompt-file', type=Path, help='UTF-8 prompt, including literal newlines')
     source.add_argument('--plan', type=Path, help='planner JSON or extra_params JSON with continuation_prompts')
+    parser.add_argument('--segment', type=int, help='1-based request in a segmented story plan (with --plan)')
     parser.add_argument('--report', type=Path, required=True)
     args = parser.parse_args()
     try:
         if args.prompt_file:
+            if args.segment is not None:
+                raise ValueError('--segment requires --plan, not --prompt-file')
             prompts = [args.prompt_file.read_bytes().decode('utf-8')]
         else:
-            prompts = strings_from_plan(json.loads(args.plan.read_bytes().decode('utf-8')))
+            prompts = strings_from_plan(json.loads(args.plan.read_bytes().decode('utf-8')), segment=args.segment)
         from transformers import Qwen2TokenizerFast
         tokenizer = Qwen2TokenizerFast.from_pretrained(str(args.tokenizer_dir), local_files_only=True)
         result = inspect(prompts, tokenizer)
+        if args.segment is not None:
+            result['declared_segment_index'] = args.segment
         result['tokenizer_class'] = type(tokenizer).__name__
         result['tokenizer_json_sha256'] = hashlib.sha256((args.tokenizer_dir / 'tokenizer.json').read_bytes()).hexdigest()
         with args.report.open('x', encoding='utf-8') as report:

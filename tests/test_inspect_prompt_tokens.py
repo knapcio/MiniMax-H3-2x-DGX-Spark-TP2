@@ -1,6 +1,10 @@
 import hashlib
 import importlib.util
+import json
 from pathlib import Path
+import subprocess
+import sys
+import tempfile
 import unittest
 
 
@@ -41,6 +45,45 @@ class PromptTokenInspection(unittest.TestCase):
                       {'continuation_prompts': ['a', None]}, {'continuation_prompts': ['   ']}):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 MODULE.strings_from_plan(value)
+
+    def test_selects_one_segment_without_combining_separate_requests(self):
+        plan = {'segments': [{'index': 1, 'extra_params': {'continuation_prompts': ['pierwsze'] * 3}},
+                             {'index': 2, 'extra_params': {'continuation_prompts': ['drugie'] * 6}}]}
+        prompts = MODULE.strings_from_plan(plan, segment=2)
+        self.assertEqual(prompts, ['drugie'] * 6)
+        tokenizer = FakeTokenizer()
+        self.assertEqual(MODULE.inspect(prompts, tokenizer)['window_count'], 6)
+        self.assertEqual(len(tokenizer.calls), 6)
+        with self.assertRaisesRegex(ValueError, 'requires --segment'):
+            MODULE.strings_from_plan(plan)
+        for value in (0, -1, 3, True):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                MODULE.strings_from_plan(plan, segment=value)
+        with self.assertRaises(ValueError):
+            MODULE.strings_from_plan({'continuation_prompts': ['x']}, segment=1)
+        with self.assertRaisesRegex(ValueError, 'index differs'):
+            MODULE.strings_from_plan({'segments': [{'index': 2, 'extra_params': {'continuation_prompts': ['x']}}]},
+                                     segment=1)
+        with self.assertRaisesRegex(ValueError, 'index differs'):
+            MODULE.strings_from_plan({'segments': [{'index': True, 'extra_params': {'continuation_prompts': ['x']}}]},
+                                     segment=1)
+
+    def test_cli_rejects_ambiguous_segment_requests_before_tokenizer_load(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            prompt = root / 'prompt.txt'; prompt.write_text('Wokulski')
+            plan = root / 'plan.json'
+            plan.write_text(json.dumps({'segments': [{'index': 1, 'extra_params': {'continuation_prompts': ['x']}}]}))
+            for source, extra in ((['--prompt-file', str(prompt)], ['--segment', '1']),
+                                  (['--plan', str(plan)], []),
+                                  (['--plan', str(plan)], ['--segment', '2'])):
+                with self.subTest(source=source, extra=extra):
+                    report = root / 'report.json'
+                    p = subprocess.run([sys.executable, str(PATH), '--tokenizer-dir', str(root),
+                                        *source, *extra, '--report', str(report)], capture_output=True)
+                    self.assertNotEqual(p.returncode, 0)
+                    self.assertFalse(report.exists())
+                    self.assertIn(b'segment', p.stderr.lower())
 
 
 if __name__ == '__main__':

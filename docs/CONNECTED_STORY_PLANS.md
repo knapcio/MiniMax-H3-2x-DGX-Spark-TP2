@@ -87,10 +87,19 @@ with os.fdopen(fd, 'w', encoding='utf-8') as f:
 PY
 ```
 
-Use that file with `H3_EXTRA_JSON_FILE` for that request, or with
-`inspect_prompt_tokens.py --plan segment-01-extra.json` (plus its required
-tokenizer and report options). The tokenizer inspector accepts a single
-request's parameters, not the entire segmented plan. Repeat for each segment.
+Use that file with `H3_EXTRA_JSON_FILE` for that request. To inspect the text
+tokens of a particular segment without extracting its parameters, select the
+one-based segment number:
+
+```sh
+python scripts/inspect_prompt_tokens.py --tokenizer-dir /path/to/h3-tokenizer \
+  --plan segmented-plan.json --segment 1 --report segment-01-tokens.json
+```
+
+The reported windows belong to that one request and are encoded separately;
+their sum is not a single model context. Repeat for each segment. The
+inspector can also accept the extracted `segment-01-extra.json` without
+`--segment`.
 
 `extra_params_json_bytes_default_python` is the serialized planner output size
 before a client merges task and duration. It is not a token count or an exact
