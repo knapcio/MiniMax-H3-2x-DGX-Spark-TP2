@@ -5,6 +5,10 @@
 set -uo pipefail
 source "$(dirname "$0")/env.sh"
 out=$1; dur=$2; w=$3; h=$4; steps=$5; seed=$6; prompt=$7; img=${8:-}; where=${9:-first}
+end_img=${H3_END_IMAGE_FILE:-}
+if [ -n "$end_img" ] && { [ -z "$img" ] || [ "$where" != both ]; }; then
+  echo "render.sh: H3_END_IMAGE_FILE requires a first image and frame position both" >&2; exit 2
+fi
 # Content remains in shell memory or private files, never in child argv/env.
 # File inputs use an empty seventh positional argument; ambiguous sources fail.
 if [ -n "${H3_PROMPT_FILE:-}" ] && [ -n "$prompt" ]; then
@@ -76,9 +80,35 @@ case "${H3_CONT_PREFIX_BASE:-0}" in
 esac
 python3 "$(dirname "$0")/render_text_fields.py" "${text_args[@]}" \
   || { echo "render.sh: invalid or oversized text fields, nothing submitted" >&2; exit 2; }
+image_meta=""
+if [ -n "$end_img" ]; then
+  # Preserve known image suffixes so curl and the API identify both files as images.
+  image_suffix() {
+    case "$1" in
+      *.[Pp][Nn][Gg]) printf '.png';;
+      *.[Jj][Pp][Gg]|*.[Jj][Pp][Ee][Gg]) printf '.jpg';;
+      *.[Ww][Ee][Bb][Pp]) printf '.webp';;
+      *.[Hh][Ee][Ii][Cc]) printf '.heic';;
+      *.[Hh][Ee][Ii][Ff]) printf '.heif';;
+      *) return 1;;
+    esac
+  }
+  first_suffix=$(image_suffix "$img") && last_suffix=$(image_suffix "$end_img") \
+    || { echo "render.sh: keyframe images need PNG, JPEG, WEBP, HEIC or HEIF suffixes" >&2; exit 2; }
+  first_snapshot="$request_tmp/first$first_suffix"; last_snapshot="$request_tmp/last$last_suffix"
+  image_meta="$request_tmp/keyframes.json"
+  python3 "$(dirname "$0")/snapshot_first_last.py" --first="$img" --last="$end_img" \
+    --first-output="$first_snapshot" --last-output="$last_snapshot" --extra="$request_tmp/extra.json" \
+    --metadata="$image_meta" --seconds="$dur" \
+    || { echo "render.sh: invalid two-keyframe request, nothing submitted" >&2; exit 2; }
+fi
 args=(-F "prompt=<$(curl_form_path "$request_tmp/prompt.txt")" --form-string "width=$w" --form-string "height=$h" --form-string "aspect_ratio=16:9" --form-string "fps=24" --form-string "num_inference_steps=$steps" --form-string "flow_shift=$video_shift" --form-string "seed=$seed" -F "extra_params=<$(curl_form_path "$request_tmp/extra.json")")
 [ -n "$lora_json" ] && args+=(--form-string "lora=$lora_json")
-[ -n "$img" ] && args+=(-F "input_reference=@$(curl_form_path "$img")")
+if [ -n "$end_img" ]; then
+  args+=(-F "input_references=@$(curl_form_path "$first_snapshot")" -F "input_references=@$(curl_form_path "$last_snapshot")")
+elif [ -n "$img" ]; then
+  args+=(-F "input_reference=@$(curl_form_path "$img")")
+fi
 # AUDIO_URL or H3_AUDIO_FILE: a driving soundtrack (audio_mode=lock_source in
 # EXTRA_JSON). For a file, curl reads the JSON field from a temporary file;
 # passing a long data URL as one command-line argument can exceed ARG_MAX.
@@ -123,10 +153,10 @@ t0=$(date +%s.%N)
 code=$(curl -sS --max-time "${H3_RENDER_TIMEOUT_S:-14400}" -X POST "http://$H3_API_HOST:$H3_API_PORT/v1/videos/sync" "${args[@]}" -D "$out.headers" -o "$out" -w "%{http_code}"); crc=$?
 t1=$(date +%s.%N)
 el=$(python3 -c "print(round($t1-$t0,1))")
-python3 - "$out" "$code" "$crc" "$el" "$dur" "$w" "$h" "$steps" "$seed" "$img" "$where" "$request_tmp/extra.json" "$request_tmp/prompt.txt" "${AUDIO_URL:-}" "$video_shift" "$lora_json" "$audio_meta" "$request_tmp/text-meta.json" <<'PY' > "$out.timing.json" || { echo "render.sh: timing.json failed" >&2; exit 3; }
+python3 - "$out" "$code" "$crc" "$el" "$dur" "$w" "$h" "$steps" "$seed" "$img" "$where" "$request_tmp/extra.json" "$request_tmp/prompt.txt" "${AUDIO_URL:-}" "$video_shift" "$lora_json" "$audio_meta" "$request_tmp/text-meta.json" "$image_meta" <<'PY' > "$out.timing.json" || { echo "render.sh: timing.json failed" >&2; exit 3; }
 import json, sys
 from pathlib import Path
-o, code, crc, el, dur, w, h, steps, seed, img, where, extra_file, prompt_file, audio, video_shift, lora_json, audio_meta, text_meta = sys.argv[1:]
+o, code, crc, el, dur, w, h, steps, seed, img, where, extra_file, prompt_file, audio, video_shift, lora_json, audio_meta, text_meta, image_meta = sys.argv[1:]
 e = json.loads(Path(extra_file).read_bytes())
 prompt = Path(prompt_file).read_bytes().decode("utf-8")
 lora = json.loads(lora_json) if lora_json else None
@@ -138,13 +168,16 @@ target = e.get("target")
 if target is not None and not isinstance(target, dict):
     raise ValueError("target must be an object")
 eff = (target if target is not None else {}).get("duration_seconds", e.get("duration_seconds", e.get("duration", dur)))
-print(json.dumps({"out": o, "http": code, "curl_rc": int(crc), "elapsed_s": float(el), "duration": float(dur),
+record = {"out": o, "http": code, "curl_rc": int(crc), "elapsed_s": float(el), "duration": float(dur),
                   "effective_duration": None if eff is None else float(eff), "size": f"{w}x{h}", "steps": int(steps), "seed": int(seed),
                   "task": e.get("task"), "image": img, "frame_indices": where if (img and e.get("task") == "fl2va") else None,
                   "video_flow_shift_form": float(video_shift),
                   "video_flow_shift_after_extra_merge": e.get("flow_shift", float(video_shift)), "lora": lora,
                   "extra_params": e, "text_fields": json.loads(Path(text_meta).read_bytes()), "audio_reference": audio or None,
-                  "audio_reference_file": json.loads(Path(audio_meta).read_text()) if audio_meta else None, "prompt": prompt}))
+                  "audio_reference_file": json.loads(Path(audio_meta).read_text()) if audio_meta else None, "prompt": prompt}
+if image_meta:
+    record["keyframe_snapshots"] = json.loads(Path(image_meta).read_bytes())
+print(json.dumps(record))
 PY
 cat "$out.timing.json"
 grep -i -E "x-stage-durations|x-peak-memory" "$out.headers" || true
