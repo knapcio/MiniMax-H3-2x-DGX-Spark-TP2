@@ -111,3 +111,21 @@ decoded-frame PTS against sample counts, as well as the absolute offset and wave
 isolated future-gate candidate passed the real first block and rejected both a 1 s initial offset and a 1 s internal
 gap. The immutable gate of the **already running** film was not replaced; the separate collector now applies the
 stronger screen to each result. This remains an audio timing screen, not proof of natural speech or lip sync.
+
+The second linked block completed at 21:09 (60 s, SHA-256
+`a63aa0af4bdfdee13d154440192e1e9625c080e578dc0754c720f7436d135ca5`); the third started at 21:09.
+The join screen measured a 3.12/255 mean RGB difference at the boundary. Sampled frames show both people in the
+same shop and clothing, and two positional face tracks were detected in 120/120 samples each; these checks do not
+establish full-playback continuity or actor likeness. Whisper's WER was 0.074 for both the source and output, with
+the same four word differences, so those particular recognition differences cannot be attributed to the render.
+Every timed line passed the separate frame-PTS and waveform screen, but the final line was close to its threshold:
+2.5 s sample correlation 0.669, and output RMS 0.0389 versus source 0.1159, about 9.5 dB lower. This is a measured
+level difference, not a listening verdict.
+
+An optional copy of block 2 replaces the rendered soundtrack with its exact synthetic driving speech. All 1,440
+decoded video frames and timestamps were preserved; all six timed speech checks passed, with waveform correlations
+at least 0.99999 at zero measured offset, and the last line's RMS was 0.1158 versus source 0.1159. Its audio and lip
+synchronization have not been judged in playback, so the original remains the main result. The collector prepares
+separate source-speech comparisons for later blocks and, if all six pass, an optional 300 s copy. A six-part
+synthetic assembly preserved 288 video frames and passed all six waveform/PTS checks; the real 300 s assembly is
+still pending.

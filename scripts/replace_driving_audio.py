@@ -11,12 +11,14 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
 
 import exact_duration
 import compare_driving_audio as audio
+import audio_frame_timing
 
 
 def sha(path: Path) -> str:
@@ -40,15 +42,25 @@ def replace(video: Path, source: Path, destination: Path) -> dict:
             stream.get('pix_fmt') != 'yuv420p' or abs(float(stream.get('start_time', 0))) > .001):
         raise ValueError('input must be zero-start yuv420p 24 fps with a known frame count')
     duration = frames / 24
-    source_timing = audio.track_timing(source)
-    if source_timing['audio_relative_to_timeline_s'] is None or abs(source_timing['audio_relative_to_timeline_s']) > .02:
-        raise ValueError('driving audio start is unknown or offset by more than 20 ms')
     destination.parent.mkdir(parents=True, exist_ok=True)
     fd, name = tempfile.mkstemp(prefix='.driving-audio-', suffix='.mp4', dir=destination.parent)
     os.close(fd); temporary = Path(name)
+    snapshot_dir = None
     try:
+        snapshot_dir = Path(tempfile.mkdtemp(prefix='.driving-source-', dir=destination.parent))
+        source_snapshot = snapshot_dir / ('source' + source.suffix)
+        shutil.copyfile(source, source_snapshot)
+        if sha(source_snapshot) != source_sha:
+            raise ValueError('driving audio changed while taking its snapshot')
+        # Validate and transcode the same private bytes. An original file that
+        # changes and is restored while ffmpeg runs cannot alter this input.
+        source_timing = audio.track_timing(source_snapshot)
+        source_frames = audio_frame_timing.inspect(source_snapshot)
+        source_start = audio_frame_timing.relative_start(source_frames, source_timing)
+        if source_start is None or abs(source_start) > .02:
+            raise ValueError('driving audio timestamps are discontinuous, unknown or offset by more than 20 ms')
         filt = f'[1:a:0]aresample=32000,apad=whole_dur={duration:.9f},atrim=duration={duration:.9f},asetpts=N/SR/TB[a]'
-        subprocess.run(['ffmpeg', '-v', 'error', '-xerror', '-nostdin', '-y', '-i', str(video), '-i', str(source),
+        subprocess.run(['ffmpeg', '-v', 'error', '-xerror', '-nostdin', '-y', '-i', str(video), '-i', str(source_snapshot),
                         '-filter_complex', filt, '-map', '0:v:0', '-map', '[a]', '-c:v', 'copy',
                         '-c:a', 'aac', '-b:a', '128k', '-ar', '32000', '-t', f'{duration:.9f}',
                         '-movflags', '+faststart', str(temporary)], check=True, timeout=10800)
@@ -69,20 +81,28 @@ def replace(video: Path, source: Path, destination: Path) -> dict:
         if exact_duration.frame_hashes(video, frames) != exact_duration.frame_hashes(temporary, frames):
             raise ValueError('a decoded video frame or timestamp changed')
         timing = audio.track_timing(temporary)
-        if timing['audio_relative_to_timeline_s'] is None or abs(timing['audio_relative_to_timeline_s']) > .02:
-            raise ValueError('replacement audio start is not aligned')
+        output_frames = audio_frame_timing.inspect(temporary)
+        output_start = audio_frame_timing.relative_start(output_frames, timing)
+        if output_start is None or abs(output_start) > .02:
+            raise ValueError('replacement audio timestamps are discontinuous, unknown or not aligned')
         subprocess.run(['ffmpeg', '-v', 'error', '-xerror', '-nostdin', '-i', str(temporary), '-map', '0:v:0',
                         '-map', '0:a:0', '-f', 'null', '-'], check=True, timeout=3600)
-        if sha(video) != video_sha or sha(source) != source_sha:
-            raise ValueError('an input changed during processing')
+        if sha(video) != video_sha or sha(source) != source_sha or sha(source_snapshot) != source_sha:
+            raise ValueError('an input or its snapshot changed during processing')
         result = {'input_video_sha256': video_sha, 'driving_audio_sha256': source_sha, 'output_sha256': sha(temporary),
                   'frames': frames, 'seconds': duration, 'decoded_video_frames_identical': True,
-                  'audio_timing': timing, 'audio': 'source transcoded to AAC; replaces H3-generated audio',
+                  'audio_timing': timing, 'source_audio_frame_timing': source_frames,
+                  'output_audio_frame_timing': output_frames,
+                  'audio': 'source transcoded to AAC; replaces H3-generated audio',
                   'limitations': 'Video frame identity does not prove intelligibility, identity or lip sync.'}
         os.link(temporary, destination)
         return result
     finally:
-        temporary.unlink(missing_ok=True)
+        try:
+            temporary.unlink(missing_ok=True)
+        finally:
+            if snapshot_dir is not None:
+                shutil.rmtree(snapshot_dir)
 
 
 def main() -> int:
