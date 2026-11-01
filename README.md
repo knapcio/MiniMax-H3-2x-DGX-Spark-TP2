@@ -263,6 +263,21 @@ the offset to -2 frames. On two first 10 s Polish audio-driven scenes, the scree
 artificial-delay control returned -7. The fixed crop, speaker selection, language and synthetic speech can affect
 the result, so neither a passing control nor a confidence value proves accurate lip sync or natural movement.
 
+For an edited sequence assembled from equal-length clips, `scripts/verify_assembled_shots.py` checks declared frame
+counts, rates, geometry and audio start times, then compares three RGB frames and sparse audio windows per ordered
+source. For example:
+
+```bash
+python scripts/verify_assembled_shots.py film.mp4 --shot first.mp4 --shot second.mp4 \
+  --shot-seconds 10 --report assembly.json
+```
+
+NumPy, ffmpeg and ffprobe are required; each `--shot` must be supplied in the intended order. A synthetic test
+distinguishes swapped red and green shots even though their grayscale brightness is similar. On a separate 20 s
+two-shot H3 assembly, RGB mean absolute differences at the six sampled frames were 0.48–0.68 on a 0–255 scale;
+median sampled audio correlations were at least 0.999. Re-encoding creates small differences. This sparse check
+helps find assembly mistakes, but does not establish natural motion, scene continuity or speech quality.
+
 An opt-in server experiment, `H3_TP2_VIDEO_FORM_LIMIT_MIB`, raises the implicit per-field limit only for POST
 `/v1/videos` and `/v1/videos/sync` (allowed range 1–64 MiB); explicit caller limits remain in force. The plugin is
 unchanged when this variable is absent. A local FastAPI 0.136.3 / Starlette 1.10.0 test accepted a field above 1 MiB
