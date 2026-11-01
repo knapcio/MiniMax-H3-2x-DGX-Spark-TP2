@@ -231,6 +231,16 @@ took 1,949.5 s (19.55% less than the baseline). Both are single experimental sam
 changed the clouds and measured motion more, so neither result has been promoted as a default. The owner's feedback
 on earlier variants was that regional deflicker looked better, figures moved a little too fast, and ground cloud
 shadows looked questionable. Visual review of the new controls remains pending.
+
+**Client correction discovered 2026-11-01:** the older `render.sh` used curl `-F` for the prompt and could silently
+truncate it at a semicolon, while its timing JSON retained the full intended string. The recorded prompts for
+`quality16-base`, `quality16-steps10`, `quality16-slowfig`, `quality16-win175`, the 10/15/16/60 s 960x544 controls
+and the 300 s retry all contain the suffix `; one continuous take; soft natural ambience.` after the first semicolon;
+that suffix was not sent by the affected client. The locked-camera and slow-figure wording appeared before it.
+The 20-step and 10-step 16 s pair used the same truncated prefix, so their single-pair timing remains a comparison
+of those requests, but the timing record does not prove the full prompt was delivered. Server-generated continuation
+wording may separately add a continuity instruction. `2827d04` fixes literal multipart fields; corrected comparisons
+are queued and have not yet run.
 For the 10-step and 20-step exact-16 s files, a frame-aligned FFmpeg SSIM comparison over all 384 frames averages
 0.9488; four-second averages fall from 0.9698 to 0.9323. This measures similarity between the two outputs, not which
 one has better visual quality, natural motion or audio. The single matched pair and still-frame inspection do not
