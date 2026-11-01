@@ -23,10 +23,30 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
+from types import ModuleType
 
 logger = logging.getLogger("vllm_omni.h3_tp2.plugin")
 
 _APPLIED = False
+
+
+def fused_swiglu_marker() -> str:
+    """Read this plugin's class marker without causing a model import.
+
+    A missing module/class or an unexpected marker is unknown. The marker
+    describes only this plugin's patch, not arbitrary other modifications.
+    """
+    module = sys.modules.get("vllm_omni.diffusion.models.minimax_h3.minimax_h3_transformer")
+    cls = vars(module).get("MiniMaxH3MLP") if isinstance(module, ModuleType) else None
+    if not isinstance(cls, type):
+        return "unknown"
+    marker = getattr(cls, "_h3_tp2_fused_swiglu", None)
+    if marker is True:
+        return "present"
+    if marker is None or marker is False:
+        return "absent"
+    return "unknown"
 
 
 
@@ -667,4 +687,9 @@ def _apply(role: str) -> None:
             pass
         logger.warning("h3_tp2: EXPERIMENTAL duration cap raised to %s s (model spec is 15 s)", cap)
 
+    _requested_fuse = os.environ.get("H3_TP2_FP8_FUSE_SWIGLU")
+    _requested_fuse = ("<default>" if _requested_fuse is None else
+                       _requested_fuse.strip() if _requested_fuse.strip() in ("0", "1", "2") else "<other>")
+    logger.warning("h3_tp2: fused SwiGLU class marker=%s, requested=%s, role=%s",
+                   fused_swiglu_marker(), _requested_fuse, role)
     logger.info("h3_tp2 plugin active: role=%s world=%s", role, world)

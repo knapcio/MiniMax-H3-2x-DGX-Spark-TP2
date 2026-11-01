@@ -72,3 +72,8 @@ On the current boot the head and worker startup logs both explicitly report fuse
 variables altogether, despite its log reporting the fusion ON. The cause of that discrepancy was not established;
 absence from a worker's proc environment is therefore not evidence that a setting or patch is inactive. A future
 test needs a positive per-rank startup/runtime check of the loaded patch, not only inspection of proc environment.
+
+The repo now has a diagnostic startup log for this plugin's `MiniMaxH3MLP` class marker: `present`, `absent`, or
+`unknown` if the class is not loaded or the marker is unexpected. It does not trigger a model import, and it only
+reports this plugin's marker, not arbitrary other modifications to the model. It is not deployed on the current
+boot; a future real-model test must also authenticate the loaded code and ensure no later patch changes the class.
