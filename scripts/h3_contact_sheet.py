@@ -71,8 +71,8 @@ def make(source, destination, interval, *, include_last=False):
             small=ImageFont.truetype('/System/Library/Fonts/Helvetica.ttc',16)
         except OSError:
             font=ImageFont.load_default(); small=font
-        draw.text((12,6),'Klatki w czasie — podgląd kształtu chmur i światła',font=font,fill='white')
-        draw.text((12,30),'Pojedyncze klatki nie oceniają płynności ani zgodności ruchu cieni.',font=small,fill='#cbd5e1')
+        draw.text((12,6),'Klatki w czasie — przegląd wybranych momentów',font=font,fill='white')
+        draw.text((12,30),'Pojedyncze klatki nie pokazują płynności ruchu ani dźwięku.',font=small,fill='#cbd5e1')
         for i,path in enumerate(frames):
             x=(i%columns)*width; y=56+(i//columns)*(height+30)
             with Image.open(path) as frame:
@@ -88,7 +88,7 @@ def make(source, destination, interval, *, include_last=False):
         os.link(png,destination)
     return {'source':str(source),'source_sha256':before,'output':str(destination),'output_sha256':checksum,
             'sample_frames':indices,'sample_seconds':[index / 24 for index in indices],'source_frames':count,
-            'caveat':'Still frames do not establish motion smoothness or cloud-shadow alignment.'}
+            'caveat':'Still frames do not establish motion smoothness or audio quality.'}
 
 
 def main():
