@@ -39,3 +39,15 @@ at revision `30f485ed874aa44c8183348ad361c5eabad318da`: 1,383,677,808 bytes, SHA
 BF16 and alpha 8; 104 tensors target `fc1` and 104 target `fc2`, making the fusion guard relevant. No weights were
 loaded into either Spark and no Turbo test has run. The user rejected an earlier 8-step v1.0 forest render's
 lighting and blur; a different 4-step artifact is an experiment, not evidence that this concern is resolved.
+
+On 2026-11-01 the installed H3 validator was extracted verbatim from the head's source (SHA-256
+`f811b4d754d295eebb0d6940f60af307e401da54f1adb12ae2dd97b942e24c2f`) and run on the Mac CPU over that
+complete file. With a local stub of the substring-only `WeightsMapper`, its shape, complete target-set and
+pair checks passed all 624 tensors; an additional comparison verified all 52 `fc1` B gate/value swaps.
+The filename parser returned four denoiser steps and video/audio flow shifts 6/3. This is an **artifact
+preflight only**: it does not exercise the real vLLM mapper, LoRA manager, model binding, GPUs or TP2.
+
+Source inspection also shows that `/v1/videos` parses a request-level `lora` form object and the diffusion
+manager attempts to load a new adapter dynamically. It does not establish that an adapter was successfully
+bound on either rank. A future test must put the same checksum-verified file at the same absolute path on both
+nodes, address the fusion issue, and verify the actual request and output before measuring speed or quality.
