@@ -272,6 +272,11 @@ The default threshold requires correlation at least 0.65 and a presentation offs
 interval; the CLI exits 1 if any line fails and 2 for invalid inputs. A synthetic noise test passed the source and
 rejected silence and a 500 ms delay. These are screening thresholds, not proof of intelligibility or lip sync.
 
+If an experimental render changed its driving soundtrack, an explicit post-processing option is
+`python scripts/replace_driving_audio.py rendered.mp4 source.mp3 repaired.mp4 --report repaired.json`. It creates a
+new file, encodes the supplied audio to AAC, and verifies every decoded video frame and timestamp against the input;
+the original is preserved. This is not model-generated audio and does not establish whether mouths or speakers match.
+
 For an optional, experimental audio-to-mouth screen, `scripts/syncnet_probe.py` runs the original
 [SyncNet](https://github.com/joonson/syncnet_python) on a fixed face crop and repeats the measurement after delaying
 the audio by 200 ms. It needs ffmpeg/ffprobe, PyTorch, NumPy, OpenCV, SciPy and `python_speech_features`, a checkout
