@@ -25,6 +25,12 @@ are not on the checked node files and are not called by the current serving loop
   pipeline's `forward` owns output configuration, including height, width, encoding settings and output count, outside
   that call. A complete identity cannot be inferred from the loop arguments alone: that configuration must be passed
   explicitly and consistently from request preparation to the checkpoint session.
+* The installed worker activates a request's LoRA before `forward`, but the denoising kwargs do not identify the
+  active adapter. Since 2026-11-01 the experimental session requires `dynamic_adapters_sha256` explicitly (a digest
+  of all actually active request-specific adapters and their effective weights, loader behavior and scales, or
+  `None` for no adapter), and incorporates it in the common request identity. The caller must verify the active
+  state on each rank: an unverified digest or an incorrect `None` would defeat this check. No such serving integration
+  exists yet; the prototype does not obtain or authenticate the active LoRA by itself.
 * The pipeline calls `check_request_cancellation()` before and after the whole continuation call. Cancellation during
   a checkpoint, rank failure, missing peer and restart must be handled without a rank waiting indefinitely or a
   partially saved window being mistaken for a common checkpoint. Existing Gloo/CPU tests cover some failure cases;
@@ -57,3 +63,11 @@ remaining windows with AV identical to the uninterrupted synthetic run. All 24 c
 3.12.14 / PyTorch 2.9.1 CPU. These tests use local loopback and synthetic
 tensors; they do not establish real-model reproducibility, GPU/NCCL recovery, actual host restarts, safe cancellation
 during a write, a complete deployment identity, or a durable serving/job workflow. No live H3 files were changed.
+
+## Dynamic adapter identity test, 2026-11-01
+
+In the CPU prototype, resuming a no-adapter checkpoint with an adapter, or one adapter digest with a different
+digest, is rejected before a new diffusion window. The same digest can restore; missing or malformed identity is
+rejected, and a two-rank Gloo test rejects differing rank identities. The broader checkpoint suite passed 28 tests
+and 18 subtests using synthetic tensors on the Mac. These tests exercise supplied identities, not a real adapter,
+GPU, model binding or resumed video; the checkpoint loop remains unwired.

@@ -186,7 +186,8 @@ class ContinuationCheckpointLoopTests(unittest.TestCase):
         output = {'height': 32, 'width': 32, 'fps': 24, 'audio_sample_rate': 32000, 'preencode_mp4': True,
                   'preencode_batch_frames': 17, 'video_codec_options': {'preset': 'ultrafast'}, 'num_outputs': 1}
         with tempfile.TemporaryDirectory() as folder:
-            base = {'root': Path(folder), 'output': output, 'deployment_sha256': 'a' * 64, 'max_bytes': 8 * 1024**2,
+            base = {'root': Path(folder), 'output': output, 'deployment_sha256': 'a' * 64,
+                    'dynamic_adapters_sha256': None, 'max_bytes': 8 * 1024**2,
                     'channels': 2, 'audio_channels': 2, 'audio_dims': 32}
             begin = sessions.Session.begin
             class InterruptingSession:
@@ -213,6 +214,35 @@ class ContinuationCheckpointLoopTests(unittest.TestCase):
             with self.assertRaises(coordination.CheckpointCoordinationError):
                 loop.run(fake_diffuse([]), kwargs, api=api, options=options(seed_step=2), text_conditioning=texts,
                          checkpoint={**base, 'run_id': '4' * 32, 'previous_run_id': '1' * 32, 'tensor_device': 'cpu'})
+            # Request modifiers are not present in the denoise kwargs. A new
+            # active adapter must not resume a no-adapter checkpoint even when
+            # every tensor, seed, schedule, and output setting is otherwise equal.
+            with self.assertRaises(coordination.CheckpointCoordinationError):
+                loop.run(fake_diffuse([]), kwargs, api=api, options=opts, text_conditioning=texts,
+                         checkpoint={**base, 'dynamic_adapters_sha256': 'b' * 64, 'run_id': '5' * 32,
+                                     'previous_run_id': '1' * 32, 'tensor_device': 'cpu'})
+            with self.assertRaises(coordination.CheckpointCoordinationError):
+                loop.run(fake_diffuse([]), kwargs, api=api, options=opts, text_conditioning=texts,
+                         checkpoint={**base, 'dynamic_adapters_sha256': 'bad', 'run_id': '6' * 32})
+            omitted = {key: value for key, value in base.items() if key != 'dynamic_adapters_sha256'}
+            with self.assertRaises(coordination.CheckpointCoordinationError):
+                loop.run(fake_diffuse([]), kwargs, api=api, options=opts, text_conditioning=texts,
+                         checkpoint={**omitted, 'run_id': '7' * 32})
+            active = {**base, 'dynamic_adapters_sha256': 'b' * 64}
+            active_result = loop.run(fake_diffuse([]), kwargs, api=api, options=opts, text_conditioning=texts,
+                                     checkpoint={**active, 'run_id': '8' * 32})
+            self.assertTrue(all(torch.equal(a, b) for a, b in zip(expected, active_result)))
+            no_calls = []
+            with self.assertRaises(coordination.CheckpointCoordinationError):
+                loop.run(fake_diffuse(no_calls), kwargs, api=api, options=opts, text_conditioning=texts,
+                         checkpoint={**active, 'dynamic_adapters_sha256': 'c' * 64, 'run_id': '9' * 32,
+                                     'previous_run_id': '8' * 32, 'tensor_device': 'cpu'})
+            self.assertEqual(no_calls, [])
+            resumed_active = loop.run(fake_diffuse(no_calls), kwargs, api=api, options=opts, text_conditioning=texts,
+                                      checkpoint={**active, 'run_id': 'a' * 32, 'previous_run_id': '8' * 32,
+                                                  'tensor_device': 'cpu'})
+            self.assertEqual(no_calls, [])
+            self.assertTrue(all(torch.equal(a, b) for a, b in zip(expected, resumed_active)))
 
 
 if __name__ == '__main__':

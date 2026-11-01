@@ -36,7 +36,7 @@ def run(diffuse, kwargs, *, api, options, text_conditioning=None, checkpoint=Non
         if not options['crossfade'] and not options['edit']:
             raise ValueError('the upstream-only continuation branch is not supported by this prototype')
         if setup is not None:
-            required = {'root', 'run_id', 'output', 'deployment_sha256', 'max_bytes'}
+            required = {'root', 'run_id', 'output', 'deployment_sha256', 'dynamic_adapters_sha256', 'max_bytes'}
             allowed = required | {'group', 'device', 'channels', 'audio_channels', 'audio_dims'}
             if not required.issubset(setup) or set(setup) - allowed:
                 raise ValueError('checkpoint settings are incomplete or unexpected')

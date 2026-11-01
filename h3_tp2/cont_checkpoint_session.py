@@ -22,13 +22,17 @@ class Session:
 
     Every participating rank must call the same methods in the same order.
     The caller must authenticate a complete deployment digest, own synchronized
-    input tensors, and abort the request if a checkpoint operation fails. Only
-    a single output is supported: previously finished outputs are not saved.
+    input tensors, and abort the request if a checkpoint operation fails. The
+    caller must verify the actually active request-specific adapters on each
+    rank and supply their complete digest, including adapter weights, loader
+    behavior and scale, or explicitly supply None when no adapter is active.
+    Only a single output is supported: previously finished outputs are not saved.
     """
 
     @classmethod
     def begin(cls, root: Path, *, run_id: str, kwargs: dict, text_conditioning, options: dict,
-              output: dict, deployment_sha256: str, max_bytes: int, group=None, device='cpu', channels=24,
+              output: dict, deployment_sha256: str, dynamic_adapters_sha256: str | None,
+              max_bytes: int, group=None, device='cpu', channels=24,
               audio_channels=2, audio_dims=32):
         rank, world, device = coordination._group(group, device)
         error = None
@@ -38,6 +42,9 @@ class Session:
                 raise ValueError('checkpoint root must be absolute')
             if not isinstance(kwargs, dict) or RESERVED_KEY in kwargs:
                 raise ValueError('invalid request or reserved checkpoint key')
+            if dynamic_adapters_sha256 is not None and (not isinstance(dynamic_adapters_sha256, str)
+                                                        or not storage.SHA256.fullmatch(dynamic_adapters_sha256)):
+                raise ValueError('active adapter identity must be SHA-256 or explicitly absent')
             dimensions = (kwargs.get('num_frames'), kwargs.get('latent_h'), kwargs.get('latent_w'),
                           channels, audio_channels, audio_dims)
             if any(type(value) is not int or value < 1 for value in dimensions):
@@ -56,7 +63,8 @@ class Session:
                 raise ValueError('checkpoint output geometry, rate or encoding configuration differs')
             state_check.planned_window(kwargs['num_frames'], options['window_frames'], options['overlap_frames'], 1)
             identity_kwargs = {**kwargs, RESERVED_KEY: {'channels': channels, 'audio_channels': audio_channels,
-                                                         'audio_dims': audio_dims, 'output': output}}
+                                                         'audio_dims': audio_dims, 'output': output,
+                                                         'dynamic_adapters_sha256': dynamic_adapters_sha256}}
             request_sha = storage.fingerprint_request(identity_kwargs, text_conditioning, options,
                                                         deployment_sha256=deployment_sha256, max_bytes=max_bytes)
             storage._identity(run_id, request_sha, rank, world, 1)
