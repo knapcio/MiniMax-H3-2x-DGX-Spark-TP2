@@ -78,7 +78,9 @@ print(json.dumps(e))
 PY
 ) || { echo "render.sh: CONT_PROMPTS=auto failed" >&2; exit 2; }
 fi
-args=(-F "prompt=$prompt" -F "width=$w" -F "height=$h" -F "aspect_ratio=16:9" -F "fps=24" -F "num_inference_steps=$steps" -F "flow_shift=$video_shift" -F "seed=$seed" -F "extra_params=$extra")
+# All text fields are literal. With curl -F, a semicolon inside a prompt or
+# JSON string is parsed as form metadata and silently truncates its value.
+args=(--form-string "prompt=$prompt" --form-string "width=$w" --form-string "height=$h" --form-string "aspect_ratio=16:9" --form-string "fps=24" --form-string "num_inference_steps=$steps" --form-string "flow_shift=$video_shift" --form-string "seed=$seed" --form-string "extra_params=$extra")
 [ -n "$lora_json" ] && args+=(--form-string "lora=$lora_json")
 [ -n "$img" ] && args+=(-F "input_reference=@$img")
 # AUDIO_URL or H3_AUDIO_FILE: a driving soundtrack (audio_mode=lock_source in

@@ -307,3 +307,6 @@
 - 2026-11-01: fixed the continuation audio look-lock overriding `audio_mode=lock_source` in later windows: the ambient
   lock now skips requests with locked source rows. A CPU regression test verifies source audio is untouched by that
   wrapper while native audio and video locking retain their behavior. Not deployed or validated on a real GPU render.
+- 2026-11-01: fixed `render.sh` truncating text and JSON fields at semicolons through curl's multipart `-F` parsing.
+  Literal fields now use `--form-string`; a real local HTTP multipart receiver verifies punctuation, Unicode,
+  continuation JSON, image bytes and a large file-backed audio field. Live H3 verification is pending.
