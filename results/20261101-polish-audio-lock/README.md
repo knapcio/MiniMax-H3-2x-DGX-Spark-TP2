@@ -192,10 +192,17 @@ and continuous decoded audio PTS. Sampled RGB differences from its four sources 
 audio correlations were at least 0.99997 at zero sampled shift. These checks do not establish acting or quality.
 Both 210 s previews also yielded exactly 6,720,000 decoded audio samples at 32 kHz from first PTS 0 to 210 s;
 this was checked independently of the container's declared duration.
+The five original collected blocks were checked separately before final assembly: blocks 2–5 each decoded
+60.000 s of audio, and block 1 decoded 29.984 s (16 ms short of its 30 s video interval). All five fall within
+the chosen 50 ms endpoint tolerance. This matters because assembly can pad a short audio track with silence.
 In a visual contact sheet sampled at 0, 30, 60, 90, 120, 150 and 180 s, the same two foreground characters,
 shop and letter remain recognizable; Wokulski still holds the letter in each sampled frame. This supports visual
 continuity at those instants but also shows a very static staging; it does not establish that the action, acting,
 actor likeness, or lip synchronization is convincing between samples. The staged-action experiment remains pending.
+The full 300 s dialogue plan contains 30 lines and approximately 278 words; the scheduled line intervals cover
+120.38 s, with a median positive gap of 6.76 s between lines. These are planned intervals, not measured
+silence or a judgment of natural delivery. The common instruction also asks for unchanged physical positions,
+which may contribute to the static staging; that cause needs a controlled comparison.
 
 A second 210 s preview uses the synthetic driving voices in place of the entire model soundtrack (therefore it
 does not include the generated ambience). Its SHA-256 is
