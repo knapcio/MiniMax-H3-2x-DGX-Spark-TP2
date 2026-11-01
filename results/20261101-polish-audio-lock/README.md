@@ -48,3 +48,14 @@ Whisper output under both automatic-language and forced-Polish settings. The ear
 transcript had WER 0.0 for the requested sentence and did not report that tail. ASR can hallucinate or miss speech,
 so this is a tail requiring listening, not proof of an extra line or its language. The tail was not used as an
 ambient bed. This observation also illustrates why a clean whole-clip transcript alone cannot certify silent pauses.
+
+An experimental 16 s, two-window FL2VA request was staged with distinct Polish lines at 0.3 s and 12 s in a single
+synthetic driving track, plus a different prompt for each window. It is guarded behind the film, the existing quality
+and speed comparisons, and Turbo artifact staging; a held predecessor or explicit movie interruption stops it. The
+source track's automatic transcript contains both lines, but **no real-model result exists yet**. A Mac collector is
+prepared to check each line, source-waveform timing, face samples and the planned handover when the result appears.
+
+The separate `scripts/plan_dialogue_windows.py` produces explicit continuation prompts from time-stamped dialogue.
+It assigns a line once to a window's newly generated frames and rejects one that crosses a handover. CPU fixtures cover
+10, 15, 30, 60 and 300 s plans and invalid or overlapping entries. The helper itself is not connected to serving or
+used by the staged request, and it cannot guarantee when or whether a model speaks.

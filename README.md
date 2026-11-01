@@ -224,6 +224,22 @@ in it explicitly inserts the entire original prompt, including dialogue. For dia
 across windows, supply an explicit `continuation_prompts` list instead. The dialogue-free continuation is being
 tested and has not yet been established as a fix.
 
+`scripts/plan_dialogue_windows.py` can prepare that explicit list from a JSON array such as
+`[{"start": 0.3, "end": 3.3, "speaker": "S1", "text": "Dzień dobry."}, {"start": 12, "end": 14.8,
+"speaker": "S1", "text": "Do zobaczenia."}]`. Run, for example:
+
+```bash
+python scripts/plan_dialogue_windows.py --seconds 16 --scene 'A steady shot of one speaker.' \
+  --dialogue lines.json --lock-source --report plan.json --extra-output extra.json
+EXTRA_JSON="$(cat extra.json)" H3_AUDIO_FILE=/path/to/timed-voice.mp3 bash scripts/render.sh \
+  result.mp4 16 960 544 20 1101 'A steady shot of one speaker.' /path/to/image.jpg first
+```
+
+The planner assigns each line to one window's new frames, rejects a line crossing a handover and does not put that
+line in every other prompt. It was checked against the 10 / 15 / 30 / 60 / 300 s window counts, not yet with a real
+model. Text assignment does not guarantee speech timing, continuity or silence; the `--lock-source` example also
+needs a separately timed audio track. The 16 s, two-line GPU test is queued rather than completed.
+
 For a local driving soundtrack, `H3_AUDIO_FILE=/path/to/audio.wav` lets `scripts/render.sh` send the audio as a
 multipart reference without putting its potentially large base64 data in a single shell argument. WAV, MP3, FLAC,
 OGG and M4A extensions are accepted by the client; set `EXTRA_JSON` with `"audio_mode":"lock_source"` when that
