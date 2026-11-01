@@ -123,6 +123,8 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
                 # supplied by audio_mode=lock_source. Otherwise later windows
                 # are re-colored toward window one's audio statistics even
                 # though the caller requested the driving soundtrack.
+                if lock == "first" and lock_audio and args.get("locked_audio_rows") is not None:
+                    logger.info("h3_tp2 audio look-lock bypassed for locked source window %d", state["index"])
                 if (lock == "first" and lock_audio and args.get("locked_audio_rows") is None
                         and state["ref_audio"] is not None and isinstance(audio, torch.Tensor) and audio.dim() == 3):
                     ov_a = _overlap_audio(args)

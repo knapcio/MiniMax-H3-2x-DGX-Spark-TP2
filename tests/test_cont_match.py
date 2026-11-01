@@ -54,11 +54,13 @@ class LookLockReferenceTests(unittest.TestCase):
         self.assertTrue(torch.isfinite(output_tail[1]).all())
 
     def test_locked_source_audio_is_not_recolored_by_the_ambient_look_lock(self):
-        _, following, _, locked_output = self.render_two_windows(locked_source=True)
+        with self.assertLogs('vllm_omni.h3_tp2.cont_match', level='INFO') as messages:
+            _, following, _, locked_output = self.render_two_windows(locked_source=True)
         _, _, _, native_output = self.render_two_windows(locked_source=False)
         self.assertTrue(torch.equal(locked_output[1], following[1]))
         self.assertFalse(torch.equal(native_output[1], following[1]))
         self.assertTrue(torch.equal(locked_output[0], native_output[0]))
+        self.assertTrue(any('audio look-lock bypassed for locked source window 2' in line for line in messages.output))
 
 
 if __name__ == "__main__":
