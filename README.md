@@ -192,6 +192,11 @@ decoded frames and AAC packets before publication; the audio can end up to one A
 optional step tries a fast stream copy for H.264 without B-frames and falls back to lossless video re-encoding if
 needed. Verification still decodes the retained frames. A failed trim preserves the raw response separately.
 
+For a first-frame image that may be a screenshot, `python scripts/input_border_check.py image.png` reports nearly
+solid or transparent bands along each edge. On the Koninck input it found two white top rows and 11 white bottom
+rows; a separate clean crop had no such bands. A border can be intentional or part of the scene, so the screen does
+not crop or alter inputs. It requires Pillow.
+
 ### Optional speech screen
 
 `scripts/speech_qa.py` transcribes an audio/video file and, when given the intended dialogue, reports a word error
