@@ -31,6 +31,10 @@ are not on the checked node files and are not called by the current serving loop
   `None` for no adapter), and incorporates it in the common request identity. The caller must verify the active
   state on each rank: an unverified digest or an incorrect `None` would defeat this check. No such serving integration
   exists yet; the prototype does not obtain or authenticate the active LoRA by itself.
+* An inactive wrapper can still affect execution: the proposed LoRA-safe SwiGLU guard takes the ordinary MLP path
+  whenever a projection is wrapped, including suspended adapters. The prototype therefore also requires an explicit
+  `execution_state_sha256` even with no active adapter. It must cover verified dynamic wrapper topology and effective
+  bindings on each rank; no production mechanism to compute or authenticate that identity exists yet.
 * The pipeline calls `check_request_cancellation()` before and after the whole continuation call. Cancellation during
   a checkpoint, rank failure, missing peer and restart must be handled without a rank waiting indefinitely or a
   partially saved window being mistaken for a common checkpoint. Existing Gloo/CPU tests cover some failure cases;
@@ -68,6 +72,7 @@ during a write, a complete deployment identity, or a durable serving/job workflo
 
 In the CPU prototype, resuming a no-adapter checkpoint with an adapter, or one adapter digest with a different
 digest, is rejected before a new diffusion window. The same digest can restore; missing or malformed identity is
-rejected, and a two-rank Gloo test rejects differing rank identities. The broader checkpoint suite passed 28 tests
-and 18 subtests using synthetic tensors on the Mac. These tests exercise supplied identities, not a real adapter,
-GPU, model binding or resumed video; the checkpoint loop remains unwired.
+rejected, and a two-rank Gloo test rejects differing adapter or dynamic execution identities. A changed execution
+identity cannot resume even when no adapter is active. The broader checkpoint suite passed 28 tests and 18 subtests
+using synthetic tensors on the Mac. These tests exercise supplied identities, not a real adapter, GPU, model binding
+or resumed video; the checkpoint loop remains unwired.

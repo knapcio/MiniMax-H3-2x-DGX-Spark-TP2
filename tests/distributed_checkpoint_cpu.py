@@ -361,6 +361,7 @@ def session_smoke(coordinator, sessions, match, checker, rank, root):
               'preencode_batch_frames': 17, 'video_codec_options': {'preset': 'ultrafast'}, 'num_outputs': 1}
     common = {'kwargs': kwargs, 'text_conditioning': conditioning, 'options': options,
               'output': output, 'deployment_sha256': 'a' * 64, 'dynamic_adapters_sha256': None,
+              'execution_state_sha256': 'e' * 64,
               'max_bytes': 1024 * 1024,
               'channels': 2, 'audio_channels': 2, 'audio_dims': 6}
     differing = {**common, 'kwargs': {**kwargs, 'seed': 1101 if rank == 0 else 1102}}
@@ -384,6 +385,13 @@ def session_smoke(coordinator, sessions, match, checker, rank, root):
         pass
     else:
         raise AssertionError('different active adapter identities were accepted across ranks')
+    differing_execution = {**common, 'execution_state_sha256': ('e' if rank == 0 else 'f') * 64}
+    try:
+        sessions.Session.begin(root, run_id='d' * 32, **differing_execution)
+    except coordinator.CheckpointCoordinationError:
+        pass
+    else:
+        raise AssertionError('different execution-state identities were accepted across ranks')
     multiple_outputs = {**common, 'output': {**output, 'num_outputs': 2}}
     try:
         sessions.Session.begin(root, run_id='b' * 32, **multiple_outputs)
@@ -444,6 +452,7 @@ def loop_session_smoke(coordinator, helper, rank, root):
     output = {'height': 32, 'width': 32, 'fps': 24, 'audio_sample_rate': 32000, 'preencode_mp4': True,
               'preencode_batch_frames': 17, 'video_codec_options': {'preset': 'ultrafast'}, 'num_outputs': 1}
     base = {'root': root, 'output': output, 'deployment_sha256': 'a' * 64, 'dynamic_adapters_sha256': None,
+            'execution_state_sha256': 'e' * 64,
             'max_bytes': 8 * 1024**2,
             'channels': 2, 'audio_channels': 2, 'audio_dims': 32}
     original_save = coordinator.storage.save

@@ -51,3 +51,12 @@ Source inspection also shows that `/v1/videos` parses a request-level `lora` for
 manager attempts to load a new adapter dynamically. It does not establish that an adapter was successfully
 bound on either rank. A future test must put the same checksum-verified file at the same absolute path on both
 nodes, address the fusion issue, and verify the actual request and output before measuring speed or quality.
+
+Another source-level concern is adapter cache identity. The installed default integer ID is derived from the path,
+not file contents, and `DiffusionLoRAManager` reuses a registered ID without reloading the path. Replacing a file
+at the same path can therefore leave the old adapter cached; a file checksum alone does not prove the loaded weights.
+The manager also compares scales rounded to three decimal places but binds the original scale when rebinding. An
+offline test of its extracted methods with fake bindings reproduced both behaviors: requests at 0.1234 then 0.12349
+used the first bound scale, while the recorded rounded scale was 0.123. This is a synthetic method-level result, not
+a real-model output or measured quality difference. A safe experiment should use a fresh immutable path/ID and
+verify actual loaded/bound state rather than assume a request or file hash represents the effective adapter.

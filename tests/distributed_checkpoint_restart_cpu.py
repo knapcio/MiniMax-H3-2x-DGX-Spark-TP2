@@ -63,6 +63,7 @@ def main():
                   'preencode_batch_frames': 17, 'video_codec_options': {'preset': 'ultrafast'}, 'num_outputs': 1}
         base = {'root': args.root / f'rank-{args.rank}', 'output': output, 'deployment_sha256': 'a' * 64,
                 'dynamic_adapters_sha256': None,
+                'execution_state_sha256': 'e' * 64,
                 'max_bytes': 8 * 1024**2, 'channels': 2, 'audio_channels': 2, 'audio_dims': 32}
         calls = []
         if args.phase == 'save':
