@@ -97,3 +97,9 @@ The first submission failed immediately with HTTP 400: curl `-F` treated a semic
 metadata and truncated the fields. `2827d04` changed text fields to `--form-string`; an actual multipart receiver
 and the subsequent live H3 request verified the fix. A previously run camera-default comparison had the same prompt
 truncation, so it is not a valid matched baseline. Corrected comparisons are queued after this film.
+
+Dialogue pacing still needs review. On the first clip, `screen_dialogue_pauses.py` detected 17.435 s of audio
+below -45 dBFS in intervals at least 0.8 s long (audio duration 29.984 s); the longest interval was 7.389 s.
+This measures near-silence, not conversational pauses over background sound or whether the pacing works. The first
+clip has not been assessed in full playback, and these long gaps may make the conversation feel slow. The screen
+is also scheduled for subsequent blocks so the result is available without changing their audio.
