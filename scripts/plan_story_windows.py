@@ -22,10 +22,10 @@ def nonempty(value: object, field: str) -> str:
     return value
 
 
-def plan(seconds: float, continuity: str, beats: list[dict], *, window: int = 277, overlap: int = 22) -> dict:
+def validate_story(seconds: float, continuity: str, beats: list[dict]) -> tuple[str, int, int, list[dict]]:
+    """Validate and quantize one global timeline, without allocating prompts."""
     continuity = nonempty(continuity, 'continuity')
     aligned = geometry.aligned_frames(seconds)
-    windows = geometry.plan(aligned, window, overlap)
     requested = round(seconds * 24)
     if not isinstance(beats, list) or not 1 <= len(beats) <= 1000:
         raise ValueError('beats must contain 1..1000 entries')
@@ -46,6 +46,12 @@ def plan(seconds: float, continuity: str, beats: list[dict], *, window: int = 27
                         'first_frame': math.floor(start * 24), 'end_frame': min(requested, math.ceil(end * 24))})
     if any(a['start'] > b['start'] or a['end'] > b['start'] for a, b in zip(checked, checked[1:])):
         raise ValueError('beats must be ordered and cannot overlap')
+    return continuity, requested, aligned, checked
+
+
+def plan(seconds: float, continuity: str, beats: list[dict], *, window: int = 277, overlap: int = 22) -> dict:
+    continuity, requested, aligned, checked = validate_story(seconds, continuity, beats)
+    windows = geometry.plan(aligned, window, overlap)
 
     prompts, reports = [], []
     for index, (start, end) in enumerate(windows):
