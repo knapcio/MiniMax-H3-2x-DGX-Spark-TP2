@@ -1,5 +1,29 @@
 # A painting comes alive: FL2VA continuation (the still as the first frame, locked camera)
 
+## 300 s and cinematic tests (2026-11-01)
+
+A 300 s 960x544 FL2VA render completed in 16,207.9 s end to end. Its native 7,213-frame file passed full
+video/audio decode; a separately verified 7,200-frame copy is exactly 300 s. This demonstrates the length and
+media path, not acceptable five-minute picture quality. Sampled stills show the sky drifting into increasingly
+regular bands by the later part of the clip, and the lower-region mean gray changes from 47.24 at the start to
+78.84 at 150 s (a measurement influenced by scene movement, not a cloud-shadow correspondence test). The global
+luma screen found repeated 17-frame drops at 77.21–85.71 s, 87.12–96.33 s and 99.17–106.96 s.
+
+A separate regional-deflicker experiment changed 1,790 of 7,200 luma frames by at most eight levels; all chroma,
+video timestamps and AAC packets matched the original, and both streams fully decoded. At source-selected regional
+transitions, median absolute gray change fell from 1.384 to 0.447; the repaired output had no global repeated
+drop run at the >=2 YAVG / two-period screen. These checks cannot distinguish all legitimate light or motion from
+artifacts and do not prove perceived improvement. The repair does not address the sky's long-term deformation;
+both the unchanged source and the experimental copy require playback review. The exact source SHA-256 is
+`20217c490c260abdf35bc2482277baa0b1c55ea3f4575b4a54fbe0ad098d3459` and repair SHA-256 is
+`848571dc1e2ecb28e0fd848684ce5f1ca713afde35ce7a65061ad3876431452a`.
+
+Two additional 960x544 cinematic experiments passed media validation: a 10 s FL2VA animation of an official
+*Lalka* still with Marcin Dorociński as Wokulski (487.1 s request time), and a 15 s T2VA train scene with three
+requested characters (719.1 s). Exact-length copies are saved in `~/Downloads/h3-prod-smoke/`. Sampled stills show
+the reference-based framing and a three-person carriage scene, but do not establish actor likeness, smooth motion,
+the intended acting or audio quality. Further visual and listening review is required.
+
 Owner, 2026-10-30 08:25: the real use is a painting (here Philips Koninck's landscape, cropped from a screenshot,
 2316x1320) that comes alive with a locked camera and subtle motion (clouds, water, birds), the soundscape added by
 hand. That is FL2VA (frame 0 = the picture), where upstream has no continuation; with the pinned prefix no reference
