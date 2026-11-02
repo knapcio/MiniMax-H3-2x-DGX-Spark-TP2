@@ -301,6 +301,15 @@ for both video and audio, but is unmeasured. A matched A/B against the 345-frame
 17-frame drops, audio, and the owner's eye; separate decode-only tests would help distinguish the decoder from the
 latents. Default overlap and lock reference remain unchanged.
 
+An independent source-based CPU probe on 2026-11-02 clarified one prospective test: `preencode_batch_frames`
+coalesces already-decoded chunks and does not change the VAE's temporal context. With synthetic 17-frame chunks,
+thresholds 1/16/17 produced the same grouping, while 34 grouped two chunks; six tested thresholds yielded the same
+quantized bytes. The probe also demonstrated why retained chunks must be copied if their producer can reuse the
+storage. A useful next diagnostic is one actual decode feeding two consumers at thresholds
+17 and 34, followed by capture/replay of blend inputs; a second real decode of the same latents is a separate,
+more invasive test. The synthetic result neither establishes the real flicker's cause nor proves a quality or speed
+improvement. Instrumentation, two-rank coordination, resource limits and the real GPU comparison remain untested.
+
 To distinguish the two inputs to the decoder's five-frame overlap, `H3_TP2_VAE_BLEND_TRACE=1` enables a diagnostic
 on the next head start after this code is installed on both nodes. It logs the old, new and blended approximate luma
 for each temporal overlap, from spatially sampled decoded tensors, without intentionally changing the result. Its
