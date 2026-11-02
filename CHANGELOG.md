@@ -358,3 +358,5 @@
   sm121, and a Triton FP8 GEMM with the epilogue in registers runs at 86-90 TFLOPS against cuBLASLt's 169-177, so the
   fused path is +3 s/step slower at both cells; the two-pass GEMM stays (`results/20261102-speed-plan/`). Items 5 and 7
   landed opt-in earlier tonight (nocopy exchange: wrong on the GPU, closed; step caches: 0.03-0.1 %, off).
+- 2026-11-02 23:50: end state: 30 s Koninck 1344x768 with every default of the day (lock classes + tail + ramp 1.0,
+  batched tile decode, speed-gated compacted boot) in 4648 s against 4964 s in the afternoon, same quality profile.

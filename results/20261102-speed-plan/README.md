@@ -196,3 +196,7 @@ Triton reaches half of cuBLASLt. **Item 4 closed:** the two-pass path stays; the
 reachable with a CUTLASS sm120 FP8 kernel carrying the per-row/per-column epilogue at > 120 TF, which does not exist
 today (vLLM's CUTLASS row-wise kernel runs 61 TF here). `H3_TP2_FP8_GEMM=fused` stays in the tree as a measured
 negative. Probe log and JSON: `~/h3-tp2-results/fp8-epilogue-probe/` on spark-06.
+
+## End state (23:50): 30 s 1344x768 from a still with every default: 4648 s against 4964 s at 13:42 (-6.4 %), same quality
+profile (seams -0.0, no drops, boundaries -0.40 / -0.62). The day's lossless gains in one number for the owner's cell:
+a 30 s clip in 77 min instead of 83, with the boot gate protecting against the 7-40 % slow boots.

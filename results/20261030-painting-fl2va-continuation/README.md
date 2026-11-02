@@ -893,3 +893,10 @@ screen at >= 1 YAVG finds one run of five steps at exactly -1.0 (29.8-32.6 s), b
 painting use at 60 s; the owner's eye decides on the brightness curve and the prompt.
 
 Owner's eye on the 60 s clip (18:35): "wyglada spoko". The request above is now the README's recommended one.
+
+## End state of 2026-11-02 (`koninck30-1344-endstate`, 22:30-23:48): the same request with every default of the day
+
+Same request as `koninck30-1344-defaults` (13:42) plus the batched tile decode, on a boot that passed the two-probe
+speed gate: **4648 s vs 4964 s (-6.4 %)**; windows 1670 / 1640 / 1162 s, decode 161.7 s for 736 frames. Seams -0.0 /
+-0.0 luma, no cut, no period-17 drop >= 1 YAVG, block boundaries -0.26 / -0.40 / -0.62 (min -0.85), light per second
+115 -> 142 -> 134: the same picture as at 13:42. This is the configuration the README documents for the painting use.
