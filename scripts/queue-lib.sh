@@ -18,7 +18,12 @@ restart_head() {
   fi
   grep Normal /proc/buddyinfo | awk '{printf "buddyinfo before restart: "; for(i=13;i<=NF;i++) printf "%s ", $i; print ""}'
   grep -v -E "$STRIP" ~/.h3-tp2.env > ~/.h3-tp2.env.new; printf "%s\n" "$BASEENV" >> ~/.h3-tp2.env.new; [ -n "$1" ] && printf "%s\n" "$1" >> ~/.h3-tp2.env.new; mv -f ~/.h3-tp2.env.new ~/.h3-tp2.env
-  systemctl --user restart h3-tp2-head.service; sleep 20
+  # stop, compact both hosts (root script /usr/local/sbin/h3-compact via sudoers.d/h3-compact, 2026-11-02), start:
+  # boots into a fragmented host ran 7-40 % slower (results/20261102-speed-plan)
+  systemctl --user stop h3-tp2-head.service; sleep 15
+  sudo -n /usr/local/sbin/h3-compact 2>/dev/null | awk '{printf "compacted head, orders 9+: "; for(i=13;i<=NF;i++) printf "%s ", $i; print ""}'
+  ssh -o BatchMode=yes -o ConnectTimeout=10 10.100.96.5 "sudo -n /usr/local/sbin/h3-compact 2>/dev/null" | awk '{printf "compacted agent host, orders 9+: "; for(i=13;i<=NF;i++) printf "%s ", $i; print ""}'
+  systemctl --user start h3-tp2-head.service; sleep 20
   for i in $(seq 1 80); do [ "$(health)" = 200 ] && break; systemctl --user is-active --quiet h3-tp2-head.service || { echo "head died during restart"; break; }; sleep 15; done
   echo "=== head restarted ($1) health $(health) $(date +%H:%M:%S)"
   journalctl --user -u h3-tp2-head.service --since "-8min" --no-pager | grep -E "h3_tp2:.*(edit prefix|latent match)" | tail -1 | cut -c80-240
