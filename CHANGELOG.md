@@ -335,3 +335,7 @@
   decoder renders a latent brightness correction as one level per 17-frame block, so a correction completed within a
   quarter of the window was a staircase of -1.5..-2.3 Y steps right after each seam; spread over the whole window the
   steps are ~0.9 Y (raw decoder -0.6). Replay on saved 1344 latents in `results/20261102-vae-chunk-flicker/`.
+- 2026-11-02 13:30: speed plan item 1 measured: `H3_TP2_EMPTY_CACHE_BEFORE_DECODE` is inert on v0.30 (upstream releases
+  the stage cache itself); the same 5 s 1344 calibration ran 22.9 s/step on one boot and 21.2-21.4 on the next
+  (identical latents digest), no per-request degradation: boot-to-boot variance of 7 % is real and a boot speed gate
+  is the lever (`results/20261102-speed-plan/`).

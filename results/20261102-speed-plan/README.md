@@ -70,3 +70,25 @@ CUDA graphs (the GPU is the bottleneck; ~1250 launches per step cost millisecond
 means the launch queue is full), regional `torch.compile` (cannot fuse across Triton / cuDNN / NCCL kernels, ≤ 1 %,
 changes fp association), lossless attention savings (cuDNN is within ~5 % of the GB10 flash ceiling). Rank 1's GEMMs
 were 15 % slower in the 10-29 profile: recheck after item 1 before any uneven sequence split.
+
+## Measured 2026-11-02 12:40-13:28: item 1, the empty-cache knob and boot-to-boot variance (queue47)
+
+Five 5 s 1344x768 T2VA calibrations (seed 0, 20 steps; reference `cmp-t2va-1344` 23.2 s/step), all with the same
+latents digest `4d6d69e4aad0`:
+
+| boot | `H3_TP2_EMPTY_CACHE_BEFORE_DECODE` | request | s/step | diffuse | decode | peak | wall |
+|---|---|---|---|---|---|---|---|
+| 11:42 (end of queue45) | 1 | 1st after two 30 s renders | 22.92 | 458.4 s | 42.0 s | 63.0 GB | 502 s |
+| 11:42 | 1 | 2nd | 22.78 | 455.7 s | 42.0 s | 63.1 GB | 499 s |
+| 12:57 (fresh) | 0 | 1st | 21.44 | 428.8 s | 43.3 s | 63.2 GB | 477 s |
+| 12:57 | 0 | 2nd | 21.24 | 424.9 s | 41.9 s | 63.2 GB | 468 s |
+| 12:57 | 0 | 3rd | 21.21 | ~424 s | 42.0 s | 63.2 GB | 468 s |
+
+The knob is inert: with `=1` the plugin logs "upstream releases the stage cache before decode itself; empty_cache
+patch skipped" (vLLM-Omni v0.30 does the release itself), with `=0` the code path is not entered; the decode time and
+the peak are the same either way. What the table does show is **boot-to-boot variance of 7 %** between two boots 75
+minutes apart on the same hosts, same code, same request (the 10-30 anomaly was 40 %). The second and third requests
+on a boot are not slower than the first (no per-request degradation). So item 1 stands as "boot hygiene + a boot
+speed gate", not as an env change: every boot should be probed (a 5 s calibration or a 43k-row attention probe)
+before a long render, and a slow boot restarted. The README's "free cached pages before decode" lever is
+superseded by upstream and marked so.
