@@ -180,6 +180,23 @@ def install(pipeline_module, api_utils_module, convert_u8: bool = True) -> None:
                 logger.info("h3_tp2 phase encode_prompt %.1f s", time.monotonic() - t0)
                 _log_digest("prompt", out)
 
+        def _save_latents(obj):  # noqa: ANN001
+            """H3_TP2_SAVE_LATENTS=<dir>: keep the diffusion output (video + audio latents) of every request as a
+            .pt file, so the decoder can be run on the same latents offline (the 17-frame luma flicker, 2026-11-02).
+            Diagnostics only; never breaks a render."""
+            d = os.environ.get("H3_TP2_SAVE_LATENTS", "").strip()
+            if not d:
+                return
+            try:
+                import socket
+
+                os.makedirs(d, exist_ok=True)
+                path = os.path.join(d, f"latents-{socket.gethostname()}-{time.strftime('%Y%m%d-%H%M%S')}.pt")
+                torch.save(obj, path)
+                logger.info("h3_tp2 latents saved to %s", path)
+            except Exception as e:  # noqa: BLE001
+                logger.info("h3_tp2 latents not saved (%s)", e)
+
         def _log_digest(what, obj):  # noqa: ANN001
             try:
                 logger.info("h3_tp2 %s sha256 %s", what, tensors_digest(obj))
@@ -208,6 +225,7 @@ def install(pipeline_module, api_utils_module, convert_u8: bool = True) -> None:
                 _sync()
                 logger.info("h3_tp2 phase diffuse %.1f s", time.monotonic() - t0)
                 _log_digest("latents", out)
+                _save_latents(out)
 
         cls.decode = decode
         cls.encode_prompt = encode_prompt
