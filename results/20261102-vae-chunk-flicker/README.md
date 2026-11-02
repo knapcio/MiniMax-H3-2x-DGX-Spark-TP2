@@ -148,3 +148,13 @@ measured: (1) reference = the tail of window 1 (`H3_TP2_CONT_LOCK_REF=tail`, que
 the level the clip is handed over at, the pull-down shrinks from ~9 Y to ~0-2 Y and so do the stairs; (2) the ramp
 length only spreads the same total over more blocks (replayed offline on the 1344 window-2 latents: ramp 0.25 / 1.0 /
 none, tail reference, classes).
+
+### Owner's eye (11:25)
+
+960x544 baseline vs class-aware lock, same seed: "chyba na obu nie miga" (no flicker seen on either; the -2.0 Y steps
+of the baseline are below the eye at this size, the -6 Y of the 5 s-history clip were not). 1344 class-aware: "wyglada
+ok raczej". What the owner did see: the cloud shadows race across the plain in both 960x544 clips (our README prompt
+asks for "their shadows glide over the plain"); codex's human-pace comparison (prompt without strong shadows, figures
+"walk naturally at a relaxed, unhurried pace") was "chyba git". So the perceptual threshold for the block steps lies
+between 2 and 6 YAVG, the fix stays (it removes a real artifact and costs nothing), and the next work is the prompt:
+queue46 renders the no-shadow human-pace wording on the clean stack for the owner to compare.
