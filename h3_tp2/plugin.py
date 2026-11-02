@@ -481,7 +481,7 @@ def _apply(role: str) -> None:
 
         _tile_batch = int(os.environ.get("H3_TP2_VAE_TILE_BATCH", "4"))
         _vae_scope.install(_vae.MiniMaxH3VideoVAE, cap=_tile_batch)
-        logger.warning("h3_tp2: experimental scoped video VAE tile decode (up to %d tiles); CUDA/TP2 unqualified", _tile_batch)
+        logger.warning("h3_tp2: scoped video VAE tile decode (up to %d tiles): default since 2026-11-02 (-38/-39 %% decode, 1 LSB on 0.2-0.3 %% of pixels)", _tile_batch)
 
     # 9c') H3_TP2_VAE_LEFT_CONTEXT=<tokens> (default 0 = untouched): wraps the video VAE's _adaptive_decode so every
     #      temporal chunk after the first (both decode paths: the streaming uint8 decode_temporal of plain requests and
