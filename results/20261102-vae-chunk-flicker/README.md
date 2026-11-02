@@ -127,3 +127,24 @@ the 60 s windows 2-6 **-1.62 / -3.38**. Window 1 is always -0.3: the untouched d
 **Default since 2026-11-02 09:50:** `H3_TP2_CONT_LOCK_CLASSES=1` (`0` restores the mixture affine). The lock's
 purpose (hold the first window's look against the per-window drift) is unchanged; only the fit is per token class.
 
+### 1344x768 control `koninck30-1344-lockclasses` (queue44, 09:45-11:07, 4926 s): only half the gain
+
+Seams invisible (-0.5 / -0.4 luma, no cut), light per second 115..125 | 122 118 117 119 .. 130 | 124 121 123.
+Boundary steps: window 1 -0.27 / -0.36, window 2 median -0.69 min **-1.85**, window 3 -0.60 / -1.78 (the 10-30 clip
+with the mixture affine: -0.80 / -1.66 and -0.65 / -1.49). The period-17 screen at >= 1 YAVG still finds 4 + 3 drops,
+all in the first three or four blocks after each hand-over; later blocks sit at ~-0.6.
+
+Per-frame luma after seam 1 (frames 270..345) is a **staircase**: flat 124.4 over frames 277-288, -1.3 at 289, flat
+122.0, -1.4 at 306, flat 120.0, -1.8 at 323, flat 117.6, -1.9 at 340, 115.5 ... The 10-30 clip shows the same stairs
+(123.0 -> 121.1 -> 119.4 -> 117.7 -> 116.1). This is the look-lock's RAMP (the correction grows linearly over the first
+quarter of the free tokens, here 19 tokens = 64 frames) pulling the window down by ~9 Y from the hand-over level
+(125) toward the reference mean (~121, the whole of window 1 including its dark start), rendered by the decoder as one
+brightness per 17-frame block: a linear per-token shift in latent space comes out as steps at block starts, because
+a block's brightness follows its first (padded, key-frame-like) token. The class-aware fit removes the extra dip that
+the mixture affine added on top (hence the better medians) but cannot remove stairs that are the correction itself.
+
+So at 1344 the remaining flicker is the size of the post-seam pull-down, not the fit. Two consequences, both being
+measured: (1) reference = the tail of window 1 (`H3_TP2_CONT_LOCK_REF=tail`, queue45 at 960x544): the target is then
+the level the clip is handed over at, the pull-down shrinks from ~9 Y to ~0-2 Y and so do the stairs; (2) the ramp
+length only spreads the same total over more blocks (replayed offline on the 1344 window-2 latents: ramp 0.25 / 1.0 /
+none, tail reference, classes).
