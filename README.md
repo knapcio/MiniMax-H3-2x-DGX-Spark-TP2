@@ -417,7 +417,7 @@ docs/ARCHITECTURE.md, Trust boundary).
 git clone https://github.com/knapcio/MiniMax-H3-2x-DGX-Spark-TP2 ~/h3-tp2
 ~/h3-base-20260916/runtime/.venv/bin/pip install -e ~/h3-tp2
 bash ~/h3-tp2/scripts/preflight.sh            # links ACTIVE, RoCE v2 GID + IPv4 per HCA, >=110 GiB free, venv/package/weights present; same versions on both
-sync; echo 3 | sudo tee /proc/sys/vm/drop_caches; echo 1 | sudo tee /proc/sys/vm/compact_memory   # before every boot: a fragmented host makes rank 0 slower
+sudo -n /usr/local/sbin/h3-compact   # before every boot, on both hosts (root script + sudoers.d/h3-compact, 2026-11-02): boots into a fragmented host ran 7-40 % slower; scripts/queue-lib.sh restart_head does stop -> compact -> start -> boot probe (scripts/boot-probe.sh)
 
 # worker Spark (rank 1)
 cp ~/h3-tp2/systemd/h3-tp2-{agent,memguard-worker}.service ~/.config/systemd/user/ && systemctl --user daemon-reload
