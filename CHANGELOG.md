@@ -331,3 +331,7 @@
   was pulled ~9 Y below its hand-over level in a staircase of 17-frame steps right after the seam (visible at 1344 as
   the remaining period-17 drops). 960x544 control: windows stay at the hand-over level, block boundaries -0.22 / -0.40
   (raw decoder -0.66), no drop >= 1 YAVG, seams +0.1 / -0.2.
+- 2026-11-02 12:15: look-lock ramp default 1.0 (was 0.25): at 1344 the model brightens a window by up to +20 Y and the
+  decoder renders a latent brightness correction as one level per 17-frame block, so a correction completed within a
+  quarter of the window was a staircase of -1.5..-2.3 Y steps right after each seam; spread over the whole window the
+  steps are ~0.9 Y (raw decoder -0.6). Replay on saved 1344 latents in `results/20261102-vae-chunk-flicker/`.

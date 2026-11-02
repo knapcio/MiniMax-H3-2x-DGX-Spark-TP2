@@ -525,7 +525,10 @@ def _apply(role: str) -> None:
             # later window's free frames to the first window's statistics, against the compounding drift.
             _lock = os.environ.get("H3_TP2_CONT_LOCK", "first").strip().lower()
             _lock_strength = float(os.environ.get("H3_TP2_CONT_LOCK_STRENGTH", "1.0") or 1.0)
-            _lock_ramp = float(os.environ.get("H3_TP2_CONT_LOCK_RAMP", "0.25") or 0.25)   # fraction of the free frames
+            # ramp default 1.0 since 2026-11-02: the decoder renders a latent brightness change as one level per 17-frame
+            # block, so a correction reached within a quarter of the window is a staircase of -1.5..-2.3 Y steps at 1344
+            # (replay on saved latents); spread over the whole window the steps are the raw decoder's (-0.8 vs -0.6)
+            _lock_ramp = float(os.environ.get("H3_TP2_CONT_LOCK_RAMP", "1.0") or 1.0)   # fraction of the free frames
             _lock_audio = os.environ.get("H3_TP2_CONT_LOCK_AUDIO", "1").strip() == "1"   # the same lock for the audio latents
             _lock_std_env = os.environ.get("H3_TP2_CONT_LOCK_STD", "").strip()   # strength of the std (contrast) part; "" = same as mean
             _lock_std = float(_lock_std_env) if _lock_std_env else None

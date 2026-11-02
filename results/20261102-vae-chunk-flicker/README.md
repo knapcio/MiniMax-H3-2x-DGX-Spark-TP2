@@ -175,3 +175,24 @@ the raw decoder's (-0.66). The model's own drift inside a window remains (window
 window 3 sits at 131): the lock pins a window's mean, not its slope. **Default since 2026-11-02 12:00:**
 `H3_TP2_CONT_LOCK_REF=tail` (`window` restores the whole-window reference). Owner's eye pending on
 `~/Downloads/h3-prod-smoke/d30_koninck_960x544_tailref_20261102.mp4`.
+
+### Replay on the 1344x768 window-2 latents (`vae-offline/win2-1344-lock`, 11:49-12:10)
+
+Reference = window 1 of the same render (`latents-...-101335`), window 2 (`...-104137`, 82 tokens, 277 frames), overlap
+7 tokens, class-aware lock unless noted. "first 5" = the luma step at the first five block boundaries after the
+overlap; "rest" = the remaining boundaries.
+
+| latents decoded | mean luma | start -> end of the window | first 5 block steps | rest median / min |
+|---|---|---|---|---|
+| raw (no lock) | 136.1 | 125.0 -> **145.5** | -0.61 -0.68 -0.55 -0.63 -0.57 | -0.62 / -0.74 |
+| mixture affine, whole-window ref, ramp 0.25 | 124.1 | 123.6 -> 129.9 | -0.61 -1.58 -1.74 -2.08 **-2.30** | -1.32 / -1.42 |
+| class-aware, whole-window ref, ramp 0.25 | 124.2 | 123.6 -> 130.1 | -0.61 -1.51 -1.59 -1.88 -2.05 | -1.09 / -1.17 |
+| class-aware, tail ref, ramp 0.25 | 126.2 | 123.9 -> 132.6 | -0.61 -1.32 -1.32 -1.54 -1.65 | -0.92 / -0.97 |
+| class-aware, whole-window ref, **ramp 1.0** | 129.2 | 124.7 -> 130.1 | -0.61 -0.83 -0.71 -0.82 -0.79 | -0.91 / -1.40 |
+
+The model brightens this painting by +20 Y within one 11 s window at 1344 (raw 125 -> 145); any lock has to take
+that back, and the decoder renders the latent correction as one brightness per 17-frame block. With the ramp over a
+quarter of the window the correction lands in four blocks (-1.5..-2.3 Y steps, the stairs seen in the served 1344
+clip); over the whole window it is ~0.9 Y per block, the raw decoder's own step being -0.6. **Default since
+2026-11-02 12:15:** `H3_TP2_CONT_LOCK_RAMP=1.0` (was 0.25), with the class-aware fit and the tail reference. Serving
+control at 1344 next (queue48); the owner's eye threshold for these steps was between 2 and 6 Y.
