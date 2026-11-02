@@ -44,4 +44,43 @@ with ctx 0 / 2 / 4 on one Spark (FP16 autocast like serving) and reports per-fra
 against ctx 0 and the decode time. Baseline render: `koninck30-960x544-base` (queue42, 30 s Koninck 960x544 FL2VA
 continuation, seed 1101, defaults, blend trace on).
 
-(results follow)
+### Baseline `koninck30-960x544-base` (08:07-08:34, 1656 s)
+
+Hand-overs invisible (luma step -0.0 / -0.1, no cut). Period-17 screen on the served MP4: 4 drops, frames 663..714,
+median -2.08 YAVG (window 3). Served per-frame luma around the first one: 126.6 126.7 | **124.7** 125.3 126.1 126.5
+126.7 126.9 127.0 ... 127.3 | **125.2** 125.6 ...: every block starts 2 Y dark and recovers over ~5 frames.
+Blend trace at those boundaries: the previous chunk's look-ahead and the fresh chunk agree within 0.1-0.3 Y and
+**both** show the ramp (old 123.65 -> 126.31, new 123.88 -> 126.37 over the 5 overlap frames): the dark frames are a
+property of the latent tokens at the block start, not of which chunk decodes them.
+
+### Left context: closed (negative)
+
+Offline decode of the window-3 latents (67 tokens -> 226 frames, FP16 autocast, same chunk loop):
+
+| variant | decode | mean abs dY | max abs dY | period-17 drops (>= 2 YAVG) | PSNR vs ctx 0 |
+|---|---|---|---|---|---|
+| ctx 0 (upstream) | 90.9 s | 0.124 | 0.78 | none | - |
+| ctx 2 | 104.4 s | 1.798 | 7.94 | 12 x -7.36 and 12 x -4.31 | 29.6 dB |
+| ctx 4 | 90.5 s | 8.376 | 55.6 | 12 x -52.5 (and more) | 23.2 dB |
+| geometry: tokens 0..8 vs 0..6, frames of tokens 0..4 | | | | PSNR 32.0 dB, mean dY 1.39 | |
+| geometry: tokens 0..10 vs 0..6 | | | | PSNR 29.7 dB, mean dY 2.10 | |
+
+The review's caveat is the result: the decoder's temporal RoPE is normalised by the clip length, a 9- or 11-token clip
+is a geometry the decoder cannot handle, and the extra past makes every block start a step of -7 (ctx 2) or -52 Y
+(ctx 4). `H3_TP2_VAE_LEFT_CONTEXT` stays in the tree as a documented negative; do not enable it.
+
+### The new lead: the look-lock's latent affine
+
+The same window-3 latents decoded offline **as saved** (before the hand-over wrapper) show no period-17 drops at all
+(mean abs dY 0.12; the boundary dip at frame 153 is -0.7 and recovers in 3 frames), while the served clip of the same
+window dips -2.0 at the same frames and sits 3 Y lower overall. What the served decode saw and the saved latents did
+not: the look-lock (per-channel affine toward window 1's mean/std, here gain 0.957 on the std, a mean shift) and the
+pinned prefix. The block-start tokens (the encoder's padded clip-start token, one real frame + 3 padding frames per
+17-frame clip) have statistics unlike the other four tokens of a block; a uniform per-channel affine moves them off
+their manifold differently, which the decoder renders as a darker first frame per block. The dip size tracks the lock
+correction: strongest in the 5 s-history clip (-6 YAVG, a 10-luma pull-back), -2 at 960x544 (4 % std gain), below
+threshold in the default 1344 clips (gain ~1.00). `scripts/lock_decode_offline.py` replays the lock on the saved
+latents (raw / lock / mean-only / gain-only) and decodes each: results below.
+
+(lock replay results follow)
+

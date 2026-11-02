@@ -70,6 +70,7 @@ def main() -> int:
     ap.add_argument("--mp4", action="store_true")
     ap.add_argument("--max-tokens", type=int, default=0, help="decode only the first n latent tokens (0 = all)")
     ap.add_argument("--geometry", action="store_true", help="also decode tokens 0..6 and 0..8 raw and compare the frames of tokens 0..4")
+    ap.add_argument("--shift", type=int, default=0, help="drop the first n latent tokens before decoding: moves the chunk grid by 4n frames (decoder-grid vs content test)")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
 
@@ -84,6 +85,10 @@ def main() -> int:
     assert video.ndim == 5, video.shape
     if args.max_tokens:
         video = video[:, :, : args.max_tokens]
+    if args.shift:
+        video = video[:, :, args.shift :]
+        print(f"shift: dropped the first {args.shift} tokens; drops bound to the chunk grid stay at multiples of 17 in this series, "
+              f"drops bound to the content move by {4 * args.shift} frames", flush=True)
     print("video latent", tuple(video.shape), video.dtype, flush=True)
 
     dev = torch.device("cuda")
