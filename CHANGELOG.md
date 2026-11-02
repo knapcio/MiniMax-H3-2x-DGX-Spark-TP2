@@ -313,3 +313,6 @@
 - 2026-11-02: `render.sh` disables curl's automatic config files with `-q` as its first argument. A real two-server
   loopback regression demonstrates that a `.curlrc` could previously add a second multipart POST. Proxy environment
   variables and explicit endpoint settings still apply; existing frozen or deployed copies remain unchanged.
+- 2026-11-02: added a CPU-only exact-length segment planner for separate single-window two-keyframe requests. It
+  reports whether generated last frames can all be retained, an optional one-frame boundary drop, and fractional
+  source-audio cuts. This is geometry, not a qualified assembler or a model-quality result.

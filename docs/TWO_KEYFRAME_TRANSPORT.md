@@ -35,3 +35,42 @@ identity and endpoint fidelity have not been tested with this client. Native
 multi-window final-frame conditioning is deliberately excluded: an older loop
 could use that image at the end of the first window and drop it afterward.
 Do not use a single-frame target as evidence that the action was performed.
+
+## Exact-length plans for separate segments
+
+`plan_keyframe_segments.py` is a CPU-only geometry planner for an edited sequence of independent, single-window
+two-keyframe requests. It finds the fewest source segments on the 17n+5 grid between 107 frames and the chosen
+window limit; it does not submit requests or estimate render time. The 107-frame minimum follows this client's
+four-second request minimum and alignment rule. The balanced result is not necessarily the fastest or best-looking
+shot division.
+
+```sh
+python3 scripts/plan_keyframe_segments.py --seconds 300
+python3 scripts/plan_keyframe_segments.py --seconds 300 --drop-boundary-frame
+python3 scripts/plan_keyframe_segments.py --frames 260  # exact 260/24 s, no rounded decimal required
+```
+
+At the default 277-frame limit, 300 s at 24 fps is exactly 7,200 frames. Keeping every segment frame needs a
+minimum of 29 segments: 20 of 243 frames and nine of 260. If the previous final image is used as the next
+reference, both sides of a boundary remain in the edit; they might look like a repeated frame, but they are not
+guaranteed to be identical. `--drop-boundary-frame` instead plans to discard frame 0 of every segment after the
+first while retaining each generated last frame. That policy needs 36 segments: 17 of 192 and 19 of 209 frames,
+for 7,235 source frames less 35 discarded frames. Neither policy guarantees a smooth transition or actual
+movement between references.
+
+The output includes source-request duration, retained timeline frames and cumulative sample boundaries. Audio
+boundaries are calculated on the retained timeline without accumulating per-segment rounding: frame and sample
+intervals are half-open, and cumulative sample positions use round-half-to-even. `possible_preserving_endpoints`
+refers to each request's **last** generated frame; with the drop option, later requests' first frames are
+deliberately removed. At 32 kHz a frame
+is 4,000/3 samples, so `source_audio_cut_start_samples_exact` can be fractional: the edit must explicitly choose
+how to align or resample the actual decoded audio. The planner does not cut audio. These values are a plan, not
+proof that a generated AAC stream has the requested length or preserves the dialogue.
+
+Some target lengths have no solution with this particular one-window, no-endpoint-truncation policy. For example,
+10, 15 and 30 s have no solution under either boundary policy at the default window; 60 s has a seven-segment
+solution only with `--drop-boundary-frame`. The planner returns JSON with `possible_preserving_endpoints=false`
+and exit code 2 rather than silently trimming. This does not prevent normal H3 renders of those lengths; it means
+another editing or conditioning strategy is needed if every segment's generated final frame must be retained.
+`--seconds` accepts exact decimal values on the 24 fps grid; use `--frames` when the exact time is a repeating
+decimal. Server-side behavior and all visual/audio quality remain to be tested.
