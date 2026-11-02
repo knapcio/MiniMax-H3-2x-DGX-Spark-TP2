@@ -106,6 +106,13 @@ def main():
             return cm.lock_to_reference(cm.class_stats(ref.to(dev)), win_d, ov, 1.0, index=3, ramp=0.25, std_strength=None)
         if name == "lock_classes_mean":
             return cm.lock_to_reference(cm.class_stats(ref.to(dev)), win_d, ov, 1.0, index=3, ramp=0.25, std_strength=0.0)
+        if name == "lock_classes_ramp1":
+            return cm.lock_to_reference(cm.class_stats(ref.to(dev)), win_d, ov, 1.0, index=3, ramp=1.0, std_strength=None)
+        if name == "lock_classes_noramp":
+            return cm.lock_to_reference(cm.class_stats(ref.to(dev)), win_d, ov, 1.0, index=3, ramp=0.05, std_strength=None)
+        if name == "lock_classes_tail":
+            _rv = ref.to(dev); _t = _rv[:, :, -(_rv.shape[2] // 4):]
+            return cm.lock_to_reference(cm.class_stats(_t, offset=_rv.shape[2] - _t.shape[2]), win_d, ov, 1.0, index=3, ramp=0.25, std_strength=None)
         if name == "gain_only":
             # same gain as "lock", mean untouched: lock toward (m, s_ref) instead of (m_ref, s_ref)
             return cm.lock_to_reference((m, s_ref), win_d, ov, 1.0, index=3, ramp=0.25, std_strength=None)
@@ -141,6 +148,8 @@ def main():
         steps = [y[k] - y[k - 1] for k in range(17, len(y), 17)]
         r["boundary_step_median"] = round(sorted(steps)[len(steps) // 2], 2) if steps else None
         r["boundary_step_min"] = round(min(steps), 2) if steps else None
+        r["boundary_steps_first6"] = [round(v, 2) for v in steps[:6]]
+        r["boundary_steps_rest_median"] = round(sorted(steps[6:])[len(steps[6:]) // 2], 2) if len(steps) > 6 else None
         if ref_u8 is None:
             ref_u8, ref_y = u8, y
         else:

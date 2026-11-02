@@ -239,11 +239,19 @@ def _apply(role: str) -> None:
         a2a_timing.install()
 
     # 6c) opt-in: overlap the Ulysses all-to-alls with attention compute (identity verified by frame digest only)
+    # 6d) opt-in: the Ulysses exchange without permute copies, one all-to-all for q, k and v (speed plan item 5).
+    #     With H3_TP2_A2A_OVERLAP=<groups> as well it runs the overlap's head groups itself, so only one is installed.
     ov = os.environ.get("H3_TP2_A2A_OVERLAP", "").strip()
-    if ov and int(ov) > 1:
+    ov_groups = int(ov) if ov and int(ov) > 1 else 1
+    if os.environ.get("H3_TP2_ULYSSES_NOCOPY", "0") == "1":
+        from h3_tp2 import ulysses_nocopy
+
+        ulysses_nocopy.install(ov_groups)
+        logger.warning("h3_tp2: EXPERIMENT Ulysses nocopy exchange (groups=%d; not yet measured on the GPU)", ov_groups)
+    elif ov_groups > 1:
         from h3_tp2 import ulysses_overlap
 
-        ulysses_overlap.install(int(ov))
+        ulysses_overlap.install(ov_groups)
 
     # 8) worker (vLLM-Omni >= 0.30): request cancellation signals are POSIX shared-memory bytes created by the engine
     #    on the head; a rank on another host cannot open them.  Unreadable names become a stand-in that always votes
