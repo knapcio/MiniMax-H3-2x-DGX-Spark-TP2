@@ -87,6 +87,30 @@ full playback and other scenes remain unreviewed. The default window is unchange
 side-by-side viewing copy with six bottom rows removed from each side. Its audio comes only from the 277-frame
 variant, with AAC packets and timestamps unchanged. The two exact-duration source videos remain untouched.
 
+### A matched request for a slower walking pace
+
+The next 30 s, 960x544, 20-step run uses the same source image, seed, 277-frame windows, overlap and camera-lock
+wording. It changes the figure instruction from moving very slowly with small natural steps to a relaxed pace of
+about one small step per second without running, speeding up, time-lapse or jerky movements; this change is present
+in both the base prompt and each per-window prompt. It completed in 1,599.3 s versus 1,597.5 s for the locked-camera
+baseline. The native file fully decodes and has SHA-256 `a6a00c6546b199b58d5fd8428b507cd307eeb4a216af837ae471fed74dbd826e`;
+its separately verified 720-frame exact-30 s copy is `a41651ab92256aa4ceed7f952f554c583c1c747227a3db14133f0173f4495aac`.
+It is `d30_koninck_literal_slow_humans_20step_EXPERIMENT.mp4` in `~/Downloads/h3-prod-smoke/`; its copied AAC ends
+16 ms before video. The shared receiver verified the request metadata, source image, receipt and complete native
+audio/video decode. This one seed and image do not establish that the requested gait was achieved.
+
+The lower-frame gray range is 26.66 versus 27.61 for the baseline; the maximum one-second gray change is 4.47
+versus 5.35. Those measurements also reflect scene content, so they do not validate shadow motion. The regional
+screen still finds 15 changes every 17 frames from 12.04 to 21.96 s: the lower-left median is 2.22 gray levels
+versus 1.38 in the baseline. A global screen flags short runs around 13.46–14.88 and 19.12–19.83 s. These
+heuristics can include real motion and do not replace visual playback. In particular, they do not prove a fix for
+the reported flicker or unnatural walking.
+
+`porownanie_koninck_droga_LEWO_baza_PRAWO_wolny_chod_POST_EXPERIMENT.mp4` is a separate 720-frame viewing copy
+showing the road enlarged, baseline on the left and new wording on the right. Both panels are cropped and lossy
+re-encoded; audio packets and timestamps come only from the left source. Both streams fully decode and source hashes
+were checked before and after. The exact-duration source files remain the quality references.
+
 ## 300 s and cinematic tests (2026-11-01)
 
 A 300 s 960x544 FL2VA render completed in 16,207.9 s end to end. Its native 7,213-frame file passed full
