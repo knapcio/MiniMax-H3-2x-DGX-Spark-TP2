@@ -158,3 +158,20 @@ asks for "their shadows glide over the plain"); codex's human-pace comparison (p
 "walk naturally at a relaxed, unhurried pace") was "chyba git". So the perceptual threshold for the block steps lies
 between 2 and 6 YAVG, the fix stays (it removes a real artifact and costs nothing), and the next work is the prompt:
 queue46 renders the no-shadow human-pace wording on the clean stack for the owner to compare.
+
+### Tail reference `koninck30-960x544-tailref` (queue45, 11:14-11:42, 1668 s): the post-seam pull-down is gone
+
+Same request and seed; class-aware lock plus `H3_TP2_CONT_LOCK_REF=tail` (reference = the last quarter of window 1).
+
+| served clip (960x544) | light per second, windows 2 and 3 | boundary step w2 (median / min) | w3 | screen >= 1 YAVG |
+|---|---|---|---|---|
+| mixture affine (baseline) | 123 119 119 120 120 120 120 118 118 118 / 121 126 127 127 124 | -0.12 / -0.53 | -1.94 / -2.09 | 4 drops |
+| class-aware, whole-window ref | 123 119 119 119 120 120 120 119 118 119 / 122 126 127 127 126 | -0.31 / -0.79 | -0.53 / -0.74 | none |
+| class-aware, **tail ref** | 126 128 129 130 128 124 124 124 124 125 125 124 123 123 123 / 126 131 131 131 131 | **-0.22 / -0.67** | **-0.40 / -0.67** | none |
+
+Window 1 is identical in all three (115-127, no lock). With the tail reference the windows no longer drop to 118-120
+after each seam; they stay at the level they were handed over at (seams +0.1 / -0.2 luma) and the block boundaries are
+the raw decoder's (-0.66). The model's own drift inside a window remains (window 2 rises to 130 and settles at 124,
+window 3 sits at 131): the lock pins a window's mean, not its slope. **Default since 2026-11-02 12:00:**
+`H3_TP2_CONT_LOCK_REF=tail` (`window` restores the whole-window reference). Owner's eye pending on
+`~/Downloads/h3-prod-smoke/d30_koninck_960x544_tailref_20261102.mp4`.

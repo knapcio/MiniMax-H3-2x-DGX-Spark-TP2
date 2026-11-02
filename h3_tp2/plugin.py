@@ -529,7 +529,10 @@ def _apply(role: str) -> None:
             _lock_audio = os.environ.get("H3_TP2_CONT_LOCK_AUDIO", "1").strip() == "1"   # the same lock for the audio latents
             _lock_std_env = os.environ.get("H3_TP2_CONT_LOCK_STD", "").strip()   # strength of the std (contrast) part; "" = same as mean
             _lock_std = float(_lock_std_env) if _lock_std_env else None
-            _lock_ref = os.environ.get("H3_TP2_CONT_LOCK_REF", "window").strip().lower()   # window = whole first window; tail = its last quarter
+            # default "tail" since 2026-11-02: the whole first window includes the clip's dark start, so every later window was
+            # pulled ~9 Y below the level it was handed over at (a staircase of 17-frame steps right after each seam); the tail
+            # (last quarter of window 1) is the look the clip actually hands over: post-seam boundaries -0.22/-0.40 vs -0.31/-0.53
+            _lock_ref = os.environ.get("H3_TP2_CONT_LOCK_REF", "tail").strip().lower()   # window = the pre-11-02 whole-window reference
             # default ON since 2026-11-02: the plain affine on the token mixture produced the 17-frame luma flicker (-2.5 Y at
             # every block boundary vs -0.66 raw); per-class matching keeps the brightness correction and the raw boundaries
             _lock_classes = os.environ.get("H3_TP2_CONT_LOCK_CLASSES", "1").strip() == "1"   # 0 = the pre-11-02 mixture affine

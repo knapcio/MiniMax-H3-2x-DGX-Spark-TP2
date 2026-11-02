@@ -326,3 +326,8 @@
   (`H3_TP2_VAE_LEFT_CONTEXT`, the decoder's RoPE is normalised by clip length: -7 / -52 Y) and a full-length decode
   (not a reference, the decoder is trained on 17-frame clips). New diagnostics: `H3_TP2_SAVE_LATENTS`,
   `scripts/vae_decode_offline.py`, `scripts/lock_decode_offline.py` (`results/20261102-vae-chunk-flicker/`).
+- 2026-11-02 12:00: look-lock reference = the tail (last quarter) of window 1 by default (`H3_TP2_CONT_LOCK_REF=tail`;
+  `window` = the old whole-window reference). The whole window included the clip's dark start, so every later window
+  was pulled ~9 Y below its hand-over level in a staircase of 17-frame steps right after the seam (visible at 1344 as
+  the remaining period-17 drops). 960x544 control: windows stay at the hand-over level, block boundaries -0.22 / -0.40
+  (raw decoder -0.66), no drop >= 1 YAVG, seams +0.1 / -0.2.
