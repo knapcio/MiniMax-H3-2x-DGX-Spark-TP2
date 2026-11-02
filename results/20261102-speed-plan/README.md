@@ -179,3 +179,20 @@ boot: 9.35 (first request) then 8.96 / 8.99 (warm), digests e20e93bd then bf6e85
 the previous boot's later probes had: at 960x576 the FIRST request of a boot is the odd one (speed and numerics), later
 requests repeat across boots. The previous boot read 9.19 on its first probe and 10.5-10.7 afterwards (1344 calibration
 23.74), so the boot gate now runs two probes and judges the warm one (`PROBES=2`, 6 % over 8.65).
+
+## Measured 2026-11-02 22:08-22:13: item 4, the fused FP8 epilogue (`scripts/fp8_epilogue_probe.py`, head stopped)
+
+Per-step projections over 50 layers from the four GEMM shapes (random FP8 inputs, best config per family):
+
+| M (rows per rank) | a) serving: two-pass + fused SwiGLU level 1 | c) Triton in-GEMM epilogue (`H3_TP2_FP8_GEMM=fused`) | d) cuBLASLt outer-vector scaling | ceiling: scalar bf16 cuBLASLt, no scales |
+|---|---|---|---|---|
+| 21952 (960x544/576) | 6.75 s/step | 9.82 (**+3.07**) | **not supported on sm121** (`cublasLtMatmulAlgoGetHeuristic` status 15) | 4.46 (-2.29) |
+| 42848 (1344x768) | 13.09 s/step | 16.07 (**+2.98**) | not supported | 8.62 (-4.47) |
+
+Kernel rates at M=21952, fc2: two-pass 150 TF (GEMM 175 + scale pass), Triton fused 86-90 TF, stock CUTLASS row-wise
+61 TF, torch row-wise `_scaled_mm` 61 TF (<= 1 ulp from two-pass), scalar bf16 ceiling 182 TF. The Triton kernel's
+epilogue math is exact (bit-identical on integer inputs) but its accumulator and speed are not cuBLASLt's: on GB10
+Triton reaches half of cuBLASLt. **Item 4 closed:** the two-pass path stays; the -4.5 s/step of the ceiling is only
+reachable with a CUTLASS sm120 FP8 kernel carrying the per-row/per-column epilogue at > 120 TF, which does not exist
+today (vLLM's CUTLASS row-wise kernel runs 61 TF here). `H3_TP2_FP8_GEMM=fused` stays in the tree as a measured
+negative. Probe log and JSON: `~/h3-tp2-results/fp8-epilogue-probe/` on spark-06.

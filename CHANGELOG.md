@@ -354,3 +354,7 @@
 - 2026-11-02 21:05: batched tile decode on by default (`H3_TP2_VAE_STACK_TILES=2`, cap 4): -38/-39 % decode time on
   identical latents at 960x544 and 1344x768 with max 1 gray level on 0.2-0.3 % of pixels (73.9 / 74.7 dB), two-rank
   serving renders at 960 and 1344 unchanged in every metric (`results/20261102-speed-plan/`).
+- 2026-11-02 22:20: speed plan item 4 measured and closed: cuBLASLt outer-vector (per-row/col) scaling is unsupported on
+  sm121, and a Triton FP8 GEMM with the epilogue in registers runs at 86-90 TFLOPS against cuBLASLt's 169-177, so the
+  fused path is +3 s/step slower at both cells; the two-pass GEMM stays (`results/20261102-speed-plan/`). Items 5 and 7
+  landed opt-in earlier tonight (nocopy exchange: wrong on the GPU, closed; step caches: 0.03-0.1 %, off).
