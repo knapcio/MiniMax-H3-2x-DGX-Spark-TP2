@@ -26,6 +26,27 @@ def _stats(x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     return xf.mean(dim=dims), xf.std(dim=dims)
 
 
+BLOCK_TOKENS = 5   # the VAE decodes 5 latent tokens per 17-frame block; token 5k is the padded clip-start token
+
+
+def block_start_mask(n_tokens: int, device, offset: int = 0) -> torch.Tensor:
+    """True for the tokens the VAE treats as a block start (local index + offset = 0 mod 5).  A continuation window
+    shifts by 75 tokens (255 frames = 15 blocks) in the stitched latent, so the local phase is the stitched phase."""
+    return ((torch.arange(n_tokens, device=device) + offset) % BLOCK_TOKENS) == 0
+
+
+def class_stats(x: torch.Tensor, offset: int = 0) -> dict:
+    """Per-channel mean/std over all tokens and separately over the block-start tokens (A) and the others (B).
+    The two classes have different statistics (A encodes one real frame + 3 padding frames); a per-channel affine
+    fitted on all tokens moves A differently from B and the decoder renders that as a darker first frame per block
+    (the 17-frame flicker: -0.66 Y raw -> -2.5 Y with the lock on 2026-11-02)."""
+    a = block_start_mask(x.shape[2], x.device, offset)
+    out = {"all": _stats(x)}
+    out["A"] = _stats(x[:, :, a]) if int(a.sum()) >= 2 else out["all"]
+    out["B"] = _stats(x[:, :, ~a]) if int((~a).sum()) >= 2 else out["all"]
+    return out
+
+
 def match_window(prev_tail: torch.Tensor, new_window: torch.Tensor, overlap_v: int, *, apply: bool, index: int) -> torch.Tensor:
     """Log the hand-over mismatch and, if ``apply``, return the affine-matched new window (same dtype/shape)."""
     regen = new_window[:, :, :overlap_v]
@@ -84,7 +105,7 @@ def _log_post_correction_seam(video: torch.Tensor, overlap_v: int, index: int) -
 
 def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, retries: int = 0, max_ratio: float = 2.0,
                  lock: str = "", lock_strength: float = 1.0, lock_ramp: float = 1.0, lock_audio: bool = False,
-                 lock_std: float | None = None, lock_ref: str = "window"):  # noqa: ANN001
+                 lock_std: float | None = None, lock_ref: str = "window", lock_classes: bool = False):  # noqa: ANN001
     """Return a ``diffuse`` replacement for one continuation request (state: the previous window's video latents).
 
     With ``retries`` > 0 a window whose latent seam ratio exceeds ``max_ratio`` is sampled again with another seed
@@ -159,7 +180,9 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
             except Exception as e:  # noqa: BLE001  (diagnostics never break a render)
                 logger.warning("h3_tp2 hand-over diagnostics skipped (%s)", e)
         elif state["ref"] is None and isinstance(video, torch.Tensor) and video.dim() == 5:
-            state["ref"] = _stats(ref_slice(video, lock_ref, dim=2))
+            _rv = ref_slice(video, lock_ref, dim=2)
+            # class phase of the reference slice: the tail starts at token T - len(tail) of the window
+            state["ref"] = class_stats(_rv, offset=video.shape[2] - _rv.shape[2]) if lock_classes else _stats(_rv)
             if isinstance(audio, torch.Tensor) and audio.dim() == 3:
                 state["ref_audio"] = audio_stats(ref_slice(audio, lock_ref, dim=2))
         if postcheck and ov:
@@ -262,27 +285,45 @@ def lock_to_reference(ref_stats: tuple[torch.Tensor, torch.Tensor], new_window: 
     after window (luma +41 and a 10x detail metric over 60 s on 2026-10-29): every window restarts exactly from the
     previous tail and then wanders toward the model's brighter, sharper prior; the lock pulls it back to the look of
     the first window.  Latents only; the pinned overlap frames are left untouched."""
-    m_ref, s_ref = ref_stats
     free = new_window[:, :, overlap_v:].float()
-    m, sd = _stats(free)
-    gain = (s_ref / sd.clamp_min(1e-6)).clamp(0.5, 2.0)
-    gain = 1.0 + (strength if std_strength is None else std_strength) * (gain - 1.0)   # std_strength 0 = mean only
-    m_target = m + strength * (m_ref - m)
-    # Ramped: the first free frame gets 1/n_ramp of the correction; the pinned
-    # overlap stays untouched. Full correction begins at the n_ramp-th free
-    # frame. A whole-window correction previously stepped brightness at the
-    # hand-over (-8.5 luma at seam 2, 03:27).
     n_free = free.shape[2]
-    # ``ramp``: the fraction of the free frames over which the correction reaches full strength (1.0 = the whole
-    # window; 0.25 = full after a quarter, then held: holds the look for most of the window, still continuous)
+    # Ramped: the first free frame gets 1/n_ramp of the correction; the pinned overlap stays untouched. Full correction
+    # begins at the n_ramp-th free frame. A whole-window correction previously stepped brightness at the hand-over
+    # (-8.5 luma at seam 2, 03:27). ``ramp``: the fraction of the free frames over which the correction reaches full
+    # strength (1.0 = the whole window; 0.25 = full after a quarter, then held).
     n_ramp = max(1, int(round(n_free * max(0.05, min(1.0, ramp)))))
     w = torch.clamp(torch.arange(1, n_free + 1, device=free.device, dtype=torch.float32) / n_ramp, max=1.0).view(1, 1, -1, 1, 1)
-    gain_t = 1.0 + w * (gain.view(1, -1, 1, 1, 1) - 1.0)
-    shift_t = w * (m_target - m).view(1, -1, 1, 1, 1)
-    out = (free - m.view(1, -1, 1, 1, 1)) * gain_t + m.view(1, -1, 1, 1, 1) + shift_t
+    k_std = strength if std_strength is None else std_strength   # std_strength 0 = mean only
+
+    def _affine(x, m_ref, s_ref, wt):
+        m, sd = _stats(x)
+        gain = 1.0 + k_std * ((s_ref / sd.clamp_min(1e-6)).clamp(0.5, 2.0) - 1.0)
+        shift = strength * (m_ref - m)
+        gain_t = 1.0 + wt * (gain.view(1, -1, 1, 1, 1) - 1.0)
+        return (x - m.view(1, -1, 1, 1, 1)) * gain_t + m.view(1, -1, 1, 1, 1) + wt * shift.view(1, -1, 1, 1, 1), m, sd
+
+    if isinstance(ref_stats, dict):
+        # token-class-aware: the block-start tokens (every 5th, the VAE's padded clip-start token) and the other tokens
+        # are matched to the reference's statistics of the SAME class, so their relation (what the decoder renders as
+        # the brightness of a block's first frame against the rest) stays as in the reference instead of being moved by
+        # one affine fitted on the mixture (the 17-frame flicker, 2026-11-02).
+        a = block_start_mask(n_free, free.device, offset=overlap_v)
+        out = free.clone()
+        for cls, mask in (("A", a), ("B", ~a)):
+            if int(mask.sum()) == 0:
+                continue
+            m_r, s_r = ref_stats[cls]
+            out[:, :, mask], _, _ = _affine(free[:, :, mask], m_r, s_r, w[:, :, mask])
+        m, sd = _stats(free)
+        m_ref, s_ref = ref_stats["all"]
+        tag = " classes A/B"
+    else:
+        m_ref, s_ref = ref_stats
+        out, m, sd = _affine(free, m_ref, s_ref, w)
+        tag = ""
     m2, s2 = _stats(out)
-    logger.info("h3_tp2 look-lock window %d: free frames mean %.4f std %.4f -> %.4f / %.4f (reference %.4f / %.4f, strength %.2f, ramp %.2f)",
-                index, m.mean().item(), sd.mean().item(), m2.mean().item(), s2.mean().item(), m_ref.mean().item(), s_ref.mean().item(), strength, ramp)
+    logger.info("h3_tp2 look-lock window %d: free frames mean %.4f std %.4f -> %.4f / %.4f (reference %.4f / %.4f, strength %.2f, ramp %.2f%s)",
+                index, m.mean().item(), sd.mean().item(), m2.mean().item(), s2.mean().item(), m_ref.mean().item(), s_ref.mean().item(), strength, ramp, tag)
     locked = new_window.clone()
     locked[:, :, overlap_v:] = out.to(new_window.dtype)
     return locked

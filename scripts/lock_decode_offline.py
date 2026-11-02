@@ -9,6 +9,8 @@ Variants (upstream chunk loop, FP16 autocast like serving, no left context):
   lock       h3_tp2.cont_match.lock_to_reference with the serving defaults (strength 1.0, ramp 0.25, mean+std)
   lock_mean  the same with std_strength 0 (mean-only lock)
   gain_only  the same with the mean shift removed (std gain only)
+  lock_classes       block-start tokens (every 5th) and the others locked to the reference's SAME class (mean+std)
+  lock_classes_mean  the class-aware lock, mean only
 Reports per variant: mean luma, mean |dY|, the period-17 drop screen, PSNR vs raw.
 """
 
@@ -100,6 +102,10 @@ def main():
             return cm.lock_to_reference(ref_stats, win_d, ov, 1.0, index=3, ramp=0.25, std_strength=None)
         if name == "lock_mean":
             return cm.lock_to_reference(ref_stats, win_d, ov, 1.0, index=3, ramp=0.25, std_strength=0.0)
+        if name == "lock_classes":
+            return cm.lock_to_reference(cm.class_stats(ref.to(dev)), win_d, ov, 1.0, index=3, ramp=0.25, std_strength=None)
+        if name == "lock_classes_mean":
+            return cm.lock_to_reference(cm.class_stats(ref.to(dev)), win_d, ov, 1.0, index=3, ramp=0.25, std_strength=0.0)
         if name == "gain_only":
             # same gain as "lock", mean untouched: lock toward (m, s_ref) instead of (m_ref, s_ref)
             return cm.lock_to_reference((m, s_ref), win_d, ov, 1.0, index=3, ramp=0.25, std_strength=None)

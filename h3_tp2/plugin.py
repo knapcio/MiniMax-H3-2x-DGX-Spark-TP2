@@ -530,6 +530,7 @@ def _apply(role: str) -> None:
             _lock_std_env = os.environ.get("H3_TP2_CONT_LOCK_STD", "").strip()   # strength of the std (contrast) part; "" = same as mean
             _lock_std = float(_lock_std_env) if _lock_std_env else None
             _lock_ref = os.environ.get("H3_TP2_CONT_LOCK_REF", "window").strip().lower()   # window = whole first window; tail = its last quarter
+            _lock_classes = os.environ.get("H3_TP2_CONT_LOCK_CLASSES", "0").strip() == "1"   # block-start tokens and the rest locked separately
             # H3_TP2_WINDOW_SEED_STEP=n inside this loop too: window k samples with seed + k*n. Upstream re-creates the
             # generators from the request seed for every window, so equal-shaped windows restart the SAME noise and tend
             # to re-stage the same camera move (the owner's "the woman shown 5-6 times", 2026-10-30 07:35).
@@ -578,7 +579,7 @@ def _apply(role: str) -> None:
 
                 def _dc(diffuse, kwargs, *, window_frames, overlap_frames, text_conditioning=None):  # noqa: ANN001
                     diffuse = _cm.wrap_diffuse(diffuse, apply=_apply_match, overlap_v_hint=_ct._video_t(overlap_frames),
-                                               retries=_retries, max_ratio=_max_ratio, lock=_lock, lock_strength=_lock_strength, lock_ramp=_lock_ramp, lock_audio=_lock_audio, lock_std=_lock_std, lock_ref=_lock_ref)
+                                               retries=_retries, max_ratio=_max_ratio, lock=_lock, lock_strength=_lock_strength, lock_ramp=_lock_ramp, lock_audio=_lock_audio, lock_std=_lock_std, lock_ref=_lock_ref, lock_classes=_lock_classes)
                     windows = _ct.plan_continuation_windows(kwargs["num_frames"], window_frames, overlap_frames)
                     if (len(windows) > 1 and kwargs.get("task") == "fl2va"
                             and -1 in (kwargs.get("keyframe_frame_indices") or [])):
@@ -658,8 +659,8 @@ def _apply(role: str) -> None:
 
             _pp9e.diffuse_continuation = _dc
             _pp9e._h3_tp2_cont_match_patched = True
-            logger.warning("h3_tp2: continuation hand-over diagnostics ON; latent match %s; crossfade %s; edit prefix %s; seam retries %d (ratio > %.1f); look-lock %s (%.2f, ramp %.2f, audio %s, ref %s); window seed step %d",
-                           "ON" if _apply_match else "off", "ON" if _xfade else "off", _edit or "off", _retries, _max_ratio, _lock or "off", _lock_strength, _lock_ramp, "ON" if _lock_audio else "off", _lock_ref, _seed_step)
+            logger.warning("h3_tp2: continuation hand-over diagnostics ON; latent match %s; crossfade %s; edit prefix %s; seam retries %d (ratio > %.1f); look-lock %s (%.2f, ramp %.2f, audio %s, ref %s, classes %s); window seed step %d",
+                           "ON" if _apply_match else "off", "ON" if _xfade else "off", _edit or "off", _retries, _max_ratio, _lock or "off", _lock_strength, _lock_ramp, "ON" if _lock_audio else "off", _lock_ref, "ON" if _lock_classes else "off", _seed_step)
     except Exception as e:  # noqa: BLE001
         logger.warning("h3_tp2: continuation hand-over hook not installed (%s)", e)
 
