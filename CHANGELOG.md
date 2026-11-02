@@ -310,3 +310,6 @@
 - 2026-11-01: fixed `render.sh` truncating text and JSON fields at semicolons through curl's multipart `-F` parsing.
   Literal fields now use `--form-string`; a real local HTTP multipart receiver verifies punctuation, Unicode,
   continuation JSON, image bytes and a large file-backed audio field. Live H3 verification is pending.
+- 2026-11-02: `render.sh` disables curl's automatic config files with `-q` as its first argument. A real two-server
+  loopback regression demonstrates that a `.curlrc` could previously add a second multipart POST. Proxy environment
+  variables and explicit endpoint settings still apply; existing frozen or deployed copies remain unchanged.

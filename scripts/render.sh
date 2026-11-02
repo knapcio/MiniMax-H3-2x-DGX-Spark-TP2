@@ -150,7 +150,9 @@ elif [ -n "${AUDIO_URL:-}" ]; then
   args+=(--form-string "audio_reference=$(python3 -c 'import json,sys; print(json.dumps({"audio_url": sys.argv[1]}))' "$AUDIO_URL")")
 fi
 t0=$(date +%s.%N)
-code=$(curl -sS --max-time "${H3_RENDER_TIMEOUT_S:-14400}" -X POST "http://$H3_API_HOST:$H3_API_PORT/v1/videos/sync" "${args[@]}" -D "$out.headers" -o "$out" -w "%{http_code}"); crc=$?
+# -q must be curl's first argument. Otherwise a user's .curlrc may add URLs
+# or other options and send this multipart request to unintended destinations.
+code=$(curl -q -sS --max-time "${H3_RENDER_TIMEOUT_S:-14400}" -X POST "http://$H3_API_HOST:$H3_API_PORT/v1/videos/sync" "${args[@]}" -D "$out.headers" -o "$out" -w "%{http_code}"); crc=$?
 t1=$(date +%s.%N)
 el=$(python3 -c "print(round($t1-$t0,1))")
 python3 - "$out" "$code" "$crc" "$el" "$dur" "$w" "$h" "$steps" "$seed" "$img" "$where" "$request_tmp/extra.json" "$request_tmp/prompt.txt" "${AUDIO_URL:-}" "$video_shift" "$lora_json" "$audio_meta" "$request_tmp/text-meta.json" "$image_meta" <<'PY' > "$out.timing.json" || { echo "render.sh: timing.json failed" >&2; exit 3; }

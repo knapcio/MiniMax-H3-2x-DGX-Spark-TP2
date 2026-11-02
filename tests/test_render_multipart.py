@@ -15,6 +15,55 @@ REPO = Path(__file__).resolve().parents[1]
 
 
 class RealMultipartTests(unittest.TestCase):
+    def test_user_curl_config_cannot_add_a_second_request(self):
+        received = {'intended': [], 'unexpected': []}
+
+        def handler(label):
+            class Handler(http.server.BaseHTTPRequestHandler):
+                def log_message(self, *_args):
+                    pass
+
+                def do_POST(self):
+                    data = self.rfile.read(int(self.headers['Content-Length']))
+                    received[label].append((self.path, data))
+                    self.send_response(200)
+                    self.send_header('Content-Length', '10')
+                    self.end_headers()
+                    self.wfile.write(b'fake video')
+            return Handler
+
+        servers = [http.server.ThreadingHTTPServer(('127.0.0.1', 0), handler(label))
+                   for label in ('intended', 'unexpected')]
+        threads = [threading.Thread(target=s.serve_forever, kwargs={'poll_interval': .01}, daemon=True)
+                   for s in servers]
+        for thread in threads:
+            thread.start()
+        def close_servers():
+            for server in servers:
+                server.shutdown()
+                server.server_close()
+            for thread in threads:
+                thread.join(timeout=5)
+        self.addCleanup(close_servers)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / '.curlrc').write_text(f'url = "http://127.0.0.1:{servers[1].server_port}/unexpected"\n')
+            env = {k: v for k, v in os.environ.items()
+                   if not k.startswith(('H3_', 'CONT_PROMPTS'))
+                   and k not in ('TASK', 'PROMPT', 'EXTRA_JSON', 'AUDIO_URL', 'http_proxy', 'https_proxy',
+                                 'all_proxy', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY')}
+            env.update(HOME=str(root), CURL_HOME=str(root), XDG_CONFIG_HOME=str(root),
+                       H3_API_HOST='127.0.0.1', H3_API_PORT=str(servers[0].server_port),
+                       H3_VENV=str(root), H3_RENDER_TIMEOUT_S='10', TASK='t2va')
+            result = subprocess.run(['bash', str(REPO / 'scripts/render.sh'), str(root / 'out.mp4'),
+                                     '5', '960', '544', '20', '3', 'A private prompt; continue.'],
+                                    env=env, capture_output=True, text=True, timeout=20)
+            self.assertEqual(received['unexpected'], [], 'curl config sent an extra multipart request')
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(len(received['intended']), 1)
+            self.assertEqual(received['intended'][0][0], '/v1/videos/sync')
+            self.assertIn(b'A private prompt; continue.', received['intended'][0][1])
+
     def test_prompt_and_json_with_semicolons_are_sent_verbatim(self):
         fields = {}
         class Handler(http.server.BaseHTTPRequestHandler):

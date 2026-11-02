@@ -434,6 +434,11 @@ bash ~/h3-tp2/scripts/verify-output.sh ~/clip.mp4 10 1344 768                   
 bash ~/h3-tp2/scripts/bench-matrix.sh "5:1344:768:50:1101 10:1344:768:50:1101"                  # the table above, with memory sampling on both nodes; STATUS per case
 ```
 
+`render.sh` disables curl's automatic configuration files so that a `.curlrc` cannot silently add destinations
+or alter a multipart request. Settings previously supplied only there no longer apply. Proxy environment variables,
+the configured API host, executable paths and HTTP transport remain the caller's responsibility; this is not an
+egress sandbox. Frozen older clients do not receive this change automatically.
+
 For a compatible server and adapter, `render.sh` accepts `H3_VIDEO_FLOW_SHIFT`, `H3_AUDIO_FLOW_SHIFT` and
 `H3_LORA_JSON='{"name":"adapter-name","path":"/absolute/path/on/both/nodes","scale":1.0}'`. Its defaults remain
 video/audio shifts 12/3 without an adapter. `EXTRA_JSON` can override the shifts; the timing record reports the
