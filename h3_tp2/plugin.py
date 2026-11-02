@@ -219,6 +219,27 @@ def _apply(role: str) -> None:
             _cls.decode = _decode
             logger.info("h3_tp2: empty_cache before decode enabled")
 
+    # 5b) opt-in, EXPERIMENTAL: per-request step caches (speed plan item 7; h3_tp2/step_cache.py).  Inside each
+    #     diffuse() call the RoPE table and the text token refiner output are computed on the first step and reused
+    #     (cleared at the start and end of every diffuse), and the loop's constant update/audio_update masks become
+    #     index tensors computed once per request.  Bit-identical by construction (tests/test_step_cache.py, torch.equal
+    #     against upstream's verbatim loop); expected gain < 0.1 % per step, not yet measured on the GPU.  Each patch is
+    #     skipped (warning) if the upstream function it relies on is not the reviewed v0.30.0 source.
+    #     H3_TP2_STEP_CACHE=verify also recomputes the stock value on every hit and compares (syncs; qualification only).
+    #     Installed before 6) so the step0 digest still hashes the stock forward kwargs.  Never fails the process.
+    _sc = os.environ.get("H3_TP2_STEP_CACHE", "0").strip().lower()
+    if _sc in ("1", "verify"):
+        try:
+            from h3_tp2 import step_cache as _stc
+            from vllm_omni.diffusion.models.minimax_h3 import denoise_loop as _dl5b
+            from vllm_omni.diffusion.models.minimax_h3 import minimax_h3_transformer as _tr5b
+            from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _pp5b
+
+            _done = _stc.install(_dl5b, _tr5b, _pp5b, verify=(_sc == "verify"))
+            logger.warning("h3_tp2: EXPERIMENT step cache %s, patches installed: %s", _sc, ", ".join(_done) or "none")
+        except Exception:  # noqa: BLE001  (an opt-in experiment must not take the rank down)
+            logger.warning("h3_tp2: step cache not installed", exc_info=True)
+
     # 6) uint8 output path + frame digest + phase timers (default on; H3_TP2_U8_OUTPUT=0 restores the stock FP32 path)
     if os.environ.get("H3_TP2_U8_OUTPUT", "1") == "1":
         from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _pp
