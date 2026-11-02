@@ -6,10 +6,12 @@
 # It renders a 5 s 960x576 T2VA calibration (seed 0, 20 steps; ~8.6 s/step on a good boot of the long stack with the
 # two-pass GEMM and fused SwiGLU), reads the step rate from the head journal and prints PROBE PASS|SLOW|FAIL with the
 # numbers. Exit 0 = pass, 2 = slow (restart the head and probe again), 1 = the probe did not run.
-REF=${1:-8.65}; TOL=${2:-0.10}
-# The probe is the FIRST request of the boot and runs 4-7 % slower than a warm one (9.0-9.17 vs 8.65 measured), so a
-# tolerance under 0.10 flags warm-up as a slow boot and restarts in a loop (queue49, 2026-11-02 15:15). Floor it.
-TOL=$(python3 -c "print(max(float('$TOL'), 0.10))")
+REF=${1:-8.65}; TOL=${2:-0.06}
+# Two probes: the FIRST request of a boot is special (4-7 % slower and numerically different: its latents digest
+# changes per boot, later requests repeat bf6e8568 across boots at 960x576), and it does not predict the steady state
+# (queue52/53, 2026-11-02: a boot probed 9.19 first and ran 10.5-10.7 afterwards; the next boot 9.35 then 8.96/8.99).
+# The verdict is on the SECOND (warm) request against the warm reference; the first is reported.
+PROBES=${PROBES:-2}
 OUTROOT=${H3_PROBE_ROOT:-$HOME/h3-tp2-results}
 NAME=boot-probe-$(date +%Y%m%d-%H%M%S)
 health() { curl -s -m 3 -o /dev/null -w "%{http_code}" http://127.0.0.1:18093/health; }
@@ -18,13 +20,18 @@ T0=$(date "+%Y-%m-%d %H:%M:%S")
 grep Normal /proc/buddyinfo | awk '{printf "buddyinfo order9+ (head): "; for(i=14;i<=NF;i++) printf "%s ", $i; print ""}'
 unset CONT_PROMPTS CONT_PROMPTS_EXTRA AUDIO_URL EXTRA_JSON; export TASK=t2va
 export PROMPT="A cinematic shot of a forest stream at golden hour, leaves swaying in a light breeze, sunlight flickering through the canopy, gentle water sounds."
-OUT=$OUTROOT/$NAME bash ~/h3-tp2/scripts/bench-matrix.sh "5:960:576:20:0" > $OUTROOT/$NAME.log 2>&1 < /dev/null
-RATE=$(journalctl --user -u h3-tp2-head.service -a --since "$T0" --no-pager -o short | tr "\r" "\n" | grep -o -E "20/20 \[[0-9:]+<00:00, +[0-9.]+s/it\]" | tail -1 | grep -o -E "[0-9.]+s/it" | tr -d "s/it")
-DIG=$(journalctl --user -u h3-tp2-head.service --since "$T0" --no-pager | grep -o "h3_tp2 latents sha256 [0-9a-f]\{12\}" | tail -1 | awk '{print $4}')
+FIRST=""
+for k in $(seq 1 $PROBES); do
+  Tk=$(date "+%Y-%m-%d %H:%M:%S")
+  OUT=$OUTROOT/$NAME-$k bash ~/h3-tp2/scripts/bench-matrix.sh "5:960:576:20:0" > $OUTROOT/$NAME-$k.log 2>&1 < /dev/null
+  RATE=$(journalctl --user -u h3-tp2-head.service -a --since "$Tk" --no-pager -o short | tr "\r" "\n" | grep -o -E "20/20 \[[0-9:]+<00:00, +[0-9.]+s/it\]" | tail -1 | grep -o -E "[0-9.]+s/it" | tr -d "s/it")
+  DIG=$(journalctl --user -u h3-tp2-head.service --since "$Tk" --no-pager | grep -o "h3_tp2 latents sha256 [0-9a-f]\{12\}" | tail -1 | awk '{print $4}')
+  [ $k -lt $PROBES ] && { FIRST="first $RATE ($DIG), "; echo "probe $k: $RATE s/step latents $DIG"; }
+done
 [ -n "$RATE" ] || { echo "PROBE FAIL: no step rate in the journal (see $OUTROOT/$NAME.log)"; exit 1; }
 LIMIT=$(python3 -c "print(round($REF*(1+$TOL),3))")
 if python3 -c "import sys; sys.exit(0 if $RATE <= $LIMIT else 2)"; then
-  echo "PROBE PASS: $RATE s/step (reference $REF, limit $LIMIT) latents $DIG $(date +%H:%M:%S)"; exit 0
+  echo "PROBE PASS: ${FIRST}warm $RATE s/step (reference $REF, limit $LIMIT) latents $DIG $(date +%H:%M:%S)"; exit 0
 else
-  echo "PROBE SLOW: $RATE s/step (reference $REF, limit $LIMIT) latents $DIG $(date +%H:%M:%S)"; exit 2
+  echo "PROBE SLOW: ${FIRST}warm $RATE s/step (reference $REF, limit $LIMIT) latents $DIG $(date +%H:%M:%S)"; exit 2
 fi
