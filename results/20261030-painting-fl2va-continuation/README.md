@@ -891,3 +891,5 @@ screen at >= 1 YAVG finds one run of five steps at exactly -1.0 (29.8-32.6 s), b
 (2-6 Y); the 10-30 60 s clip had -1.62 / -3.38 in the same statistic. Clip:
 `~/Downloads/h3-prod-smoke/d60_koninck_1344_defaults_noshadow_clean_20261102.mp4`. This is the deliverable for the
 painting use at 60 s; the owner's eye decides on the brightness curve and the prompt.
+
+Owner's eye on the 60 s clip (18:35): "wyglada spoko". The request above is now the README's recommended one.

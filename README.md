@@ -143,7 +143,7 @@ the same request shape as a 10 s clip works for 16-60 s: add the two `long_video
 
 ```bash
 curl -sS --max-time 30000 -X POST http://127.0.0.1:18093/v1/videos/sync \
-  --form-string "prompt=The painting comes alive: a wide landscape under a huge sky. The clouds drift slowly, their shadows glide over the plain, the river glints and ripples, leaves tremble in a light breeze, a few birds cross the sky, the tiny figures on the road walk on. The camera is locked on a tripod and does not move at all; one continuous take; soft natural ambience." \
+  --form-string "prompt=The painting comes alive: a wide landscape under a huge sky. The clouds drift slowly across the sky, keeping their broad soft painted shapes, the light on the landscape stays soft and nearly constant, without strong moving cloud shadows, the river and the pond in the distance glint and ripple, leaves on the trees tremble in a light breeze, a few birds fly across the sky, the tiny figures on the road walk naturally at a relaxed, unhurried pace, taking about one small step each second, without running, speeding up, time-lapse or jerky movements. The camera is locked on a tripod and does not move at all; one continuous take; soft natural ambience." \
   --form-string "width=1344" --form-string "height=768" --form-string "aspect_ratio=16:9" --form-string "fps=24" \
   --form-string "num_inference_steps=20" --form-string "flow_shift=12" --form-string "seed=1101" \
   --form-string 'extra_params={"task": "fl2va", "duration": 30, "audio_flow_shift": 3.0, "frame_indices": [0], "long_video": true, "long_video_mode": "continuation"}' \
@@ -152,8 +152,8 @@ curl -sS --max-time 30000 -X POST http://127.0.0.1:18093/v1/videos/sync \
 
 | | |
 |---|---|
-| Measured (Koninck landscape, 1344x768, 20 steps) | 16 s in 40 min, 30 s in 84 min, 60 s in 2 h 38 min (2026-11-02, speed-gated boot): hand-overs invisible in every number (luma step 0.0 / -0.3, no inter-frame spike, no cut), the picture stays the picture, the clouds keep drifting, audio flat. 960x576 is about half the time. |
-| Prompt | Say that the camera is locked and describe only the motion of what is in the picture; the model brightens a painting's tone a little in the first seconds. |
+| Measured (Koninck landscape, 1344x768, 20 steps) | 16 s in 40 min, 30 s in 84 min, 60 s in 2 h 38 min (2026-11-02, speed-gated boot; owner: "wyglada spoko"): hand-overs invisible in every number (luma step 0.0 / -0.3, no inter-frame spike, no cut), the picture stays the picture, the clouds keep drifting, audio flat. 960x576 is about half the time. |
+| Prompt | The wording above is the owner-approved one (2026-11-02, 60 s: "wyglada spoko"): camera locked on a tripod, clouds keep their painted shapes, no strong moving cloud shadows (with "their shadows glide over the plain" the shadows raced), figures at one small step per second. The model brightens a painting's tone over the first 20-30 s and then settles. Crop any border off the input first (below). |
 | Sound | The generated ambience is there but can be muted; the audio look-lock keeps its level flat. |
 | Flicker | Since 2026-11-02 the video look-lock fits the VAE's block-start tokens and the other tokens separately (`H3_TP2_CONT_LOCK_CLASSES=1`, default): the faint brightness step every 17 frames that the earlier lock produced in windows 2+ is gone (`results/20261102-vae-chunk-flicker/`). |
 | Server | The FL2VA partition (`scripts/select-stack.sh long FL2VA`); the continuation defaults in `h3_tp2/plugin.py` (pinned prefix, seam retries, video and audio look-lock, a seed per window). |

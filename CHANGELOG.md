@@ -345,3 +345,5 @@
 - 2026-11-02 18:25: 60 s Koninck at 1344x768 with the full 11-02 defaults on a speed-gated, compacted boot: 9486 s
   (2 h 38 min; 13445 s on 10-30), five invisible hand-overs (-0.0..+0.2 luma), no cut, block boundaries median -0.50
   (one run at -1.0 Y, below the eye; 10-30: -1.62 / -3.38). `results/20261030-painting-fl2va-continuation/`.
+- 2026-11-02 18:35: owner approved the 60 s 1344 clip ("wyglada spoko"); the README's painting request now carries the
+  no-shadow human-pace prompt, the border check and the 11-02 lock defaults.
