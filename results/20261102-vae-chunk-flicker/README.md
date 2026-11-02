@@ -82,5 +82,29 @@ correction: strongest in the 5 s-history clip (-6 YAVG, a 10-luma pull-back), -2
 threshold in the default 1344 clips (gain ~1.00). `scripts/lock_decode_offline.py` replays the lock on the saved
 latents (raw / lock / mean-only / gain-only) and decodes each: results below.
 
-(lock replay results follow)
+### Lock replay on the saved window-3 latents (`scripts/lock_decode_offline.py`, 08:43-09:03)
+
+Reference = window 1's latents (whole window, as in serving), overlap 7 tokens, serving defaults (strength 1.0, ramp
+0.25), upstream chunk loop, FP16 autocast. Boundary step = luma(frame 17k) - luma(frame 17k-1), median over the window.
+
+| latents decoded | mean luma | boundary step median / min | non-boundary mean abs dY | PSNR vs raw |
+|---|---|---|---|---|
+| raw (as saved, no lock) | 124.49 | -0.66 / -0.78 | 0.093 | - |
+| lock, serving default (mean + std) | 122.01 | **-2.52 / -2.77** | 0.192 | 36.7 dB |
+| lock, mean only (`CONT_LOCK_STD=0`) | 121.76 | -1.23 / -1.49 | 0.120 | 37.2 dB |
+| lock, std gain only | 124.68 | -1.72 / -1.89 | 0.238 | 41.5 dB |
+| **lock, token-class-aware** (`CONT_LOCK_CLASSES=1`) | 122.25 | **-0.83 / -1.01** | 0.097 | - |
+| lock, class-aware, mean only | 122.01 | -0.76 / -1.03 | 0.094 | - |
+
+The served baseline dips -2.0 at the same frames: the replay reproduces the flicker, and both halves of the affine
+contribute (mean shift and std gain, roughly additive). The decoder's own dip is -0.66 (raw).
+
+**Fix:** `h3_tp2/cont_match.py` `class_stats` / `lock_to_reference(dict)`: the block-start tokens (local index = 0
+mod 5; a continuation window shifts by 75 tokens, so the local phase is the stitched phase, and the 7-token overlap
+confirms: 7056 of 82656 pinned rows = 7 of 82 tokens) and the other tokens are matched to the reference's statistics
+of the same class. The brightness correction is kept (122.25 vs 122.05) and the block boundary returns to the raw
+decoder's -0.8 with raw smoothness. Serving control: `koninck30-960x544-lockclasses` (queue43, same request, only
+`H3_TP2_CONT_LOCK_CLASSES=1`), results below.
+
+(serving control results follow)
 
