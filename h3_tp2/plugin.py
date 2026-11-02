@@ -445,6 +445,17 @@ def _apply(role: str) -> None:
         _vae_scope.install(_vae.MiniMaxH3VideoVAE, cap=_tile_batch)
         logger.warning("h3_tp2: experimental scoped video VAE tile decode (up to %d tiles); CUDA/TP2 unqualified", _tile_batch)
 
+    # 9c') H3_TP2_VAE_LEFT_CONTEXT=<tokens> (default 0 = upstream loop): every temporal decode chunk after the first is
+    #      decoded from that many extra latent tokens of past, whose frames are dropped, so a 17-frame block no longer
+    #      starts from a fresh-context decode blended into the previous look-ahead (the periodic 17-frame luma flicker,
+    #      2026-11-02; h3_tp2/vae_context.py). Same loop on every rank; opt-in until the offline A/B qualifies it.
+    try:
+        from h3_tp2 import vae_context as _vctx
+
+        _vctx.install()
+    except Exception as e:  # noqa: BLE001
+        logger.warning("h3_tp2: VAE left-context decode not installed (%s)", e)
+
     # 9d) H3_TP2_CONT_PROMPTS=auto (default; "off" disables): a long_video continuation request without its own
     #     continuation_prompts gets one prompt per window (first: the prompt + "one single continuous take"; the rest:
     #     "the same continuous shot goes on ..." + the prompt), the wording measured on 2026-10-27/28 that keeps the shot
