@@ -73,6 +73,7 @@ def main() -> int:
     ap.add_argument("--shift", type=int, default=0, help="drop the first n latent tokens before decoding: moves the chunk grid by 4n frames (decoder-grid vs content test)")
     ap.add_argument("--stack-tiles", type=int, default=0, help="install h3_tp2.vae_tile_scope with this tile cap before loading the VAE (batched tile decode A/B; 0 = stock)")
     ap.add_argument("--deterministic", action="store_true", help="cudnn deterministic + no reduced-precision fp16 reductions")
+    ap.add_argument("--save-frames", default="", help="save the ctx-0 decoded frames as uint8 [3,T,H,W] to this .pt (for A/B between runs)")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
 
@@ -160,6 +161,8 @@ def main() -> int:
              "periodic_drops": [{"first_frame": run[0][0], "count": len(run), "median_step": round(sorted(s for _, s in run)[len(run) // 2], 2)} for run in drops]}
         if ref_u8 is None:
             ref_u8, ref_y = u8, y
+            if args.save_frames:
+                torch.save(u8, args.save_frames)
         else:
             mse = torch.mean((u8.float() - ref_u8.float()) ** 2).item() / 255.0 ** 2
             r["psnr_vs_0"] = round(10 * torch.log10(torch.tensor(1.0 / max(mse, 1e-12))).item(), 2)
