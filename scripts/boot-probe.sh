@@ -1,0 +1,27 @@
+#!/bin/bash
+# Boot speed gate (speed plan 2026-11-02, item 1). Boots of the same code on the same hosts differ by 7-40 % in
+# denoising speed (2026-10-30: 120 vs 86 s/step; 2026-11-02: 22.9 vs 21.2 s/step at 1344, identical latents digests).
+# Run this right after the head reports healthy and before any long render:
+#   bash scripts/boot-probe.sh [reference_s_per_step] [tolerance_fraction]
+# It renders a 5 s 960x576 T2VA calibration (seed 0, 20 steps; ~8.6 s/step on a good boot of the long stack with the
+# two-pass GEMM and fused SwiGLU), reads the step rate from the head journal and prints PROBE PASS|SLOW|FAIL with the
+# numbers. Exit 0 = pass, 2 = slow (restart the head and probe again), 1 = the probe did not run.
+REF=${1:-8.65}; TOL=${2:-0.05}
+OUTROOT=${H3_PROBE_ROOT:-$HOME/h3-tp2-results}
+NAME=boot-probe-$(date +%Y%m%d-%H%M%S)
+health() { curl -s -m 3 -o /dev/null -w "%{http_code}" http://127.0.0.1:18093/health; }
+[ "$(health)" = 200 ] || { echo "PROBE FAIL: head health $(health)"; exit 1; }
+T0=$(date "+%Y-%m-%d %H:%M:%S")
+grep Normal /proc/buddyinfo | awk '{printf "buddyinfo order9+ (head): "; for(i=14;i<=NF;i++) printf "%s ", $i; print ""}'
+unset CONT_PROMPTS CONT_PROMPTS_EXTRA AUDIO_URL EXTRA_JSON; export TASK=t2va
+export PROMPT="A cinematic shot of a forest stream at golden hour, leaves swaying in a light breeze, sunlight flickering through the canopy, gentle water sounds."
+OUT=$OUTROOT/$NAME bash ~/h3-tp2/scripts/bench-matrix.sh "5:960:576:20:0" > $OUTROOT/$NAME.log 2>&1 < /dev/null
+RATE=$(journalctl --user -u h3-tp2-head.service -a --since "$T0" --no-pager -o short | tr "\r" "\n" | grep -o -E "20/20 \[[0-9:]+<00:00, +[0-9.]+s/it\]" | tail -1 | grep -o -E "[0-9.]+s/it" | tr -d "s/it")
+DIG=$(journalctl --user -u h3-tp2-head.service --since "$T0" --no-pager | grep -o "h3_tp2 latents sha256 [0-9a-f]\{12\}" | tail -1 | awk '{print $4}')
+[ -n "$RATE" ] || { echo "PROBE FAIL: no step rate in the journal (see $OUTROOT/$NAME.log)"; exit 1; }
+LIMIT=$(python3 -c "print(round($REF*(1+$TOL),3))")
+if python3 -c "import sys; sys.exit(0 if $RATE <= $LIMIT else 2)"; then
+  echo "PROBE PASS: $RATE s/step (reference $REF, limit $LIMIT) latents $DIG $(date +%H:%M:%S)"; exit 0
+else
+  echo "PROBE SLOW: $RATE s/step (reference $REF, limit $LIMIT) latents $DIG $(date +%H:%M:%S)"; exit 2
+fi
