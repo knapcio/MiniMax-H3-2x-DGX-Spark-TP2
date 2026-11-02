@@ -14,7 +14,9 @@ restart_head() {
   # that ends with a restoring restart followed by one that starts with the same restart cost a 13-minute double boot)
   if [ "$(health)" = 200 ]; then
     grep -v -E "$STRIP" ~/.h3-tp2.env > /tmp/h3env.want; printf "%s\n" "$BASEENV" >> /tmp/h3env.want; [ -n "$1" ] && printf "%s\n" "$1" >> /tmp/h3env.want
-    if cmp -s /tmp/h3env.want ~/.h3-tp2.env; then echo "=== head already healthy with this env, no restart $(date +%H:%M:%S)"; return 0; fi
+    # ... and only when the running head loaded the currently synced code (queue52 skipped a restart that was meant to
+    # bring a new default into serving, 2026-11-02 21:15)
+    if cmp -s /tmp/h3env.want ~/.h3-tp2.env && [ "$(cat ~/h3-tp2-results/.head-rev 2>/dev/null)" = "$(cat ~/h3-tp2/.synced-rev 2>/dev/null)" ]; then echo "=== head already healthy with this env and code, no restart $(date +%H:%M:%S)"; return 0; fi
   fi
   grep Normal /proc/buddyinfo | awk '{printf "buddyinfo before restart: "; for(i=13;i<=NF;i++) printf "%s ", $i; print ""}'
   grep -v -E "$STRIP" ~/.h3-tp2.env > ~/.h3-tp2.env.new; printf "%s\n" "$BASEENV" >> ~/.h3-tp2.env.new; [ -n "$1" ] && printf "%s\n" "$1" >> ~/.h3-tp2.env.new; mv -f ~/.h3-tp2.env.new ~/.h3-tp2.env
@@ -23,6 +25,7 @@ restart_head() {
   systemctl --user stop h3-tp2-head.service; sleep 15
   sudo -n /usr/local/sbin/h3-compact 2>/dev/null | awk '{printf "compacted head, orders 9+: "; for(i=13;i<=NF;i++) printf "%s ", $i; print ""}'
   ssh -o BatchMode=yes -o ConnectTimeout=10 10.100.96.5 "sudo -n /usr/local/sbin/h3-compact 2>/dev/null" | awk '{printf "compacted agent host, orders 9+: "; for(i=13;i<=NF;i++) printf "%s ", $i; print ""}'
+  cp -f ~/h3-tp2/.synced-rev ~/h3-tp2-results/.head-rev 2>/dev/null
   systemctl --user start h3-tp2-head.service; sleep 20
   for i in $(seq 1 80); do [ "$(health)" = 200 ] && break; systemctl --user is-active --quiet h3-tp2-head.service || { echo "head died during restart"; break; }; sleep 15; done
   echo "=== head restarted ($1) health $(health) $(date +%H:%M:%S)"
