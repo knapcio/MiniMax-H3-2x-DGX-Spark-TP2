@@ -152,3 +152,16 @@ here. Two earlier attempts of this A/B were invalid: the direct chunk-loop scrip
 "stack4" was stock), and next to the idle head three of four arms hit CUDA out-of-memory with 44 GB free (host
 fragmentation after a boot): offline GPU jobs on the head only with the head stopped and the hosts compacted.
 Serving check next (queue51): 960x576 stock vs `=2` on two ranks, then a 16 s 1344 continuation; then default-on.
+
+### Serving check (queue51, 19:57-): two ranks, tile-parallel gather
+
+| request | decode phase | note |
+|---|---|---|
+| A: 5 s 960x576 T2VA, stock | 23.9 s | |
+| B: same request, `H3_TP2_VAE_STACK_TILES=2` + `VAE_TILE_BATCH=4` (new boot) | **18.0 s (-25 %)** | no error on two ranks |
+
+The MP4-to-MP4 PSNR of A and B (32.3 dB luma) says nothing about the decoder: the two requests ran on different boots
+and at 960x576 the first request's LATENTS differ per boot (rel-l2 0.09 between A's and B's saved latents, every
+element), so the frames differ for diffusion reasons. The decoder equivalence is the offline result above (73.9 dB on
+identical latents); a 1344 offline check (`item2d`, stock vs cap 4 on the saved 1344 window-1 latents, head stopped)
+follows the 16 s 1344 continuation (C) of this queue.
