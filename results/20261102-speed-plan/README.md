@@ -110,3 +110,26 @@ belongs before every boot that precedes a long render (sudo from the workstation
 a boot gives a different latents digest on every boot (three boots, three digests at 960x576), while requests within
 one boot repeat the digest exactly (queue47: 2 + 3 requests). Lossless A/B therefore means same-boot digests; the
 2026-10-29 "bit-stable across boots at 960" held for the boots it compared and does not generalise.
+
+## Measured 2026-11-02 18:21-19:20: items 3 and 5 (queue50), 5 s 1344x768 T2VA seed 0, one boot per arm
+
+| arm | s/step | latents vs stock |
+|---|---|---|
+| S1 stock (the 60 s render's boot, warm) | 21.06 | - |
+| N `H3_TP2_ULYSSES_NOCOPY=1` | 21.22 | **rel-l2 0.199, every element differs** (video and audio) |
+| S2 stock, fresh boot | 21.32 | **bit-equal to S1** |
+| P `H3_TP2_A2A_OVERLAP=2` + `H3_TP2_A2A_STREAM_PRIORITY=-1` + `NCCL_MAX_CTAS=4` | 21.27 | **bit-equal to S2** |
+
+- **Item 5 (no-copy exchange): closed.** The GPU result is wrong (a 20 % relative difference is a bug, not reordering:
+  cuDNN's reading of the strided packed-QKV views or the per-destination rope launches), and even so there was no
+  speedup; the copies it removes are overlapped or cheap at this cell. The code stays behind `=force` for a future
+  debug session with per-layer q/k/v comparison.
+- **Item 3 (comm stream priority): no effect** at 1344 5 s: bit-equal and 21.27 vs 21.32 s/step. The all-to-all is
+  not the bottleneck here; the overlap's earlier "slower" result stands. Closed unless a profile shows the a2a waiting.
+- **Cross-boot reproducibility at 1344:** two stock boots gave bit-equal latents (and queue47's five requests on two
+  boots all `4d6d69e4`), so the per-boot digest variance seen at 960x576 (three boots, three digests) is specific to
+  that cell; at 1344 same-request digests can be compared across boots.
+- Boot-to-boot speed on compacted hosts: 21.06 / 21.32 / 21.27 (1.2 % spread) against 22.9 on the 11:42 boot and 120
+  s/step on 10-30: the compaction + probe gate is the lever that matters.
+
+Remaining: item 2 (batched VAE decode default-on, offline A/B next), item 4 (fused FP8 epilogue, 2-4 days), items 6-7.

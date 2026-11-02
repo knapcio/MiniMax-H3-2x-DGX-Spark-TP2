@@ -71,12 +71,22 @@ def main() -> int:
     ap.add_argument("--max-tokens", type=int, default=0, help="decode only the first n latent tokens (0 = all)")
     ap.add_argument("--geometry", action="store_true", help="also decode tokens 0..6 and 0..8 raw and compare the frames of tokens 0..4")
     ap.add_argument("--shift", type=int, default=0, help="drop the first n latent tokens before decoding: moves the chunk grid by 4n frames (decoder-grid vs content test)")
+    ap.add_argument("--stack-tiles", type=int, default=0, help="install h3_tp2.vae_tile_scope with this tile cap before loading the VAE (batched tile decode A/B; 0 = stock)")
+    ap.add_argument("--deterministic", action="store_true", help="cudnn deterministic + no reduced-precision fp16 reductions")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
 
     from vllm_omni.diffusion.models.minimax_h3.vae import MiniMaxH3VideoVAE
     from vllm_omni.diffusion.models.minimax_h3.temporal_chunks import decode_temporal_chunks
     from h3_tp2.vae_context import install_on_model
+    if args.deterministic:
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction = False
+    if args.stack_tiles:
+        from h3_tp2 import vae_tile_scope
+        vae_tile_scope.install(MiniMaxH3VideoVAE, cap=args.stack_tiles)
+        print(f"vae_tile_scope installed, cap {args.stack_tiles}", flush=True)
 
     obj = torch.load(args.latents, map_location="cpu")
     video = obj[0] if isinstance(obj, (tuple, list)) else obj

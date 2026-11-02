@@ -243,7 +243,10 @@ def _apply(role: str) -> None:
     #     With H3_TP2_A2A_OVERLAP=<groups> as well it runs the overlap's head groups itself, so only one is installed.
     ov = os.environ.get("H3_TP2_A2A_OVERLAP", "").strip()
     ov_groups = int(ov) if ov and int(ov) > 1 else 1
-    if os.environ.get("H3_TP2_ULYSSES_NOCOPY", "0") == "1":
+    # 2026-11-02 19:20: on the GPU the nocopy exchange is numerically WRONG (5 s 1344 T2VA latents rel-l2 0.199 against
+    # stock, every element differs; stock-vs-stock across boots is bit-equal) and no faster (21.22 vs 21.06 s/step).
+    # Closed; the code stays for a future debug session and needs "force" to install.
+    if os.environ.get("H3_TP2_ULYSSES_NOCOPY", "0") == "force":
         from h3_tp2 import ulysses_nocopy
 
         ulysses_nocopy.install(ov_groups)

@@ -347,3 +347,7 @@
   (one run at -1.0 Y, below the eye; 10-30: -1.62 / -3.38). `results/20261030-painting-fl2va-continuation/`.
 - 2026-11-02 18:35: owner approved the 60 s 1344 clip ("wyglada spoko"); the README's painting request now carries the
   no-shadow human-pace prompt, the border check and the 11-02 lock defaults.
+- 2026-11-02 19:20: speed plan items 3 and 5 measured on the GPU (queue50): the no-copy Ulysses exchange is numerically
+  wrong (rel-l2 0.20 vs stock) and no faster -> closed (`H3_TP2_ULYSSES_NOCOPY=force` for debugging only); comm stream
+  priority -1 + NCCL_MAX_CTAS=4 with overlap 2: bit-equal, 21.27 vs 21.32 s/step -> no effect. Two stock boots at 1344
+  gave bit-equal latents.
