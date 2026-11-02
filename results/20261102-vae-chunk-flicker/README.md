@@ -106,5 +106,24 @@ of the same class. The brightness correction is kept (122.25 vs 122.05) and the 
 decoder's -0.8 with raw smoothness. Serving control: `koninck30-960x544-lockclasses` (queue43, same request, only
 `H3_TP2_CONT_LOCK_CLASSES=1`), results below.
 
-(serving control results follow)
+### Serving control `koninck30-960x544-lockclasses` (queue43, 09:10-09:41, 1852 s incl. first-request warm-up)
+
+Same request and seed as the baseline; only `H3_TP2_CONT_LOCK_CLASSES=1`. Boundary step = luma(17k) - luma(17k-1)
+on the served MP4 (`boundary_steps.py`), per window:
+
+| served clip | window 1 (no lock) | window 2 | window 3 | period-17 screen |
+|---|---|---|---|---|
+| baseline (mixture affine) | -0.30 / -0.42 | -0.12 / -0.53 | **-1.94 / -2.09** | 4 drops >= 2 YAVG (27.6-29.8 s) |
+| class-aware lock | -0.30 / -0.43 | -0.31 / -0.79 | **-0.53 / -0.74** | none >= 1 YAVG |
+
+(median / min). Light per second identical to the baseline (116 .. 127: the brightness correction is intact), seams
++0.0 / -0.1 luma, no cut. The lock lines show the new path (`classes A/B`), the std of window 3 pulled 0.6525 ->
+0.6425 as before.
+
+The 10-30 painting clips at 1344x768 (mixture affine), same statistic: default 30 s window 1 -0.31, windows 2-3
+**-0.80 / -1.66**; the 5 s-history clip windows 2-3 **-6.07 / -6.21** (the owner's "little flicker at 15-22 s");
+the 60 s windows 2-6 **-1.62 / -3.38**. Window 1 is always -0.3: the untouched decoder.
+
+**Default since 2026-11-02 09:50:** `H3_TP2_CONT_LOCK_CLASSES=1` (`0` restores the mixture affine). The lock's
+purpose (hold the first window's look against the per-window drift) is unchanged; only the fit is per token class.
 

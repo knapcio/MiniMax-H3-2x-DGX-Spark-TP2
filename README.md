@@ -153,6 +153,7 @@ curl -sS --max-time 30000 -X POST http://127.0.0.1:18093/v1/videos/sync \
 | Measured (Koninck landscape, 1344x768, 20 steps) | 16 s in 40 min, 30 s in 84 min: hand-overs invisible in every number (luma step 0.0 / -0.3, no inter-frame spike, no cut), the picture stays the picture, the clouds keep drifting, audio flat. 960x576 is about half the time. |
 | Prompt | Say that the camera is locked and describe only the motion of what is in the picture; the model brightens a painting's tone a little in the first seconds. |
 | Sound | The generated ambience is there but can be muted; the audio look-lock keeps its level flat. |
+| Flicker | Since 2026-11-02 the video look-lock fits the VAE's block-start tokens and the other tokens separately (`H3_TP2_CONT_LOCK_CLASSES=1`, default): the faint brightness step every 17 frames that the earlier lock produced in windows 2+ is gone (`results/20261102-vae-chunk-flicker/`). |
 | Server | The FL2VA partition (`scripts/select-stack.sh long FL2VA`); the continuation defaults in `h3_tp2/plugin.py` (pinned prefix, seam retries, video and audio look-lock, a seed per window). |
 
 Long jobs can exceed the original four-hour limits, especially after a slowdown or a seam retry. Before starting one,

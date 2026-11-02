@@ -530,7 +530,9 @@ def _apply(role: str) -> None:
             _lock_std_env = os.environ.get("H3_TP2_CONT_LOCK_STD", "").strip()   # strength of the std (contrast) part; "" = same as mean
             _lock_std = float(_lock_std_env) if _lock_std_env else None
             _lock_ref = os.environ.get("H3_TP2_CONT_LOCK_REF", "window").strip().lower()   # window = whole first window; tail = its last quarter
-            _lock_classes = os.environ.get("H3_TP2_CONT_LOCK_CLASSES", "0").strip() == "1"   # block-start tokens and the rest locked separately
+            # default ON since 2026-11-02: the plain affine on the token mixture produced the 17-frame luma flicker (-2.5 Y at
+            # every block boundary vs -0.66 raw); per-class matching keeps the brightness correction and the raw boundaries
+            _lock_classes = os.environ.get("H3_TP2_CONT_LOCK_CLASSES", "1").strip() == "1"   # 0 = the pre-11-02 mixture affine
             # H3_TP2_WINDOW_SEED_STEP=n inside this loop too: window k samples with seed + k*n. Upstream re-creates the
             # generators from the request seed for every window, so equal-shaped windows restart the SAME noise and tend
             # to re-stage the same camera move (the owner's "the woman shown 5-6 times", 2026-10-30 07:35).

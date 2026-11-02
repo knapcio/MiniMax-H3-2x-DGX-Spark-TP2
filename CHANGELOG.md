@@ -316,3 +316,13 @@
 - 2026-11-02: added a CPU-only exact-length segment planner for separate single-window two-keyframe requests. It
   reports whether generated last frames can all be retained, an optional one-frame boundary drop, and fractional
   source-audio cuts. This is geometry, not a qualified assembler or a model-quality result.
+- 2026-11-02 09:50: the periodic 17-frame luma flicker of long clips traced to the look-lock, not to the decoder's
+  chunking: offline decodes of the same saved latents give a -0.66 Y step at every 17-frame block boundary raw and
+  -2.52 with the serving lock (served file -2.0; the 5 s-history clip -6). The VAE's block-start token (every 5th) has
+  its own statistics and one per-channel affine fitted on the mixture moves it off its class. Fix: token-class-aware
+  lock (`H3_TP2_CONT_LOCK_CLASSES=1`, now the default; `0` = old behaviour): serving control at 960x544 keeps the
+  brightness correction (light per second identical) and returns the boundaries to the raw decoder's (-0.53 / -0.74
+  vs -1.94 / -2.09), no drop >= 1 YAVG. Closed negatives on the way: left-context chunk decode
+  (`H3_TP2_VAE_LEFT_CONTEXT`, the decoder's RoPE is normalised by clip length: -7 / -52 Y) and a full-length decode
+  (not a reference, the decoder is trained on 17-frame clips). New diagnostics: `H3_TP2_SAVE_LATENTS`,
+  `scripts/vae_decode_offline.py`, `scripts/lock_decode_offline.py` (`results/20261102-vae-chunk-flicker/`).
