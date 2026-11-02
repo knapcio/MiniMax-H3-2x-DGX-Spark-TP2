@@ -445,10 +445,12 @@ def _apply(role: str) -> None:
         _vae_scope.install(_vae.MiniMaxH3VideoVAE, cap=_tile_batch)
         logger.warning("h3_tp2: experimental scoped video VAE tile decode (up to %d tiles); CUDA/TP2 unqualified", _tile_batch)
 
-    # 9c') H3_TP2_VAE_LEFT_CONTEXT=<tokens> (default 0 = upstream loop): every temporal decode chunk after the first is
-    #      decoded from that many extra latent tokens of past, whose frames are dropped, so a 17-frame block no longer
-    #      starts from a fresh-context decode blended into the previous look-ahead (the periodic 17-frame luma flicker,
-    #      2026-11-02; h3_tp2/vae_context.py). Same loop on every rank; opt-in until the offline A/B qualifies it.
+    # 9c') H3_TP2_VAE_LEFT_CONTEXT=<tokens> (default 0 = untouched): wraps the video VAE's _adaptive_decode so every
+    #      temporal chunk after the first (both decode paths: the streaming uint8 decode_temporal of plain requests and
+    #      the preencode_mp4 chunk loop) is decoded from that many extra latent tokens of past, whose frames are dropped;
+    #      a 17-frame block no longer starts from a fresh-context decode blended into the previous look-ahead (the
+    #      periodic 17-frame luma flicker, 2026-11-02; h3_tp2/vae_context.py). The env is forwarded to rank 1, so both
+    #      ranks decode the same clip shapes. Opt-in until the offline A/B qualifies it.
     try:
         from h3_tp2 import vae_context as _vctx
 

@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Decode saved H3 latents (H3_TP2_SAVE_LATENTS) with the released chunk loop and with left-context variants, on one GPU.
 
+A continuation request saves one file per WINDOW (the diffuse hook fires per window); serving decodes the stitched
+clip, so a window's 70 tokens stand in for it here (the chunk geometry is the same).  Run it with the head idle or
+stopped (a few GB of GPU memory).
+
     ~/h3-long/.venv/bin/python scripts/vae_decode_offline.py --latents latents-spark-06-....pt --height 544 --width 960 \
         --variants 0,2,4 --out /tmp/vae-offline --mp4
 
@@ -65,12 +69,13 @@ def main() -> int:
     ap.add_argument("--out", required=True)
     ap.add_argument("--mp4", action="store_true")
     ap.add_argument("--max-tokens", type=int, default=0, help="decode only the first n latent tokens (0 = all)")
+    ap.add_argument("--geometry", action="store_true", help="also decode tokens 0..6 and 0..8 raw and compare the frames of tokens 0..4")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
 
     from vllm_omni.diffusion.models.minimax_h3.vae import MiniMaxH3VideoVAE
     from vllm_omni.diffusion.models.minimax_h3.temporal_chunks import decode_temporal_chunks
-    from h3_tp2.vae_context import decode_temporal_chunks_ctx
+    from h3_tp2.vae_context import install_on_model
 
     obj = torch.load(args.latents, map_location="cpu")
     video = obj[0] if isinstance(obj, (tuple, list)) else obj
@@ -90,38 +95,64 @@ def main() -> int:
     latent = video.to(dev, dtype=torch.float32)
     denorm = vae._denormalize_latent(latent)
 
+    def to_u8(frames):
+        return (frames[0].clamp(0, 1) * 255.0 + 0.5).to(torch.uint8).cpu()   # [3, T, H, W] on the host
+
+    # warm-up (cuBLAS/cuDNN autotune, allocator): a short raw decode, discarded
+    with torch.inference_mode(), torch.autocast(device_type="cuda", dtype=torch.float16, enabled=True):
+        vae.model._adaptive_decode(denorm[:, :, :7])
+    torch.cuda.synchronize()
+
+    if args.geometry:
+        with torch.inference_mode(), torch.autocast(device_type="cuda", dtype=torch.float16, enabled=True):
+            d7 = vae.model.processor.revert_tensor(vae.model._adaptive_decode(denorm[:, :, :7]).float())[:, :, 3:20]
+            d9 = vae.model.processor.revert_tensor(vae.model._adaptive_decode(denorm[:, :, :9]).float())[:, :, 3:20]
+            d11 = vae.model.processor.revert_tensor(vae.model._adaptive_decode(denorm[:, :, :11]).float())[:, :, 3:20]
+        for name, d in (("9_vs_7", d9), ("11_vs_7", d11)):
+            mse = torch.mean((d - d7) ** 2).item()
+            dy = sum(abs(a - b) for a, b in zip(luma_series(d), luma_series(d7))) / 17
+            print(f"geometry {name}: frames of tokens 0..4 PSNR {10 * torch.log10(torch.tensor(1.0 / max(mse, 1e-12))).item():.2f} dB, mean |dY| {dy:.3f}", flush=True)
+        del d7, d9, d11
+        torch.cuda.empty_cache()
+
+    variants = [int(x) for x in args.variants.split(",")]
+    if variants[0] != 0:
+        variants.insert(0, 0)
     results = {}
-    ref = None
-    for v in [int(x) for x in args.variants.split(",")]:
+    ref_u8 = None
+    ref_y = None
+    for v in variants:
+        restore = install_on_model(vae.model, v)
         torch.cuda.synchronize(); t1 = time.time()
         with torch.inference_mode(), torch.autocast(device_type="cuda", dtype=torch.float16, enabled=True):
-            if v == 0:
-                dec = decode_temporal_chunks(vae.model, denorm, None)
-            else:
-                dec = decode_temporal_chunks_ctx(vae.model, denorm, None, left_context=v)
+            dec = decode_temporal_chunks(vae.model, denorm, None)
         torch.cuda.synchronize(); dt = time.time() - t1
+        st = dict(getattr(vae.model, "_h3_tp2_ctx_stats", {}))
+        restore()
         frames = vae.model.processor.revert_tensor(dec.float())
+        del dec
         frames = vae._normalize_decoded_frames(frames)[..., : args.height, : args.width].clamp(0, 1)
         y = luma_series(frames)
+        u8 = to_u8(frames)
+        if args.mp4:
+            write_mp4(frames, os.path.join(args.out, f"decode-ctx{v}.mp4"))
+        del frames
+        torch.cuda.empty_cache()
         d = [abs(y[i] - y[i - 1]) for i in range(1, len(y))]
         drops = periodic_drops(y)
-        r = {"frames": frames.shape[2], "decode_s": round(dt, 1), "mean_abs_dY": round(sum(d) / max(1, len(d)), 3),
+        r = {"frames": int(u8.shape[1]), "decode_s": round(dt, 1), "chunks_with_ctx": st.get("ctx", 0), "mean_abs_dY": round(sum(d) / max(1, len(d)), 3),
              "max_abs_dY": round(max(d) if d else 0.0, 2), "luma_mean": round(sum(y) / len(y), 2),
              "periodic_drops": [{"first_frame": run[0][0], "count": len(run), "median_step": round(sorted(s for _, s in run)[len(run) // 2], 2)} for run in drops]}
-        if ref is None:
-            ref = frames
+        if ref_u8 is None:
+            ref_u8, ref_y = u8, y
         else:
-            mse = torch.mean((frames - ref) ** 2).item()
+            mse = torch.mean((u8.float() - ref_u8.float()) ** 2).item() / 255.0 ** 2
             r["psnr_vs_0"] = round(10 * torch.log10(torch.tensor(1.0 / max(mse, 1e-12))).item(), 2)
-            r["mean_abs_dluma_vs_0"] = round(sum(abs(a - b) for a, b in zip(y, luma_series(ref))) / len(y), 3)
+            r["mean_abs_dluma_vs_0"] = round(sum(abs(a - b) for a, b in zip(y, ref_y)) / len(y), 3)
         results[f"ctx{v}"] = r
         with open(os.path.join(args.out, f"luma-ctx{v}.json"), "w") as f:
             json.dump(y, f)
-        if args.mp4:
-            write_mp4(frames, os.path.join(args.out, f"decode-ctx{v}.mp4"))
         print(f"ctx{v}: {json.dumps(r)}", flush=True)
-        del dec, frames
-        torch.cuda.empty_cache()
     with open(os.path.join(args.out, "summary.json"), "w") as f:
         json.dump(results, f, indent=1)
     return 0
