@@ -857,3 +857,17 @@ between several samples, consistent with the owner's concern and motivating the 
 `scripts/h3_seam_sheet.py` derives approximate handover indices from a declared duration and window plan. Four tests
 cover timestamped extraction, final-frame inclusion, handover indices and invalid inputs; both tools were also run
 against the real 60 s source. Any later automated 300 s handover sheet must check its plan against the actual run log.
+
+## Prompt without the shadow request, human pace, clean image (`koninck30-960x544-humanpace`, 2026-11-02 12:12-12:40)
+
+The owner's eye on the 960x544 pair of 2026-11-02: the cloud shadows "race" with our README prompt ("their shadows
+glide over the plain"), and codex's comparison with figures that "walk naturally at a relaxed, unhurried pace" was
+"chyba git". This render uses that literal prompt (clouds keep their broad painted shapes, light soft and nearly
+constant, no strong moving shadows, figures one small step per second, camera locked on a tripod) on the clean crop
+(2316x1307, the two top and eleven bottom white rows removed), class-aware lock with the whole-window reference and
+ramp 0.25 (deliberately the same lock as the `lockclasses` clip so only the prompt and the crop differ), seed 1101.
+1685 s. Seams -0.2 / -0.2 luma, no cut, no drop >= 1 YAVG, block boundaries -0.46 / -0.68 (min -1.14).
+What the prompt changed: the painting brightens much more in window 1 (light per second 115 -> 140 by 11 s, against
+115 -> 127 with the README prompt), then the lock holds windows 2-3 at 126-135. The "light stays soft and nearly
+constant" wording does not hold the brightness; codex's soft-light test said the same. Owner's eye pending on
+`~/Downloads/h3-prod-smoke/d30_koninck_960x544_noshadow_humanpace_clean_20261102.mp4` (shadows, pace, brightness).
