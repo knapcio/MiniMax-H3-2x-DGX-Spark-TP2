@@ -10,6 +10,12 @@ BASEENV='export H3_TP2_FP8_FUSE_SWIGLU=1
 export H3_TP2_REF_SHORT_EDGE=1024'
 # restart_head "export VAR=value[newline export ...]": rewrite the experiment vars, restart, wait for health (20 min max)
 restart_head() {
+  # skip when the head is healthy and the env file already carries exactly the requested experiment lines (a queue
+  # that ends with a restoring restart followed by one that starts with the same restart cost a 13-minute double boot)
+  if [ "$(health)" = 200 ]; then
+    grep -v -E "$STRIP" ~/.h3-tp2.env > /tmp/h3env.want; printf "%s\n" "$BASEENV" >> /tmp/h3env.want; [ -n "$1" ] && printf "%s\n" "$1" >> /tmp/h3env.want
+    if cmp -s /tmp/h3env.want ~/.h3-tp2.env; then echo "=== head already healthy with this env, no restart $(date +%H:%M:%S)"; return 0; fi
+  fi
   grep Normal /proc/buddyinfo | awk '{printf "buddyinfo before restart: "; for(i=13;i<=NF;i++) printf "%s ", $i; print ""}'
   grep -v -E "$STRIP" ~/.h3-tp2.env > ~/.h3-tp2.env.new; printf "%s\n" "$BASEENV" >> ~/.h3-tp2.env.new; [ -n "$1" ] && printf "%s\n" "$1" >> ~/.h3-tp2.env.new; mv -f ~/.h3-tp2.env.new ~/.h3-tp2.env
   systemctl --user restart h3-tp2-head.service; sleep 20
