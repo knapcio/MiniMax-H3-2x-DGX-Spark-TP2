@@ -8,10 +8,18 @@ dtype) but splits them: a scalar-scale ``torch._scaled_mm`` with fp32 output (cu
 pass for the scales, the bias and the rounding.  The GEMM's reduction order differs from the CUTLASS kernel's (max abs
 diff 3.8e-6 on the DiT shapes), so the output is not bit-identical to stock; over a 20-step render the frames differ
 (SSIM ~0.81 against stock, same look).  The fp32 temporary is M x N x 4 bytes (4.2 GB for fc1 at M = 36864).
+
+``H3_TP2_FP8_GEMM=fused`` (opt-in, speed-plan item 4) replaces both passes with one Triton FP8 GEMM whose epilogue
+applies exactly the same operations to the fp32 accumulator in registers (scale_b * acc, then scale_a, bias as one fma,
+one rounding): the fp32 product is never written or read.  The epilogue is bit-identical to the scale pass by
+construction (tests/test_fp8_fused_epilogue_cpu.py, and on order-independent integer inputs on the GPU); the
+accumulator is bit-identical to cuBLASLt's only if both reduce K in the same order with the same MMA instruction,
+which scripts/fp8_epilogue_probe.py measures.  Tile config: ``H3_TP2_FP8_FUSED_CFG=BM,BN,BK,warps,stages``.
 """
 from __future__ import annotations
 
 import logging
+import os
 
 import torch
 
@@ -40,10 +48,68 @@ try:
         else:
             tl.store(y_ptr + off, y.to(tl.float16), mask=m)
 
+    @triton.jit
+    def _grouped_tile(pid, M, N, BLOCK_M: tl.constexpr, BLOCK_N: tl.constexpr, GROUP_M: tl.constexpr):
+        # GROUP_M row tiles share their B column tiles in L2 (the Triton matmul tutorial's swizzle); mirrors tile_coords()
+        num_pid_m = tl.cdiv(M, BLOCK_M)
+        num_pid_n = tl.cdiv(N, BLOCK_N)
+        num_pid_in_group = GROUP_M * num_pid_n
+        group_id = pid // num_pid_in_group
+        first_pid_m = group_id * GROUP_M
+        group_size_m = tl.minimum(num_pid_m - first_pid_m, GROUP_M)
+        pid_m = first_pid_m + ((pid % num_pid_in_group) % group_size_m)
+        pid_n = (pid % num_pid_in_group) // group_size_m
+        return pid_m, pid_n
+
+    @triton.jit
+    def _fp8_mm_fused(a_ptr, b_ptr, sa_ptr, sb_ptr, bias_ptr, y_ptr, M, N, K, stride_am, stride_bk, stride_bn, stride_ym,
+                      HAS_BIAS: tl.constexpr, OUT: tl.constexpr, EVEN_K: tl.constexpr,
+                      BLOCK_M: tl.constexpr, BLOCK_N: tl.constexpr, BLOCK_K: tl.constexpr, GROUP_M: tl.constexpr):
+        # y[M, N] = epilogue(A[M, K] @ B[K, N]); A row-major fp8, B = W^T with W [N, K] row-major (stride_bk = 1).
+        # OUT 0: the raw fp32 accumulator (probe only, scales ignored); 1: bf16; 2: fp16.
+        pid_m, pid_n = _grouped_tile(tl.program_id(0), M, N, BLOCK_M, BLOCK_N, GROUP_M)
+        offs_m = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)
+        offs_n = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)
+        rk = tl.arange(0, BLOCK_K)
+        ram = (offs_m % M).to(tl.int64)          # rows/cols past the edge reread valid data; the store masks them
+        rbn = (offs_n % N).to(tl.int64)
+        a_ptrs = a_ptr + ram[:, None] * stride_am + rk[None, :]
+        b_ptrs = b_ptr + rbn[None, :] * stride_bn + rk[:, None] * stride_bk
+        acc = tl.zeros((BLOCK_M, BLOCK_N), dtype=tl.float32)
+        for k in range(0, tl.cdiv(K, BLOCK_K)):  # K in ascending order, one accumulator, no split-K
+            if EVEN_K:
+                a = tl.load(a_ptrs)
+                b = tl.load(b_ptrs)
+            else:
+                a = tl.load(a_ptrs, mask=rk[None, :] < K - k * BLOCK_K, other=0.0)
+                b = tl.load(b_ptrs, mask=rk[:, None] < K - k * BLOCK_K, other=0.0)
+            acc = tl.dot(a, b, acc)
+            a_ptrs += BLOCK_K
+            b_ptrs += BLOCK_K * stride_bk
+        m_ok = offs_m < M
+        n_ok = offs_n < N
+        mask = m_ok[:, None] & n_ok[None, :]
+        y_off = offs_m.to(tl.int64)[:, None] * stride_ym + offs_n[None, :]
+        if OUT == 0:
+            tl.store(y_ptr + y_off, acc, mask=mask)
+        else:
+            # the scale pass's arithmetic, element for element: t = scale_b * acc, y = scale_a * t (or fma with the bias)
+            t = tl.load(sb_ptr + offs_n, mask=n_ok, other=0.0)[None, :] * acc
+            sa = tl.broadcast_to(tl.load(sa_ptr + offs_m, mask=m_ok, other=0.0)[:, None], (BLOCK_M, BLOCK_N))
+            if HAS_BIAS:
+                bias = tl.load(bias_ptr + offs_n, mask=n_ok, other=0.0).to(tl.float32)
+                y = tl.math.fma(sa, t, tl.broadcast_to(bias[None, :], (BLOCK_M, BLOCK_N)))
+            else:
+                y = sa * t
+            if OUT == 1:
+                tl.store(y_ptr + y_off, y.to(tl.bfloat16), mask=mask)
+            else:
+                tl.store(y_ptr + y_off, y.to(tl.float16), mask=mask)
+
     _HAVE_TRITON = True
 except Exception:  # pragma: no cover - CPU-only environments
     _HAVE_TRITON = False
-_state = {"triton": _HAVE_TRITON}
+_state = {"triton": _HAVE_TRITON, "level": "tensor32", "fused": False}
 
 
 def scale_bias_cast_torch(x32: torch.Tensor, sa: torch.Tensor, sb: torch.Tensor, bias: torch.Tensor | None, out_dtype: torch.dtype) -> torch.Tensor:
@@ -80,6 +146,114 @@ def _launch(x32, sa, sb, bias, y, N):  # noqa: ANN001
                                                               HAS_BIAS=bias is not None, OUT_BF16=y.dtype is torch.bfloat16, BLOCK=block)
 
 
+def epilogue_torch(acc: torch.Tensor, sa: torch.Tensor, sb: torch.Tensor, bias: torch.Tensor | None, out_dtype: torch.dtype) -> torch.Tensor:
+    """Eager mirror of the fused kernel's in-register epilogue (and of the Triton scale pass): t = scale_b * acc and
+    y = scale_a * t in fp32, or y = fma(scale_a, t, bias) with a single rounding (emulated in float64: the fp32 product
+    is exact there; the sum is rounded twice, which differs from one fma only on exact fp32 midpoints), then one
+    rounding to ``out_dtype``.  Without a bias it equals ``scale_bias_cast_torch`` bit for bit."""
+    t = sb.view(1, -1).float() * acc.float()
+    sa2 = sa.view(-1, 1).float()
+    if bias is None:
+        y = sa2 * t
+    else:
+        y = (sa2.double() * t.double() + bias.view(1, -1).double()).float()
+    return y.to(out_dtype)
+
+
+def tile_coords(pid: int, M: int, N: int, block_m: int, block_n: int, group_m: int) -> tuple[int, int]:
+    """Python mirror of the kernel's ``_grouped_tile`` (program id -> (row tile, column tile))."""
+    num_pid_m = -(-M // block_m)
+    num_pid_n = -(-N // block_n)
+    in_group = group_m * num_pid_n
+    first = (pid // in_group) * group_m
+    size_m = min(num_pid_m - first, group_m)
+    return first + (pid % in_group) % size_m, (pid % in_group) // size_m
+
+
+_DEFAULT_CFG = (128, 128, 64, 8, 3)   # BLOCK_M, BLOCK_N, BLOCK_K, num_warps, num_stages; 48 KB of smem per stage set
+_GROUP_M = 8
+
+
+def fused_config() -> tuple[int, int, int, int, int]:
+    """``H3_TP2_FP8_FUSED_CFG=BM,BN,BK,warps,stages`` (from the probe's tile sweep) or the default."""
+    env = os.environ.get("H3_TP2_FP8_FUSED_CFG", "").strip()
+    if not env:
+        return _DEFAULT_CFG
+    vals = tuple(int(v) for v in env.split(","))
+    if len(vals) != 5:
+        raise ValueError(f"H3_TP2_FP8_FUSED_CFG needs 5 integers BM,BN,BK,warps,stages, got {env!r}")
+    return vals  # type: ignore[return-value]
+
+
+def launch_fused(a: torch.Tensor, b: torch.Tensor, sa: torch.Tensor, sb: torch.Tensor, bias: torch.Tensor | None,
+                 y: torch.Tensor, cfg=None) -> torch.Tensor:  # noqa: ANN001
+    """One-kernel FP8 GEMM + epilogue into ``y`` ([M, N]; fp32 = raw accumulator, bf16/fp16 = scaled output).
+    ``a`` [M, K] row-major fp8, ``b`` [K, N] fp8 whose transpose is contiguous (vLLM's weight layout), ``sa`` [M] and
+    ``sb`` [N] fp32 contiguous."""
+    bm, bn, bk, warps, stages = cfg or fused_config()
+    M, K = a.shape
+    N = b.shape[1]
+    out = {torch.float32: 0, torch.bfloat16: 1, torch.float16: 2}[y.dtype]
+    bias_t = bias if bias is not None else y
+    grid = (triton.cdiv(M, bm) * triton.cdiv(N, bn),)
+    _fp8_mm_fused[grid](a, b, sa, sb, bias_t, y, M, N, K, a.stride(0), b.stride(0), b.stride(1), y.stride(0),
+                        HAS_BIAS=bias is not None, OUT=out, EVEN_K=(K % bk == 0),
+                        BLOCK_M=bm, BLOCK_N=bn, BLOCK_K=bk, GROUP_M=_GROUP_M, num_warps=warps, num_stages=stages)
+    return y
+
+
+def _vec_scales(scale_a: torch.Tensor, scale_b: torch.Tensor, M: int, N: int):
+    sa = scale_a.reshape(-1).float()
+    sb = scale_b.reshape(-1).float()
+    if sa.numel() == 1:
+        sa = sa.expand(M)
+    if sb.numel() == 1:
+        sb = sb.expand(N)
+    return sa.contiguous(), sb.contiguous()
+
+
+def scaled_mm_fused(a: torch.Tensor, b: torch.Tensor, scale_a: torch.Tensor, scale_b: torch.Tensor, out_dtype: torch.dtype, bias: torch.Tensor | None = None) -> torch.Tensor:
+    """Drop-in for ``scaled_mm_tensor32`` without the fp32 temporary: one Triton FP8 GEMM with the epilogue in
+    registers.  Falls back to the two-pass path when the fused kernel is not usable in this process."""
+    if not _state["fused"] or not a.is_cuda or out_dtype not in (torch.bfloat16, torch.float16):
+        return scaled_mm_tensor32(a, b, scale_a, scale_b, out_dtype, bias)
+    M, N = a.shape[0], b.shape[1]
+    sa, sb = _vec_scales(scale_a, scale_b, M, N)
+    y = torch.empty((M, N), device=a.device, dtype=out_dtype)
+    return launch_fused(a, b, sa, sb, bias, y)
+
+
+def probe_fused(device) -> bool:  # noqa: ANN001
+    """Compile the fused GEMM for the configured tile and check it on (1) integer-valued inputs whose fp32 accumulator
+    is exact in any summation order, where it must equal the two-pass path bit for bit (this isolates the epilogue,
+    the masks and the tile mapping), and (2) random inputs, where it must agree to reduction-order noise.  On any
+    failure the dispatcher keeps the two-pass path for the process."""
+    if not _state["triton"]:
+        return False
+    try:
+        g = torch.Generator(device=device).manual_seed(0)
+        M, N, K = 200, 400, 512                      # partial row and column tiles; K even, as on the DiT shapes
+        a = torch.randint(-4, 5, (M, K), device=device, generator=g).to(torch.float8_e4m3fn)
+        w = torch.randint(-2, 3, (N, K), device=device, generator=g).to(torch.float8_e4m3fn)
+        sa = torch.rand(M, 1, device=device, generator=g) * 0.01 + 1e-4
+        sb = torch.rand(N, device=device, generator=g) * 0.01 + 1e-4
+        _state["fused"] = True
+        ok = torch.equal(scaled_mm_fused(a, w.t(), sa, sb, torch.bfloat16), scaled_mm_tensor32(a, w.t(), sa, sb, torch.bfloat16))
+        a = (torch.randn(M, K, device=device, generator=g) * 0.5).to(torch.float8_e4m3fn)
+        w = (torch.randn(N, K, device=device, generator=g) * 0.05).to(torch.float8_e4m3fn)
+        y = scaled_mm_fused(a, w.t(), sa, sb, torch.bfloat16).float()
+        r = scaled_mm_tensor32(a, w.t(), sa, sb, torch.bfloat16).float()
+        ok = ok and bool(torch.isfinite(y).all()) and (y - r).abs().max().item() <= 2e-5 * r.abs().max().item() + 1e-5
+        torch.cuda.synchronize(device)
+        if not ok:
+            logger.warning("h3_tp2: fused FP8 GEMM failed its install check; keeping the two-pass path")
+    except Exception as exc:
+        logger.warning("h3_tp2: fused FP8 GEMM unavailable (%s); keeping the two-pass path", exc)
+        ok = False
+    _state["fused"] = ok
+    return ok
+
+
 def probe_triton(device) -> bool:  # noqa: ANN001
     """Compile and run the scale pass once on a tiny input at install time; on failure (e.g. Triton cannot build its
     runtime helpers because the Python headers are missing) the module keeps the eager torch pass for the process."""
@@ -107,14 +281,19 @@ def set_stash_hook(fn) -> None:  # noqa: ANN001
     _stash_hook = fn
 
 
-def install() -> None:
-    """Route the row/column-scaled FP8 GEMMs of vLLM's linear path through the two-pass kernel; scalar-scaled calls and
+def install(level: str = "tensor32") -> None:
+    """Route the row/column-scaled FP8 GEMMs of vLLM's linear path through the two-pass kernel (``level`` "tensor32")
+    or the fused one-kernel GEMM ("fused", falls back to two-pass if its install check fails); scalar-scaled calls and
     layouts ``torch._scaled_mm`` cannot take (non-row-major A, B whose transpose is not contiguous) keep the stock kernel."""
     from vllm import _custom_ops as ops
+
+    if level not in ("tensor32", "fused"):
+        raise ValueError(f"unknown FP8 GEMM level {level!r}")
 
     orig = ops.cutlass_scaled_mm
     if getattr(orig, "_h3_tp2_tensor32", False):
         return
+    _state["level"] = level
     stats = {"two_pass": 0, "stock": 0}
     seen: set = set()
 
@@ -141,11 +320,19 @@ def install() -> None:
             placeholder = _stash_hook(a, b, scale_a, scale_b, out_dtype, bias)
             if placeholder is not None:
                 return placeholder
+        if _state["fused"]:
+            return scaled_mm_fused(a, b, scale_a, scale_b, out_dtype, bias)
         return scaled_mm_tensor32(a, b, scale_a, scale_b, out_dtype, bias)
 
     _mm._h3_tp2_tensor32 = True
     _mm.stats = stats
     ops.cutlass_scaled_mm = _mm
     triton_ok = probe_triton("cuda") if torch.cuda.is_available() else False
-    logger.warning("h3_tp2: FP8 GEMM two-pass (scalar-scale GEMM + scale epilogue, %s) ON; not bit-identical to the stock kernel",
-                   "Triton pass" if triton_ok else "eager torch pass")
+    if level == "fused" and triton_ok and probe_fused("cuda"):
+        logger.warning("h3_tp2: FP8 GEMM fused (one Triton FP8 GEMM, scale epilogue in registers, tile %s) ON; "
+                       "not bit-identical to the stock kernel, bit-identical to two-pass only where the accumulators are "
+                       "(scripts/fp8_epilogue_probe.py)", ",".join(map(str, fused_config())))
+        return
+    logger.warning("h3_tp2: FP8 GEMM two-pass (scalar-scale GEMM + scale epilogue, %s) ON%s; not bit-identical to the stock kernel",
+                   "Triton pass" if triton_ok else "eager torch pass",
+                   " (fused level requested but unavailable)" if level == "fused" else "")
