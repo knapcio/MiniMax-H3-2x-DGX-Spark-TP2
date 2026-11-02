@@ -166,3 +166,7 @@ element), so the frames differ for diffusion reasons. The decoder equivalence is
 identical latents); a 1344 offline check (`item2d`, stock vs cap 4 on the saved 1344 window-1 latents, head stopped)
 follows the 16 s 1344 continuation (C) of this queue.
 | C: 16 s 1344x768 FL2VA continuation (two windows, pinned prefix, lock defaults) with `=2` | decode_to_mp4 86.6 s; 2340 s total | seam +0.0 luma, no cut, no drop >= 1 YAVG, block boundaries -0.31 / -0.39: the same profile as the stock 1344 renders; two-rank tile gather + batched tiles work at the larger tile count |
+
+### 1344x768 offline (`item2d`, head stopped): stock 186.8 / 185.9 s vs cap 4 **113.9 / 114.0 s (-39 %)** per 277
+frames, peak 13.4 GB both, frames max 1 gray level on 0.22 % of pixels, **PSNR 74.7 dB**. **Default since 2026-11-02
+21:05:** `H3_TP2_VAE_STACK_TILES=2` (cap 4). Item 2 closed.

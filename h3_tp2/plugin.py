@@ -381,11 +381,14 @@ def _apply(role: str) -> None:
     #     DEFAULT ON since 2026-10-29 (owner's call: a clean speedup with no quality loss): -19..-24 % per render,
     #     byte-identical output at the serving cell (FL2VA 5 s 1344x768), same-class samples elsewhere.
     #     H3_TP2_FP8_GEMM=stock restores vLLM's CUTLASS kernel.
+    #     H3_TP2_FP8_GEMM=fused (opt-in, speed-plan item 4): one Triton FP8 GEMM with the same epilogue in registers, no
+    #     fp32 product (and with SwiGLU level 1, fc1 + SwiGLU in one kernel); falls back to tensor32 if its install
+    #     check fails.  Bit-identical to tensor32 only where the accumulators are: scripts/fp8_epilogue_probe.py.
     _gemm = os.environ.get("H3_TP2_FP8_GEMM", "tensor32").strip().lower()
-    if _gemm == "tensor32":
+    if _gemm in ("tensor32", "fused"):
         from . import fp8_gemm as _fp8
 
-        _fp8.install()
+        _fp8.install(level=_gemm)
         # 9b') H3_TP2_FP8_FUSE_SWIGLU=1: the MLP's fc1 keeps its fp32 product and one Triton kernel applies the
         #      epilogue and silu_and_mul (the bf16 [M, 2*ffn] intermediate is neither written nor read; a placeholder of
         #      that size is still allocated).  Matches two-pass + silu_and_mul on the tested inputs and build.
@@ -404,7 +407,7 @@ def _apply(role: str) -> None:
     #     keeps the stock per-tile path and the diffusion stays bit-identical), with at most H3_TP2_VAE_TILE_BATCH tiles
     #     per decoder call (default 4; the first try batched every local tile and peaked 32 GB higher).  Same arithmetic
     #     per tile; batching can change cuDNN/cuBLAS algorithm choice inside the decoder, so the frames may differ.
-    if os.environ.get("H3_TP2_VAE_STACK_TILES", "0") == "1":
+    if os.environ.get("H3_TP2_VAE_STACK_TILES", "2") == "1":
         import torch
         from vllm_omni.diffusion.models.minimax_h3 import vae as _vae
 
@@ -448,7 +451,10 @@ def _apply(role: str) -> None:
     # "2" is an opt-in research variant that avoids mutating the shared
     # model.stack_tiling flag during decode. It has CPU prototype coverage
     # only: real CUDA/TP2 timing, memory and image quality remain unverified.
-    elif os.environ.get("H3_TP2_VAE_STACK_TILES", "0") == "2":
+    # default "2" since 2026-11-02: decode-scoped tile batching (cap 4) measured -38/-39 % decode time at 960x544 and
+    # 1344x768 on identical latents with max 1 gray level on 0.2-0.3 % of pixels (PSNR 73.9 / 74.7 dB), two-rank serving
+    # renders at 960 and 1344 unchanged in every metric; "0" restores the stock per-tile decode
+    elif os.environ.get("H3_TP2_VAE_STACK_TILES", "2") == "2":
         from vllm_omni.diffusion.models.minimax_h3 import vae as _vae
         from h3_tp2 import vae_tile_scope as _vae_scope
 

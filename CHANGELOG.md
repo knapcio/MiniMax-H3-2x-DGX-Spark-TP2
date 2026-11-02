@@ -351,3 +351,6 @@
   wrong (rel-l2 0.20 vs stock) and no faster -> closed (`H3_TP2_ULYSSES_NOCOPY=force` for debugging only); comm stream
   priority -1 + NCCL_MAX_CTAS=4 with overlap 2: bit-equal, 21.27 vs 21.32 s/step -> no effect. Two stock boots at 1344
   gave bit-equal latents.
+- 2026-11-02 21:05: batched tile decode on by default (`H3_TP2_VAE_STACK_TILES=2`, cap 4): -38/-39 % decode time on
+  identical latents at 960x544 and 1344x768 with max 1 gray level on 0.2-0.3 % of pixels (73.9 / 74.7 dB), two-rank
+  serving renders at 960 and 1344 unchanged in every metric (`results/20261102-speed-plan/`).
