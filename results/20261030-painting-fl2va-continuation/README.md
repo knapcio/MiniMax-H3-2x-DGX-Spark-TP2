@@ -66,6 +66,27 @@ side, with six bottom rows cropped and each picture re-encoded. The copied audio
 only; its AAC packets and timestamps match that source, and the 720-frame comparison fully decodes. The unmodified
 exact-length videos remain the evidence for any model comparison.
 
+### Five shorter windows versus three
+
+The 20-step explicit locked-camera case also ran with 175-frame windows and 22-frame overlap, using the same
+painting, base prompt, per-window wording and initial seed. Its five windows add two hand-overs and later window
+seeds compared with the 277-frame configuration; these are inherent changes in this comparison. It took
+1,373.2 s versus 1,597.5 s: **1.16x throughput, 14.0% less request time** on this single scene. The native file
+fully decodes and has SHA-256 `556394feb62cfc72af3948e4b4b3ea6ca3989739ef3af36973a80336549aadca`; the verified
+720-frame exact-30 s copy is `3017d538e763a0d57ef2ac234f7b7a54ae9d1b309e1ed44fb4a46c18e2777188` with audio
+ending 16 ms early. It is `d30_koninck_literal_locked_20step_window175_EXPERIMENT.mp4` in `~/Downloads/h3-prod-smoke/`.
+
+The four measured seam luma steps are -0.2/+0.4/+0.2/+0.3, but the regional screen flags repeated 17-frame
+changes in the lower-left over 7.79–26.21 s, compared with 12.04–21.96 s for the larger-window case. The maximum
+one-second change in the lower-frame mean is 10.39 versus 5.35 grayscale levels; that statistic includes all scene
+changes. Sampled stills show more change in cloud shapes in the short-window case. The screens and stills do not
+establish whether flicker is perceptible, whether shadows match clouds, or whether motion/audio quality is better;
+full playback and other scenes remain unreviewed. The default window is unchanged.
+
+`porownanie_koninck_30s_LEWO_okno277_PRAWO_okno175_POST_EXPERIMENT.mp4` is a separately encoded 720-frame
+side-by-side viewing copy with six bottom rows removed from each side. Its audio comes only from the 277-frame
+variant, with AAC packets and timestamps unchanged. The two exact-duration source videos remain untouched.
+
 ## 300 s and cinematic tests (2026-11-01)
 
 A 300 s 960x544 FL2VA render completed in 16,207.9 s end to end. Its native 7,213-frame file passed full
