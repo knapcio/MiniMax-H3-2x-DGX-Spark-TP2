@@ -92,3 +92,21 @@ on a boot are not slower than the first (no per-request degradation). So item 1 
 speed gate", not as an env change: every boot should be probed (a 5 s calibration or a 43k-row attention probe)
 before a long render, and a slow boot restarted. The README's "free cached pages before decode" lever is
 superseded by upstream and marked so.
+
+## Boot gate in use (queue49, 15:05-15:42): the host degrades with restarts, compaction brings it back
+
+`scripts/boot-probe.sh` (5 s 960x576 T2VA, seed 0, first request of the boot) after each restart of the same code:
+
+| boot | host state before | probe | latents digest |
+|---|---|---|---|
+| 15:05 (8th restart of the day) | 06: 1.7 GB free, 77 GB page cache, orders 8+ `55 13 20 16 2 0 0`; 05 no order-10+ blocks | 9.17 s/step (SLOW at the 5 % limit of the first version) | edea0733 |
+| 15:16 | same, one more restart | **9.80** | 5244e25b |
+| 15:31, after `drop_caches` + `compact_memory` on both hosts with the head stopped | 06: 125 GB free, orders 9-15 `21106 15244 10431 5439 2083 687 302` | **9.14** PASS (limit 9.5) | d76aabd8 |
+
+Warm reference 8.65 (second request of a good boot); the first request carries 4-7 % of warm-up, hence the 10 %
+tolerance. Two findings: (1) the hosts degrade over a day of restarts (page cache full, no large free blocks) and each
+boot into that state is slower than the last; a compaction with the services down restores the fast state, so it
+belongs before every boot that precedes a long render (sudo from the workstation for now); (2) the first request of
+a boot gives a different latents digest on every boot (three boots, three digests at 960x576), while requests within
+one boot repeat the digest exactly (queue47: 2 + 3 requests). Lossless A/B therefore means same-boot digests; the
+2026-10-29 "bit-stable across boots at 960" held for the boots it compared and does not generalise.
