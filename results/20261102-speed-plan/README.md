@@ -51,6 +51,8 @@ all-to-alls with their permute copies (5-8 %), which a single GPU does not pay. 
    Pure data movement: bit-identical. (`--ulysses-a2a-permute` will not help: NCCL load-store, single machine only.)
 6. **Fuse per-token quant into the producing kernels** (2 days; 1-1.5 %): the two modulation outputs, the
    post-all-to-all output, the SwiGLU output (level 2; find why level 2 diverged in 1 of 2 runs first).
+6b. **Fuse the scale pass into the GEMM consumers** (implemented 2026-11-03 as `H3_TP2_FP8_CONSUMER_FUSE=1`, opt-in,
+   GPU proof pending; ~0.9 s/step = 1.1 % at 1344, 1.8 % at 960): the lossless half of item 4. See the section below.
 7. **Small per-step waste** (0.5 day; < 0.2 % at 1344, ~0.5 % at 960; all bit-identical): boolean-mask indexing forces
    host syncs several times per step (`denoise_loop.py:255`, `:413`, `transformer:1491`), `torch.unique` (`:208`), the
    cancellation sync (`:455`); the RoPE table is rebuilt every step on CUDA (only the NPU path caches it,
@@ -200,3 +202,33 @@ negative. Probe log and JSON: `~/h3-tp2-results/fp8-epilogue-probe/` on spark-06
 ## End state (23:50): 30 s 1344x768 from a still with every default: 4648 s against 4964 s at 13:42 (-6.4 %), same quality
 profile (seams -0.0, no drops, boundaries -0.40 / -0.62). The day's lossless gains in one number for the owner's cell:
 a 30 s clip in 77 min instead of 83, with the boot gate protecting against the 7-40 % slow boots.
+
+## Item 6b (2026-11-03): the scale pass fused into the consumers of qkv / out / fc2 (`h3_tp2/fp8_consumers.py`)
+
+Item 4 closed the in-GEMM epilogue; what is left lossless is the bf16 round trip AFTER the scale pass. For three of the
+four GEMMs the pass's bf16 output (`fp8_gemm.scaled_mm_tensor32`, `y = torch.empty`, written by `_scale_bias_cast`)
+is read by exactly one upstream kernel with no copy in between: q and k (`minimax_h3_transformer.py:655-666`) by
+`fused_qk_norm_rope`, the out projection (`:703` -> `:970`) by `indexed_gate_rms_norm_scale_shift`, fc2 (`:741` ->
+`:982`) by `indexed_gate`; v (`:661`) is read by the attention as a strided view of the qkv tensor. With
+`H3_TP2_FP8_CONSUMER_FUSE=1` the dispatcher keeps those fp32 products and copies of the three upstream Triton kernels
+read them: each loaded element gets the pass's arithmetic (scale_b, then scale_a, bias as one fma) and its single RNE
+rounding to bf16, then the consumer's own code runs unchanged on that value. v's columns are still scale-passed into
+the qkv tensor. Bytes saved = 4 B (bf16 write + read) per element of q, k, out and fc2:
+
+| GEMM | columns saved | per layer at M = 42848 | per step (50 layers) at 235 GB/s | at M = 21952 |
+|---|---|---|---|---|
+| qkv (N = 21504; q + k, not v) | 14336 | 2.46 GB = 10.5 ms | 0.52 s | 0.27 s |
+| out (N = 5376) | 5376 | 0.92 GB = 3.9 ms | 0.20 s | 0.10 s |
+| fc2 (N = 5376) | 5376 | 0.92 GB = 3.9 ms | 0.20 s | 0.10 s |
+| total | | 4.30 GB = 18.3 ms | **0.92 s/step (215 GB)**, ~1.1 % of 80 s | 0.47 s/step, ~1.8 % of 26 s |
+
+The fp32 read stays (only an in-GEMM epilogue removes it). Memory: the fp32 product now lives while the consumer
+writes its outputs: +1.2 GB transient on qkv at M = 42848 (6.8 GB against 5.5), below fc1's peak; out and fc2 reuse
+the placeholder for their output. Bit-identity argument: same operands, same operation order, the bf16 rounding at the
+same point; on the GPU additionally the same compiled consumer arithmetic (fma contraction, `tl.sum` tree), which the
+copies keep by keeping upstream's launch shapes and a bf16 access per kernel; every site self-checks bit for bit on its
+first call (first 64 rows, stock pair = scale pass + upstream kernel) and disables itself on a mismatch. CPU: 48 tests,
+`torch.equal` (`tests/test_fp8_consumer_fuse.py`, upstream's DiT block/attention/MLP forwards verbatim). Next: on
+Spark_06 with the head stopped `~/h3-long/.venv/bin/python scripts/fp8_consumer_probe.py --json
+~/h3-tp2-results/fp8-consumer-probe/probe.json` (timing per site, bits on random and directed data, registers, peak),
+then a same-boot latents digest A/B at 5 s 1344x768 T2VA.

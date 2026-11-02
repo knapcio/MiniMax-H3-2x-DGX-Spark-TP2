@@ -422,6 +422,27 @@ def _apply(role: str) -> None:
             from . import fp8_swiglu as _fsw
 
             _fsw.install(level=int(_fuse))
+        # 9b'') H3_TP2_FP8_CONSUMER_FUSE=1 (EXPERIMENTAL, off by default; speed plan item 6b): the scale pass of the
+        #       qkv / out / fc2 GEMMs moves into the kernel that consumes their output (fused_qk_norm_rope,
+        #       indexed_gate_rms_norm_scale_shift, indexed_gate): the fp32 product is read once by a copy of the
+        #       upstream Triton kernel that applies the pass's epilogue and its bf16 rounding before the consumer's own
+        #       arithmetic, so the bf16 intermediate of q, k, out and fc2 is neither written nor read (v still is).
+        #       Meant to be bit-identical: every site runs a bit-for-bit self-check against scale pass + stock kernel
+        #       on its first call and disables itself on a mismatch; any call that does not match the reviewed
+        #       layout runs the ordinary scale pass and the stock kernel.  "qkv,out,fc2" (any subset) selects sites.
+        #       Only with tensor32 (the fused GEMM level has no fp32 product).  See h3_tp2/fp8_consumers.py.
+        _cfuse = os.environ.get("H3_TP2_FP8_CONSUMER_FUSE", "0")
+        if _gemm == "tensor32" and _cfuse.strip() not in ("", "0"):
+            from . import fp8_consumers as _fcons
+
+            _sites = _fcons.parse_sites(_cfuse)
+            try:
+                _done = _fcons.install(_sites)
+            except Exception:  # noqa: BLE001  (an opt-in experiment must not take the rank down)
+                logger.warning("h3_tp2: FP8 consumer fuse install failed; stock consumers", exc_info=True)
+                _done = []
+            logger.warning("h3_tp2: EXPERIMENT FP8 consumer fuse requested=%s, installed sites: %s", _cfuse.strip(),
+                           ", ".join(_done) or "none")
 
     # 9c) H3_TP2_VAE_STACK_TILES=1: the checkpoint's batched tile path for the video VAE (``stack_tiling``), DECODE ONLY
     #     (the flag is raised around decode_latent / decode_with_chunks and lowered again, so the reference-image encode

@@ -272,13 +272,15 @@ def probe_triton(device) -> bool:  # noqa: ANN001
     return ok
 
 
-_stash_hook = None
+_stash_hooks: list = []
 
 
 def set_stash_hook(fn) -> None:  # noqa: ANN001
-    """fp8_swiglu registers a hook that may take over a two-pass call (fc1 of the MLP) and return a placeholder."""
-    global _stash_hook
-    _stash_hook = fn
+    """Register a hook that may take over a two-pass call and return a placeholder: fp8_swiglu (fc1 of the MLP) and
+    fp8_consumers (qkv / out / fc2 of a DiT block).  Hooks run in registration order; each fires only for its own
+    GEMMs (fp8_swiglu on a thread-local request, fp8_consumers on the block's weight tensors), so at most one does."""
+    if fn not in _stash_hooks:
+        _stash_hooks.append(fn)
 
 
 def install(level: str = "tensor32") -> None:
@@ -316,8 +318,8 @@ def install(level: str = "tensor32") -> None:
             logger.info("h3_tp2: FP8 GEMM two-pass shape M=%d N=%d K=%d", M, N, a.shape[1])
         if n == 2000 or n % 20000 == 0:
             logger.info("h3_tp2: FP8 GEMM dispatch so far: two-pass %d, stock %d", stats["two_pass"], stats["stock"])
-        if _stash_hook is not None:
-            placeholder = _stash_hook(a, b, scale_a, scale_b, out_dtype, bias)
+        for hook in _stash_hooks:
+            placeholder = hook(a, b, scale_a, scale_b, out_dtype, bias)
             if placeholder is not None:
                 return placeholder
         if _state["fused"]:
