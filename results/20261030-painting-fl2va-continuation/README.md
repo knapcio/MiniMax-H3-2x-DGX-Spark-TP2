@@ -27,6 +27,24 @@ known white input border and scales 538 to 544 rows. It is
 uncropped repair. These are postprocessing experiments, not default model changes or proof of better perceived
 quality; the exact source and unmodified render remain available for matched comparisons.
 
+### Explicit locked-camera continuation prompts
+
+A second 30 s, 960x544, 20-step, seed-1101 run completed in 1,597.5 s. The client sends the same base prompt,
+but supplies explicit per-window prompts whose later windows say the camera remains locked. The baseline sends no
+explicit list, so the running server creates its default list: its later-window wording says the camera keeps
+moving the same way. The explicit and default first-window prompts are the same; their logged prompt/step-0
+digests match, and decoded frames 0–272 of the exact-length files are identical. In the later windows the
+downscaled full-frame grayscale mean absolute difference at one-second samples is 0.622–1.310 levels. This is
+not a motion or perceived-quality metric; the two runs share one seed and one scene.
+
+The baseline and explicit variants' lower-region gray ranges are 27.72 and 27.61 levels respectively, with
+very similar sampled paths. Both trigger 15 regional change spikes 17 frames apart at 12.04–21.96 s. These
+screens do not determine whether clouds and ground shadows correspond or whether the people move naturally.
+The native explicit video SHA-256 is `2d4a1c83e7391b0dd8f800c15bb0d89de0155ef1a697f527238ccf0ce1f5b6e6`;
+its 720-frame exact 30 s copy is `fb23858f59b4e925cb8857c7eb630557a34c893af4e3eeccc2a863a6c7aca1ea`.
+The latter is `d30_koninck_literal_camera_locked_20step_EXPERIMENT.mp4` in `~/Downloads/h3-prod-smoke/`;
+its unchanged AAC ends 16 ms before video. Full playback review and the matched 10-step comparison remain open.
+
 ## 300 s and cinematic tests (2026-11-01)
 
 A 300 s 960x544 FL2VA render completed in 16,207.9 s end to end. Its native 7,213-frame file passed full
