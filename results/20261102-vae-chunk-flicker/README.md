@@ -189,6 +189,7 @@ overlap; "rest" = the remaining boundaries.
 | class-aware, whole-window ref, ramp 0.25 | 124.2 | 123.6 -> 130.1 | -0.61 -1.51 -1.59 -1.88 -2.05 | -1.09 / -1.17 |
 | class-aware, tail ref, ramp 0.25 | 126.2 | 123.9 -> 132.6 | -0.61 -1.32 -1.32 -1.54 -1.65 | -0.92 / -0.97 |
 | class-aware, whole-window ref, **ramp 1.0** | 129.2 | 124.7 -> 130.1 | -0.61 -0.83 -0.71 -0.82 -0.79 | -0.91 / -1.40 |
+| class-aware, whole-window ref, no ramp (0.05) | 122.9 | step at the seam | **-4.45** at the first boundary | -1.09 |
 
 The model brightens this painting by +20 Y within one 11 s window at 1344 (raw 125 -> 145); any lock has to take
 that back, and the decoder renders the latent correction as one brightness per 17-frame block. With the ramp over a
