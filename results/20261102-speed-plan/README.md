@@ -170,3 +170,12 @@ follows the 16 s 1344 continuation (C) of this queue.
 ### 1344x768 offline (`item2d`, head stopped): stock 186.8 / 185.9 s vs cap 4 **113.9 / 114.0 s (-39 %)** per 277
 frames, peak 13.4 GB both, frames max 1 gray level on 0.22 % of pixels, **PSNR 74.7 dB**. **Default since 2026-11-02
 21:05:** `H3_TP2_VAE_STACK_TILES=2` (cap 4). Item 2 closed.
+
+### Serving on the defaults (queue53, 21:48-22:07, boot 7942a3c through the gate)
+
+5 s 1344x768 T2VA seed 0 on the new boot: **22.03 s/step**, latents `4d6d69e4aad0` (unchanged), **decode 26.3 s**
+against 41.8-42.0 s with the stock per-tile decode on the same request (-37 % in serving at 1344). Boot probes on this
+boot: 9.35 (first request) then 8.96 / 8.99 (warm), digests e20e93bd then bf6e8568 twice, the latter being the digest
+the previous boot's later probes had: at 960x576 the FIRST request of a boot is the odd one (speed and numerics), later
+requests repeat across boots. The previous boot read 9.19 on its first probe and 10.5-10.7 afterwards (1344 calibration
+23.74), so the boot gate now runs two probes and judges the warm one (`PROBES=2`, 6 % over 8.65).
