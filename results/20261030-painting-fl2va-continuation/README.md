@@ -43,7 +43,28 @@ screens do not determine whether clouds and ground shadows correspond or whether
 The native explicit video SHA-256 is `2d4a1c83e7391b0dd8f800c15bb0d89de0155ef1a697f527238ccf0ce1f5b6e6`;
 its 720-frame exact 30 s copy is `fb23858f59b4e925cb8857c7eb630557a34c893af4e3eeccc2a863a6c7aca1ea`.
 The latter is `d30_koninck_literal_camera_locked_20step_EXPERIMENT.mp4` in `~/Downloads/h3-prod-smoke/`;
-its unchanged AAC ends 16 ms before video. Full playback review and the matched 10-step comparison remain open.
+its unchanged AAC ends 16 ms before video. Full playback review remains open.
+
+### Ten steps versus twenty on the same painting
+
+With the same explicit prompts, input, seed, geometry and boot, a 10-step run took 872.5 s versus 1,597.5 s for
+20 steps: **1.83x throughput, 45.4% less request time** in this one comparison. The three diffuse phases took
+267.6/262.8/192.5 s versus 534.9/525.7/387.2 s; video decoding was 147.7 s versus 147.8 s. This is not a general
+speed guarantee or an equal-quality result. Both native files passed A/V decode; the 720-frame exact-30 s 10-step
+copy has SHA-256 `8f62f0426f405a77a25e2dc5108f499778062974f0261c54ca0fb92c51e6ef84` and its audio ends 16 ms
+early. It is `d30_koninck_literal_camera_locked_10step_EXPERIMENT.mp4` in `~/Downloads/h3-prod-smoke/`.
+
+Seven matched still pairs preserve the broad painting composition but cannot assess smooth movement, walking,
+audio or overall visual quality. The lower-frame gray range is 15.07 at 10 steps versus 27.61 at 20; this includes
+scene content and does not measure cloud-shadow correspondence. Both variants trigger repeated 17-frame regional
+changes around 12–22 s; the 10-step screen also flags an earlier short upper-right sequence. Seams remain small by
+the recorded luma statistic, which cannot rule out other artifacts. No quality equivalence or default step-count
+change follows from this single seed and image.
+
+A separate `porownanie_koninck_30s_LEWO_20_krokow_PRAWO_10_POST_EXPERIMENT.mp4` places the two variants side by
+side, with six bottom rows cropped and each picture re-encoded. The copied audio is from the left 20-step video
+only; its AAC packets and timestamps match that source, and the 720-frame comparison fully decodes. The unmodified
+exact-length videos remain the evidence for any model comparison.
 
 ## 300 s and cinematic tests (2026-11-01)
 
