@@ -871,3 +871,11 @@ What the prompt changed: the painting brightens much more in window 1 (light per
 115 -> 127 with the README prompt), then the lock holds windows 2-3 at 126-135. The "light stays soft and nearly
 constant" wording does not hold the brightness; codex's soft-light test said the same. Owner's eye pending on
 `~/Downloads/h3-prod-smoke/d30_koninck_960x544_noshadow_humanpace_clean_20261102.mp4` (shadows, pace, brightness).
+
+## 1344x768 with the 2026-11-02 defaults (`koninck30-1344-defaults`, 13:42-15:05, 4964 s)
+
+Clean crop, no-shadow human-pace prompt, look-lock classes + tail + ramp 1.0: seams -0.0 / +0.1, no cut, no period-17
+drop >= 1 YAVG, block boundaries -0.39 / -0.62 median (min -0.88). Light per second 115 -> 142 -> 134: the prompt
+brightens the painting over the first 20 s; the owner's eye decides whether that reads as the painting waking up or as
+a drift. Clip: `~/Downloads/h3-prod-smoke/d30_koninck_1344_defaults_noshadow_clean_20261102.mp4`. Next: the 60 s
+version on a speed-gated boot (queue49).

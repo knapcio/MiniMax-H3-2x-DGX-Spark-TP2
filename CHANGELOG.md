@@ -339,3 +339,6 @@
   the stage cache itself); the same 5 s 1344 calibration ran 22.9 s/step on one boot and 21.2-21.4 on the next
   (identical latents digest), no per-request degradation: boot-to-boot variance of 7 % is real and a boot speed gate
   is the lever (`results/20261102-speed-plan/`).
+- 2026-11-02 15:10: 1344x768 control with the three look-lock defaults (classes, tail reference, ramp 1.0): no
+  period-17 drop >= 1 YAVG, block boundaries -0.39 / -0.62 (min -0.88) against -0.69 / -1.85 with the quarter-window
+  ramp; seams -0.0 / +0.1. The flicker work is closed; the remaining brightness movement is the prompt's.

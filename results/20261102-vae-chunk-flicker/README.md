@@ -197,3 +197,19 @@ quarter of the window the correction lands in four blocks (-1.5..-2.3 Y steps, t
 clip); over the whole window it is ~0.9 Y per block, the raw decoder's own step being -0.6. **Default since
 2026-11-02 12:15:** `H3_TP2_CONT_LOCK_RAMP=1.0` (was 0.25), with the class-aware fit and the tail reference. Serving
 control at 1344 next (queue48); the owner's eye threshold for these steps was between 2 and 6 Y.
+
+### 1344x768 with all three defaults (`koninck30-1344-defaults`, queue48, 13:42-15:05, 4964 s)
+
+Class-aware lock + tail reference + ramp 1.0, the clean crop, the no-shadow human-pace prompt, seed 1101.
+
+| 1344 served clip | window 1 | window 2 (median / min) | window 3 | screen >= 1 YAVG |
+|---|---|---|---|---|
+| 10-30, mixture affine, ramp 0.25 | -0.31 / -0.41 | -0.80 / -1.66 | -0.65 / -1.49 | (drops) |
+| class-aware, whole-window ref, ramp 0.25 (queue44) | -0.27 / -0.36 | -0.69 / -1.85 | -0.60 / -1.78 | 4 + 3 drops |
+| **classes + tail ref + ramp 1.0** (queue48) | -0.29 / -0.40 | **-0.39 / -0.88** | **-0.62 / -0.74** | **none** |
+
+Seams -0.0 / +0.1 luma, no cut. The stairs after the hand-overs are gone at the owner's cell as well; the block
+boundaries are now within 0.3 Y of the raw decoder's everywhere (raw -0.62). What remains is the prompt's own
+brightening: light per second 115 -> 133 in window 1, 133 -> 142 in window 2, 141 -> 134 in window 3 (the lock holds
+continuity at the seams and the window means near the hand-over level, not the slope inside a window). The 17-frame
+flicker investigation is closed with these three defaults.
