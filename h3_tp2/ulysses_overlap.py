@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import logging
 
+import os
+
 import torch
 import torch.distributed as dist
 
@@ -87,7 +89,13 @@ def install(groups: int) -> None:
             return orig(self, query, key, value, attn_metadata)
 
         if _comm_stream is None:
-            _comm_stream = torch.cuda.Stream()
+            # H3_TP2_A2A_STREAM_PRIORITY (default 0 = the stream the 10-27 measurement used; -1 = high): the overlapped
+            # all-to-alls were bit-identical but slower because NCCL's kernels queued behind cuDNN's long attention
+            # kernels on an equal-priority stream (speed plan 2026-11-02, item 3). Pair with NCCL_MAX_CTAS=2..4.
+            _prio = int(os.environ.get("H3_TP2_A2A_STREAM_PRIORITY", "0").strip() or 0)
+            _comm_stream = torch.cuda.Stream(priority=_prio)
+            if _prio:
+                logger.warning("h3_tp2: Ulysses overlap comm stream priority %d", _prio)
         comm = _comm_stream
         cur = torch.cuda.current_stream()
         hg = heads // groups
