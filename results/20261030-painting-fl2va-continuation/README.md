@@ -1,5 +1,32 @@
 # A painting comes alive: FL2VA continuation (the still as the first frame, locked camera)
 
+## Full-prompt camera baseline (2026-11-02)
+
+The corrected literal-prompt queue completed a 30 s FL2VA baseline at 960x544, 20 steps, seed 1101 in 1,595.2 s.
+The saved request includes the entire prompt, including its semicolons and the instructions for soft, nearly
+constant light and slow figures. The native 736-frame render has SHA-256
+`3477fbf5d9dd6ce5492a751bc1d9df3b30fd1abe3ad5e18ac59fc39fca996030`; its separately checked 720-frame,
+30.000 s copy has SHA-256 `9dd9cc418781db6db387122bf01af91f298eadac725b168f584cfb4b25aabef6`. Video and
+audio fully decode; audio in the exact copy ends 16 ms before video. The matched camera-wording and step-count
+arms were still running when this was recorded, so this is not a prompt-quality or speed comparison.
+
+The native video has 15 consecutive same-phase regional-change spikes at frames 289–527, 17 frames apart, across
+all six screening regions. The signed whole-frame grayscale change at those boundaries has median -1.346 on a
+0–255 scale. The >=2 global-drop screen did not flag a run: it is a different, less sensitive check. These periodic
+signals are not a perceptual verdict or proof of a decoder cause. The lower 37.5% mean changes from 47.21 at 0 s
+to 74.93 at 12 s and 49.31 at 22 s, despite the prompt; this measurement includes changing scene content and cannot
+determine whether ground shadows track clouds or whether figures walk naturally.
+
+A separate bounded regional-luma experiment changes 75 of the 720 frames by at most five levels; decoded chroma,
+frame timing and AAC packets match the exact source, and full A/V decode passes. Over the selected transitions,
+median absolute regional gray change falls from 1.385 to 0.598; the detector still flags shorter runs. The method
+can also alter real movement or light. A further separately encoded viewing copy crops six bottom rows to hide the
+known white input border and scales 538 to 544 rows. It is
+`~/Downloads/h3-prod-smoke/d30_koninck_literal_camera_REGIONAL_BEZ_PASKA_POST_EXPERIMENT.mp4` (SHA-256
+`8ba2ea9603aabe41d25c017f683d0648ab23c4051179e0af7bb405fce493234f`); its AAC packets and timestamps match the
+uncropped repair. These are postprocessing experiments, not default model changes or proof of better perceived
+quality; the exact source and unmodified render remain available for matched comparisons.
+
 ## 300 s and cinematic tests (2026-11-01)
 
 A 300 s 960x544 FL2VA render completed in 16,207.9 s end to end. Its native 7,213-frame file passed full
