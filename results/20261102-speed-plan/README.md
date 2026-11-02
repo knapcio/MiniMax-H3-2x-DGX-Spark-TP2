@@ -165,3 +165,4 @@ and at 960x576 the first request's LATENTS differ per boot (rel-l2 0.09 between 
 element), so the frames differ for diffusion reasons. The decoder equivalence is the offline result above (73.9 dB on
 identical latents); a 1344 offline check (`item2d`, stock vs cap 4 on the saved 1344 window-1 latents, head stopped)
 follows the 16 s 1344 continuation (C) of this queue.
+| C: 16 s 1344x768 FL2VA continuation (two windows, pinned prefix, lock defaults) with `=2` | decode_to_mp4 86.6 s; 2340 s total | seam +0.0 luma, no cut, no drop >= 1 YAVG, block boundaries -0.31 / -0.39: the same profile as the stock 1344 renders; two-rank tile gather + batched tiles work at the larger tile count |
