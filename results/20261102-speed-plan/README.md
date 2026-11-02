@@ -133,3 +133,22 @@ one boot repeat the digest exactly (queue47: 2 + 3 requests). Lossless A/B there
   s/step on 10-30: the compaction + probe gate is the lever that matters.
 
 Remaining: item 2 (batched VAE decode default-on, offline A/B next), item 4 (fused FP8 epilogue, 2-4 days), items 6-7.
+
+## Measured 2026-11-02 19:36-19:50: item 2, the batched tile decode, offline with the head stopped (`item2c`)
+
+Same saved latents (window 3 of the 30 s 960x544 render, 67 tokens -> 226 frames) decoded through the serving adapter
+path (`MiniMaxH3VideoVAE.decode_latent`, FP16 autocast, streaming uint8 fork) on one GPU, twice per arm (second time):
+
+| arm | decode | peak alloc | frames vs stock |
+|---|---|---|---|
+| stock | 81.2 s | 11.5 GB | - |
+| `vae_tile_scope` cap 4 (= `H3_TP2_VAE_STACK_TILES=2`, `H3_TP2_VAE_TILE_BATCH=4`) | **50.0 s (-38 %)** | 11.6 GB | max 1 gray level, 0.27 % of pixels, **PSNR 73.9 dB** |
+| stock + deterministic flags | 82.4 s | 11.5 GB | bit-equal to stock |
+| cap 4 + deterministic flags | 49.9 s | 11.6 GB | bit-equal to cap 4 |
+
+The batched tiles change nothing but the reduction order inside the tile batch (1-LSB rounding on 0.27 % of pixels,
+73.9 dB; the 45 dB of 10-29 was a different measurement); the deterministic cuDNN/cuBLAS flags change nothing at all
+here. Two earlier attempts of this A/B were invalid: the direct chunk-loop script bypasses the adapter hook (so
+"stack4" was stock), and next to the idle head three of four arms hit CUDA out-of-memory with 44 GB free (host
+fragmentation after a boot): offline GPU jobs on the head only with the head stopped and the hosts compacted.
+Serving check next (queue51): 960x576 stock vs `=2` on two ranks, then a 16 s 1344 continuation; then default-on.
