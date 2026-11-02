@@ -879,3 +879,15 @@ drop >= 1 YAVG, block boundaries -0.39 / -0.62 median (min -0.88). Light per sec
 brightens the painting over the first 20 s; the owner's eye decides whether that reads as the painting waking up or as
 a drift. Clip: `~/Downloads/h3-prod-smoke/d30_koninck_1344_defaults_noshadow_clean_20261102.mp4`. Next: the 60 s
 version on a speed-gated boot (queue49).
+
+## 60 s at 1344x768 with the 2026-11-02 defaults (`koninck60-1344-defaults`, 15:42-18:20, 9486 s)
+
+Speed-gated boot (probe 9.14 s/step after a host compaction), clean crop, no-shadow human-pace prompt, look-lock
+classes + tail + ramp 1.0, seed 1101, six windows. **9486 s = 2 h 38 min** (the 10-30 60 s took 13445 s on a slow
+boot). Five hand-overs at -0.0 / -0.2 / +0.1 / +0.2 / +0.2 luma, no inter-frame spike, no cut; seam ratios 0.96-0.98,
+no retry. Light per second 115 -> 146 (at 27 s) -> 134: the prompt's brightening, then a slow settle, no sawtooth.
+Block boundaries: window 1 -0.26 / -0.39, window 2 -0.40 / -0.88, windows 3-6 median -0.50 min -1.06; the period-17
+screen at >= 1 YAVG finds one run of five steps at exactly -1.0 (29.8-32.6 s), below the owner's visibility threshold
+(2-6 Y); the 10-30 60 s clip had -1.62 / -3.38 in the same statistic. Clip:
+`~/Downloads/h3-prod-smoke/d60_koninck_1344_defaults_noshadow_clean_20261102.mp4`. This is the deliverable for the
+painting use at 60 s; the owner's eye decides on the brightness curve and the prompt.

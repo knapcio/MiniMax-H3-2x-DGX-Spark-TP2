@@ -342,3 +342,6 @@
 - 2026-11-02 15:10: 1344x768 control with the three look-lock defaults (classes, tail reference, ramp 1.0): no
   period-17 drop >= 1 YAVG, block boundaries -0.39 / -0.62 (min -0.88) against -0.69 / -1.85 with the quarter-window
   ramp; seams -0.0 / +0.1. The flicker work is closed; the remaining brightness movement is the prompt's.
+- 2026-11-02 18:25: 60 s Koninck at 1344x768 with the full 11-02 defaults on a speed-gated, compacted boot: 9486 s
+  (2 h 38 min; 13445 s on 10-30), five invisible hand-overs (-0.0..+0.2 luma), no cut, block boundaries median -0.50
+  (one run at -1.0 Y, below the eye; 10-30: -1.62 / -3.38). `results/20261030-painting-fl2va-continuation/`.
