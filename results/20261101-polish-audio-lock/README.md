@@ -248,3 +248,13 @@ In ten still frames sampled every 30 s from the completed film, the main pair an
 the man continues to hold the letter. This is substantially more continuous than disconnected scenes, but the
 staging is very static; the sampled frames cannot verify action between them, performer likeness or acting.
 The measured speech fading and lack of action remain open problems; no full-playback quality verdict is claimed.
+
+A denser review of 61 stills every 5 s, including the last frame, shows changes in expressions and occasional
+gestures, while the main composition stays much the same. The man continues to hold the letter in the sampled
+frames; these stills do not exclude a brief off-sample action. The later picture also becomes visibly more
+contrasty and textured, including changes in the faces and clothing. A fixed upper-right background rectangle's
+sampled grayscale standard deviation rises from 34.73 at 0 s to 48.17 at 299.958 s; this includes scene changes
+and is not a calibrated color or perceptual metric. The timestamped sheet and measurements are in
+`diagnostics/h3-lalka-20261101/coherent-300/visual-review-20261102/`. Stills cannot assess motion smoothness,
+dialogue delivery, lip sync or full-playback quality. The separate two-keyframe pilot is intended to test whether
+a planned change in the letter's position can produce an actual continuous action; it has not run on the model yet.
