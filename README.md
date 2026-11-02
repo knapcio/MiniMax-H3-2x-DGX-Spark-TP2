@@ -35,6 +35,15 @@ the final configuration (uint8 output path, VAE split over both GPUs, cache free
 prompt encoding 0.2 s, denoising 1602.6 s (80 s per step), VAE decode 84.2 s; 15 s T2VA 0.2 / 2946.7 (147 s per step)
 / 125.8 s; 15 s FL2VA 0.9 / 3030.9 / 125.9 s.
 
+**State on 2026-11-02 (long stack, vLLM-Omni v0.30.0, FL2VA partition, all defaults):** 5 s 1344x768 T2VA runs at
+21.1-22.0 s per step on a good boot (about 440 s of denoising; 23.2 was the 10-30 reference) and its VAE decode takes
+26 s instead of 42 with the batched tile decode; 5 s 960x576 at 8.65-9.1 s per step warm. Long clips from a still at
+1344x768: 16 s in 39 min, 30 s in 83 min, 60 s in 2 h 38 min (6 windows, `results/20261030-painting-fl2va-continuation/`).
+Two things decide whether a boot is fast: the host's free memory layout (`sudo -n /usr/local/sbin/h3-compact` before
+the start) and luck with kernel selection; `scripts/boot-probe.sh` renders two 5 s probes after every start and
+restarts a slow boot (boots differed by 7-40 % with identical latents; `results/20261102-speed-plan/`). The first
+request of a boot is 4-7 % slower and numerically different from every later one; warm up before comparing digests.
+
 ## Quality checks
 
 Tensor parallelism changes the order of floating-point reductions (all-reduce over two GPUs, sequence-parallel
