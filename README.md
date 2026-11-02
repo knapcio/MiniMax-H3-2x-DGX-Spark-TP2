@@ -193,10 +193,12 @@ decoded frames and AAC packets before publication; the audio can end up to one A
 optional step tries a fast stream copy for H.264 without B-frames and falls back to lossless video re-encoding if
 needed. Verification still decodes the retained frames. A failed trim preserves the raw response separately.
 
-For a first-frame image that may be a screenshot, `python scripts/input_border_check.py image.png` reports nearly
-solid or transparent bands along each edge. On the Koninck input it found two white top rows and 11 white bottom
-rows; a separate clean crop had no such bands. A border can be intentional or part of the scene, so the screen does
-not crop or alter inputs. It requires Pillow.
+**Check the input image for borders before rendering.** FL2VA keeps the first frame as it is, so a white band in a
+screenshot crop stays in every frame (the owner's "white strip at the bottom", 2026-11-02: our Koninck crop had two
+white rows at the top and eleven at the bottom). `python scripts/input_border_check.py image.png` reports nearly solid
+or transparent bands along each edge (Pillow); crop them off before the request, for example
+`python -c "from PIL import Image; im=Image.open('in.png'); w,h=im.size; im.crop((0,2,w,h-11)).save('out.png')"` with
+the row counts the check printed. A border can be intentional, so the screen itself never alters inputs.
 
 ### Optional speech screen
 
