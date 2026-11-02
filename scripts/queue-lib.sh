@@ -27,7 +27,7 @@ restart_head() {
 restart_head_gated() {
   for attempt in 1 2 3; do
     restart_head "$1"
-    bash ~/h3-tp2/scripts/boot-probe.sh ${PROBE_REF:-8.65} ${PROBE_TOL:-0.05}; rc=$?
+    bash ~/h3-tp2/scripts/boot-probe.sh ${PROBE_REF:-8.65} ${PROBE_TOL:-0.10}; rc=$?
     [ $rc -eq 0 ] && return 0
     [ $rc -eq 2 ] && { echo "=== slow boot (attempt $attempt), restarting"; continue; }
     echo "=== probe failed (rc $rc), keeping this boot"; return 1

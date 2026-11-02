@@ -6,7 +6,10 @@
 # It renders a 5 s 960x576 T2VA calibration (seed 0, 20 steps; ~8.6 s/step on a good boot of the long stack with the
 # two-pass GEMM and fused SwiGLU), reads the step rate from the head journal and prints PROBE PASS|SLOW|FAIL with the
 # numbers. Exit 0 = pass, 2 = slow (restart the head and probe again), 1 = the probe did not run.
-REF=${1:-8.65}; TOL=${2:-0.05}
+REF=${1:-8.65}; TOL=${2:-0.10}
+# The probe is the FIRST request of the boot and runs 4-7 % slower than a warm one (9.0-9.17 vs 8.65 measured), so a
+# tolerance under 0.10 flags warm-up as a slow boot and restarts in a loop (queue49, 2026-11-02 15:15). Floor it.
+TOL=$(python3 -c "print(max(float('$TOL'), 0.10))")
 OUTROOT=${H3_PROBE_ROOT:-$HOME/h3-tp2-results}
 NAME=boot-probe-$(date +%Y%m%d-%H%M%S)
 health() { curl -s -m 3 -o /dev/null -w "%{http_code}" http://127.0.0.1:18093/health; }
