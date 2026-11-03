@@ -363,6 +363,12 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-04 00:15: the English shop scene for X (`results/20261103-xclip/`): 60 s 1344x768 on Ref2VA with the 2048 px
+  reference, 13 614 s; speech WER 0.007 (faster-whisper small), no language slip; faces hold (no drift within the clip)
+  but window 1 ignored the reference composition and the model cut to it at 17 s; pauses 1.7-2.5 s. The first mixes left
+  the ambience bed inaudible (fixed -16 dB on a -44.6 LUFS bed): `mix_v2.sh` normalises the bed to a target loudness
+  (-37 LUFS ambience, -40 LUFS piano) before ducking. v2 queued: composition stated in every prompt, three lines per
+  window.
 - 2026-11-03 23:30: cutlass sm120 kernel race fixed (`h3_tp2/fp8_cutlass_kernel.py`, `results/20261103-cutlass-sm120/race.md`):
   a `fence.proxy.async` before the MMA-warp barrier at both stage releases orders the ldmatrix reads before the next
   TMA load; the stress reproducer `scripts/fp8_cutlass_stress.py` goes from 81 wrong GEMMs in 13216 to 0 in 12176.
@@ -410,9 +416,3 @@
   `fp8_swiglu._state` into later modules. `results/20261103-cutlass-sm120/` "Serving proof".
 - 2026-11-03 09:00: boot probe tolerance 6 -> 8 % (limit 9.34 s/step on the 8.65 reference): the warm probes of the
   gated boots ran 8.96-9.16 against the old 9.17 limit, so a normal boot could be rejected and re-booted for nothing.
-- 2026-11-04 00:15: the English shop scene for X (`results/20261103-xclip/`): 60 s 1344x768 on Ref2VA with the 2048 px
-  reference, 13 614 s; speech WER 0.007 (faster-whisper small), no language slip; faces hold (no drift within the clip)
-  but window 1 ignored the reference composition and the model cut to it at 17 s; pauses 1.7-2.5 s. The first mixes left
-  the ambience bed inaudible (fixed -16 dB on a -44.6 LUFS bed): `mix_v2.sh` normalises the bed to a target loudness
-  (-37 LUFS ambience, -40 LUFS piano) before ducking. v2 queued: composition stated in every prompt, three lines per
-  window.

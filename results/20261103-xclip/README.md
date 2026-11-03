@@ -39,8 +39,8 @@ is lower on wide shots than on the 960x544 doll clips, compare arms, not absolut
 60 s: first-to-last 10 % is +0.02 (man) and +0.50 (woman, the composition change).
 
 Audio: the dialogue is at -23.9 LUFS; the ambience bed came out at -44.6 LUFS and the piano at -24.8 LUFS, so the first
-mix (`mix_ambience.sh`, a fixed -16 / -20 dB offset) left the ambience inaudible (-64 dB in the pauses). `mix_v2.sh`
-normalises the bed to a target loudness first (loudnorm to -23 LUFS, then an offset; `loudnorm` refuses `TP` below -9)
+mix (`mix_ambience.sh`, a fixed -16 / -20 dB offset) left the ambience inaudible (-64 dB in the pauses). `mix_v2.sh` (= `scripts/mix_bed.sh` in
+the repo) normalises the bed to a target loudness first (loudnorm to -23 LUFS, then an offset; `loudnorm` refuses `TP` below -9)
 and ducks it under speech (sidechain, ratio 4): ambience at -37 LUFS, piano at -40 LUFS. With the beds audible no pause
 in either mix is below -45 dB for 1 s; the mixes measure -24.4 / -24.0 LUFS, peaks -7 dB.
 
