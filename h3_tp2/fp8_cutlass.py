@@ -154,7 +154,38 @@ def route(a, b, scale_a, scale_b, out_dtype, bias):  # noqa: ANN001,ANN201
     _stats["dsl"] += 1
     if _stats["dsl"] == 1:
         logger.info("h3_tp2 fp8 cutlass: first DSL GEMM (%s, M=%d N=%d K=%d)", site, a.shape[0], b.shape[1], a.shape[1])
+    if _VERIFY:
+        _verify(site, a, b, scale_a, scale_b, y)
     return y
+
+
+# H3_TP2_FP8_CUTLASS_VERIFY=1 (diagnosis only, slow: one extra two-pass GEMM and a sync per routed call): compare every
+# DSL output with scaled_mm_tensor32 on the same operands and log the mismatches (the DSL output is still returned, so a
+# divergence is reproduced and located: site, shape, call number).
+_VERIFY = os.environ.get("H3_TP2_FP8_CUTLASS_VERIFY", "0").strip() == "1"
+
+
+def _verify(site, a, b, scale_a, scale_b, y) -> None:  # noqa: ANN001
+    two_pass = fp8_gemm.scaled_mm_tensor32 if a.is_cuda else _two_pass_cpu
+    ref = two_pass(a, b, scale_a, scale_b, torch.bfloat16)
+    nd = int((y.view(torch.int16) != ref.view(torch.int16)).sum())
+    _stats["verify_calls"] = _stats.get("verify_calls", 0) + 1
+    if nd:
+        _stats["verify_mismatch"] = _stats.get("verify_mismatch", 0) + 1
+        if _stats["verify_mismatch"] <= 20:
+            rows = (y.view(torch.int16) != ref.view(torch.int16)).any(1).nonzero().flatten()
+            logger.warning("h3_tp2 fp8 cutlass VERIFY: %s M=%d N=%d K=%d call %d: %d elements differ from two-pass "
+                           "(rows %d..%d)", site, a.shape[0], b.shape[1], a.shape[1], _stats["dsl"], nd,
+                           int(rows.min()), int(rows.max()))
+    elif _stats["verify_calls"] % 1000 == 0:
+        logger.info("h3_tp2 fp8 cutlass VERIFY: %d calls checked, %d mismatching", _stats["verify_calls"],
+                    _stats.get("verify_mismatch", 0))
+
+
+def _two_pass_cpu(a, b, scale_a, scale_b, out_dtype):  # noqa: ANN001,ANN202
+    M, N = a.shape[0], b.shape[1]
+    sa, sb = fp8_gemm._vec_scales(scale_a, scale_b, M, N)
+    return fp8_gemm.epilogue_torch(a.float() @ b.float(), sa, sb, None, out_dtype)
 
 
 # --------------------------------------------------------------------------------------------------------------------

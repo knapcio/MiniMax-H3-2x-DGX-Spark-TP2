@@ -103,7 +103,7 @@ def test_fc1_bf16_plus_silu_and_mul_equals_fused_swiglu(M):
     N, K = SHAPES["fc1"]
     a, w, sa, sb = _serving_like(M, N, K, seed=11 + M)
     s_a, s_b = fp8_gemm._vec_scales(sa, sb, M, N)
-    one = torch.ones((), device="cuda")
+    one = fp8_gemm.unit_scale(a.device)        # a freshly filled scale can be read stale by cuBLASLt (fp8_gemm.unit_scale)
     x32 = torch._scaled_mm(a, w.t(), scale_a=one, scale_b=one, out_dtype=torch.float32)
     ref = fp8_swiglu.scale_swiglu(x32, s_a, s_b, None)
     h = fp8_cutlass.scaled_mm(a, w.t(), sa, sb, torch.bfloat16)

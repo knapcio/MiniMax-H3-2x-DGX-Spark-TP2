@@ -129,7 +129,7 @@ Plan (about one day plus the GPU proof):
 5. Proof: same-boot latents digest A/B, 5 s 1344x768 T2VA (expect `4d6d69e4` unchanged) and the 960 warm probe
    (`bf6e8568`), then the s/step gain.
 
-## Serving proof (`H3_TP2_FP8_GEMM=cutlass`, opt-in; wiring plan steps 1-5 done)
+## Serving proof (`H3_TP2_FP8_GEMM=cutlass`, opt-in; wiring plan steps 1-5 done; NOT shippable yet)
 
 ### What was built
 
@@ -180,18 +180,21 @@ compiled launcher 5.0 us, `DslGemm.run` 33.8 us, the dispatcher's `fp8_cutlass.s
 side saved ~10 us but kept references to the weights; removed). 150 routed GEMMs per step: ~6 ms of host time, hidden
 behind the GPU.
 
-### A cuBLASLt scale-read hazard found on the way (fixed in the two-pass path)
+### A cuBLASLt scale-read hazard found on the way (pre-existing, fixed in the two-pass path)
 
-The first GPU test run failed 3 of 22 cases: the *reference* was wrong, not the DSL output. After CuTe-DSL launches and
+The first GPU test run failed 3 of 22 cases: the *reference* was wrong, not the DSL output. After a few FP8 GEMMs and
 `torch.cuda.empty_cache()` in the same process, `torch._scaled_mm` with a scalar scale tensor allocated and filled just
 before the call (`one = torch.ones(())`, as `scaled_mm_tensor32`, `fp8_consumers._product_fp32` and the fc1 stash did
 on every call) computed some output tiles with a stale scale: 8-12 % of the elements, every wrong one off by the same
 factor (0.0014, the earlier contents of that memory). Correct with a long-lived scale or a `synchronize()` after the
-fill; the inputs themselves were always read correctly (bit-identical when only the scale tensor was replaced). Not
-reproduced without the DSL in the process (60 trials with planted stale values, with and without `empty_cache`), so
-the trigger is not fully explained. The three call sites now share `fp8_gemm.unit_scale(device)`, one 1.0 per device
-made and synchronised once; the probe no longer calls `empty_cache()`. With today's defaults the DSL never loads, the
-value passed is the same 1.0, so the default path's numerics are unchanged (checked by the baseline arm below).
+fill; the A / B operands were always read correctly (bit-identical when only the scale tensor was replaced), and a
+plain torch elementwise consumer of the same fresh scalar, or the DSL kernel reading freshly written `sa` / `sb`, were
+correct. It does **not** need the DSL: with only two-pass GEMMs before the `empty_cache` it fails 2 of 2
+(`hazard.py <lt|torch|dsl> <dsl|lt2p>`). Most likely cuBLASLt's sm121 kernel (nvjet) reads the device-side scale
+before it waits for its predecessor; not chased further. Serving was exposed whenever that 512-byte block came from
+fresh memory (after the decode-boundary `empty_cache`) instead of a recycled block that still held 1.0. The three call
+sites now share `fp8_gemm.unit_scale(device)`, one 1.0 per device made and synchronised once; the probe no longer calls
+`empty_cache()`. Same value passed, so the default path's numerics are unchanged (baseline arm below: 4d6d69e4).
 
 ### Tests
 
@@ -206,4 +209,54 @@ value passed is the same 1.0, so the default path's numerics are unchanged (chec
   the not-taken cases, fc1 + `silu_and_mul` = fused SwiGLU, and a negative control (one flipped low bit fails the check).
   All FP8 test files together on Spark_06: 169 passed.
 
-<<SERVING-RESULTS>>
+### Fleet proof (queue57, 2026-11-03 10:54-11:59; `queue57-cutlass.sh` / `.log`)
+
+Gated boots (stop -> compaction -> start -> two 960x576 boot probes); calibration = 5 s 1344x768 T2VA, seed 0, 20 steps.
+Expected latents digests: 1344 calibration `4d6d69e4aad0`, warm 960 probe `bf6e85687a6a`.
+
+| boot | env | request of the boot | cell | s/step | latents digest | |
+|---|---|---|---|---|---|---|
+| A | defaults (new code: two-pass, fused SwiGLU 1, consumer fuse qkv/out/fc2) | 1 | 960 probe | 9.08 | bf6e85687a6a | |
+| A | | 2 | 960 probe (warm) | 8.84 | bf6e85687a6a | = |
+| A | | 3 | **1344 calibration** | **21.64** | **4d6d69e4aad0** | = (default path unchanged by this work) |
+| B | + `H3_TP2_FP8_GEMM=cutlass` (both ranks: `running=cutlass`, consumer fuse fc2 only, 1038 DSL calls of 1949 on rank 1 by 11:24, none falling through) | 1 | 960 probe | 8.80 | bf6e85687a6a | = |
+| B | | 2 | 960 probe (warm) | 9.26 | **a8713b8912e3** | **differs** (latents rel-L2 1.2e-1 vs A's warm probe) |
+| B | | 3 | **1344 calibration 1** | **21.03** | **4d6d69e4aad0** | = (-2.8 % against A) |
+| B | | 4 | 1344 calibration 2 | 21.69 | **1305859b32b3** | **differs** |
+| C | defaults restored | | boot probe | pass | | serving back on defaults 11:58:59 |
+
+**Result: not shippable yet.** The first request of each resolution in a cutlass boot is bit-identical to the defaults
+(960 and 1344) and the 1344 one is 0.61 s/step (2.8 %) faster, against a projected ~1.5 s/step (cross-boot, one
+sample; the measured fc1 path is 2 ms per layer slower than estimated, the rest of the gap is not explained), but the
+*repeat* of a resolution in the
+same process diverges (2 of 2), by a sample-level amount, not by rounding. So the bit-identity holds on the first
+pass and something stateful breaks it afterwards.
+
+What the offline checks ruled out (Spark_06, next to the serving head; `stream_test.py`, `seq_test.py`, `hazard.py`):
+- stream ordering: producer + `_sleep` on a non-blocking torch stream, then the DSL launch and a consumer on that
+  stream: 0 / 8 wrong (default stream 0 / 8); the launcher passes `torch.cuda.current_stream().cuda_stream` per call
+  and the output comes from `torch.empty` on that stream;
+- launcher caching: none per `data_ptr` (only the `CUstream` wrapper per stream handle); one buffer reused at the same
+  address with different M / K / N: all bit-identical;
+- request-like sequences (qkv -> out -> fc1 with fresh activations, 16 layers enqueued behind a 0.5 s `_sleep` so the
+  host runs far ahead, two "resolutions" alternating, `empty_cache` between requests, current and side stream):
+  0 of 288 GEMMs wrong (and 0 of 48 in the synchronised variant);
+- freshly written `sa` / `sb` after `empty_cache` read by the DSL kernel: correct (the cuBLASLt scale hazard above does
+  not apply to it).
+Not reproduced offline yet: the real DiT block (stock `fused_qk_norm_rope` reading q / k views of the DSL output, v as
+a strided view read by the Ulysses all-to-all on the comm stream, NCCL kernels running concurrently with the DSL
+kernel), the decode-boundary `empty_cache` followed by the VAE decode, and the exact serving M (10240 at 960,
+18880 at 1344 per rank). The first-of-a-resolution / repeat pattern points at state that a new shape resets
+(allocator growth with synchronising `cudaMalloc`s on the first pass, cached blocks with old contents on a repeat).
+
+Next step: one serving run with `H3_TP2_FP8_CUTLASS_VERIFY=1` (added after queue57: every routed GEMM is recomputed by
+two-pass and compared bit for bit; the DSL output is still returned, mismatches are logged with site, shape and call
+number) localises the first wrong GEMM, or shows that every GEMM matches and the divergence is downstream of the
+GEMMs (consumers / communication on a bf16 tensor instead of the placeholder path).
+
+Proof to run once a fix is in (same queue, three calibrations in B):
+1. A: `restart_head_gated` with the defaults (`rm -f ~/h3-tp2-results/.head-rev` first: the synced tree changes without
+   a new git rev), 5 s 1344x768 T2VA calibration, seed 0, 20 steps: digest `4d6d69e4aad0`, baseline s/step.
+2. B: `restart_head_gated` with `H3_TP2_FP8_GEMM=cutlass` added: the warm 960 boot probe must give `bf6e85687a6a`, then
+   THREE calibrations, every digest `4d6d69e4aad0`; s/step from the second and third.
+3. C: `restart_head_gated` back to the defaults; append the done marker for the next queue.

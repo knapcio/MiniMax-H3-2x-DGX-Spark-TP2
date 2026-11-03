@@ -131,10 +131,10 @@ _UNIT: dict = {}
 
 def unit_scale(device) -> torch.Tensor:  # noqa: ANN001
     """The fp32 scalar 1.0 the scalar-scale GEMMs pass to cuBLASLt, made once per device and synchronised before its
-    first use.  A scale tensor filled right before ``torch._scaled_mm`` on the same stream was read as stale memory
-    by some tiles of the cuBLASLt sm121 kernel in one state of the process (seen on Spark_06 2026-11-03 after CuTe-DSL
-    launches and ``torch.cuda.empty_cache()``: every wrong element off by the same factor, the old contents of that
-    memory; correct with a synchronised or long-lived scale; not reproduced without the DSL in the process), so the
+    first use.  A scale tensor filled right before ``torch._scaled_mm`` on the same stream was read as stale memory by
+    some tiles of the cuBLASLt sm121 kernel when its 512-byte block came from fresh memory (after a few FP8 GEMMs and
+    ``torch.cuda.empty_cache()``; Spark_06 2026-11-03: every wrong element off by the same factor, the old contents of
+    that memory; correct with a synchronised or long-lived scale; results/20261103-cutlass-sm120/hazard.py), so the
     product never depends on a just-written scale."""
     key = (device.type, device.index) if isinstance(device, torch.device) else str(device)
     one = _UNIT.get(key)

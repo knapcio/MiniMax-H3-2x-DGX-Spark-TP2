@@ -1,0 +1,64 @@
+Q57-CUTLASS-START 10:54:42
+buddyinfo before restart: 639 7 36 24 0 0 
+compacted head, orders 9+: 16726 12544 5075 2092 755 132 
+compacted agent host, orders 9+: 16011 12724 5803 2268 766 96 
+=== head restarted (export H3_TP2_SAVE_LATENTS=/home/knapcio/h3-tp2-results/latents
+buddyinfo order9+ (head): 181 85 29 8 1 
+PROBE PASS: first 9.08 (bf6e85687a6a), warm 8.84 s/step (reference 8.65, limit 9.342) latents bf6e85687a6a 11:08:42
+Q57-BOOT-A rc 0 11:08:42
+      2 FP8 GEMM requested=<default> running=tensor32
+      2 FP8 GEMM two-pass (scalar-scale GEMM + scale epilogue, Triton pass) ON; not bit-identical to the stock kernel
+      1 FP8 GEMM two-pass shape M=10240 N=21504 K=5376
+      1 FP8 GEMM two-pass shape M=10240 N=28672 K=5376
+      1 FP8 GEMM two-pass shape M=10240 N=5376 K=14336
+      1 FP8 GEMM two-pass shape M=10240 N=5376 K=7168
+      1 FP8 GEMM two-pass shape M=2 N=10752 K=2688
+      1 FP8 GEMM two-pass shape M=30 N=21504 K=5376
+      1 FP8 GEMM two-pass shape M=30 N=25600 K=5120
+      1 FP8 GEMM two-pass shape M=30 N=28672 K=5376
+      1 FP8 GEMM two-pass shape M=30 N=5120 K=12800
+      1 FP8 GEMM two-pass shape M=30 N=5120 K=4096
+CALIB q57-A-default: 20/20 [07:12<00:00, 21.64s/it] latents 4d6d69e4aad0 phase diffuse 432.8 s phase decode 26.4 s 
+buddyinfo before restart: 409 195 67 28 0 0 
+compacted head, orders 9+: 15965 12393 5751 2341 758 116 
+compacted agent host, orders 9+: 15158 12449 6195 2511 685 97 
+=== head restarted (export H3_TP2_SAVE_LATENTS=/home/knapcio/h3-tp2-results/latents
+export H3_TP2_FP8_GEMM=cutlass) health 200 11:23:21
+buddyinfo order9+ (head): 222 79 0 0 0 
+PROBE PASS: first 8.80 (bf6e85687a6a), warm 9.26 s/step (reference 8.65, limit 9.342) latents a8713b8912e3 11:30:02
+Q57-BOOT-B rc 0 11:30:02
+      1 FP8 GEMM cutlass (CuTe-DSL sm120 FP8 GEMM with the scale epilogue in registers for the DiT qkv / out / fc1, two-pass for the rest; compiled in 0.9 s, self-check 0.2 s) ON; bit-identical 
+      1 FP8 GEMM cutlass (CuTe-DSL sm120 FP8 GEMM with the scale epilogue in registers for the DiT qkv / out / fc1, two-pass for the rest; compiled in 0.9 s, self-check 0.3 s) ON; bit-identical 
+      2 FP8 GEMM requested=cutlass running=cutlass
+      1 FP8 GEMM two-pass shape M=10240 N=21504 K=5376
+      1 FP8 GEMM two-pass shape M=10240 N=28672 K=5376
+      1 FP8 GEMM two-pass shape M=10240 N=5376 K=14336
+      1 FP8 GEMM two-pass shape M=10240 N=5376 K=7168
+      1 FP8 GEMM two-pass shape M=18880 N=21504 K=5376
+      1 FP8 GEMM two-pass shape M=18880 N=28672 K=5376
+      1 FP8 GEMM two-pass shape M=18880 N=5376 K=14336
+      1 FP8 GEMM two-pass shape M=18880 N=5376 K=7168
+      1 FP8 GEMM two-pass shape M=2 N=10752 K=2688
+CALIB q57-B-cutlass-1: 20/20 [07:00<00:00, 21.03s/it] latents 4d6d69e4aad0 phase diffuse 420.6 s phase decode 26.3 s 
+CALIB q57-B-cutlass-2: 20/20 [07:13<00:00, 21.69s/it] latents 1305859b32b3 phase diffuse 433.8 s phase decode 26.3 s 
+Q57 STOP: cutlass digest (second) 1305859b32b3 != 4d6d69e4aad0
+buddyinfo before restart: 234 430 43 13 0 0 
+compacted head, orders 9+: 16626 12940 5880 2564 609 67 
+compacted agent host, orders 9+: 14163 11669 6148 2868 838 124 
+=== head restarted (export H3_TP2_SAVE_LATENTS=/home/knapcio/h3-tp2-results/latents
+buddyinfo order9+ (head): 362 35 7 1 0 
+PROBE PASS: first 8.87 (bf6e85687a6a), warm 8.60 s/step (reference 8.65, limit 9.342) latents bf6e85687a6a 11:58:59
+Q57-BOOT-C (defaults restored) rc 0 health 200 11:58:59
+      2 FP8 GEMM requested=<default> running=tensor32
+      2 FP8 GEMM two-pass (scalar-scale GEMM + scale epilogue, Triton pass) ON; not bit-identical to the stock kernel
+      1 FP8 GEMM two-pass shape M=10240 N=21504 K=5376
+      1 FP8 GEMM two-pass shape M=10240 N=28672 K=5376
+      1 FP8 GEMM two-pass shape M=10240 N=5376 K=14336
+      1 FP8 GEMM two-pass shape M=10240 N=5376 K=7168
+      1 FP8 GEMM two-pass shape M=2 N=10752 K=2688
+      1 FP8 GEMM two-pass shape M=30 N=21504 K=5376
+      1 FP8 GEMM two-pass shape M=30 N=25600 K=5120
+      1 FP8 GEMM two-pass shape M=30 N=28672 K=5376
+      1 FP8 GEMM two-pass shape M=30 N=5120 K=12800
+      1 FP8 GEMM two-pass shape M=30 N=5120 K=4096
+Q57-DONE 11:58:59

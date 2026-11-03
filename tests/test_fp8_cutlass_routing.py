@@ -204,3 +204,26 @@ def test_dispatcher_install_falls_back_without_the_kernel(monkeypatch):
     assert getattr(ops.cutlass_scaled_mm, "_h3_tp2_tensor32", False)
     with pytest.raises(ValueError):
         fp8_gemm.install(level="bogus")
+
+
+def test_verify_mode_logs_mismatches(monkeypatch, caplog):
+    mod = fake.load()
+    blk = mod.MiniMaxH3DiTBlock(200, 2, 96)
+    fcut._tls.want = fcut.block_want(blk)
+    monkeypatch.setattr(fcut, "_VERIFY", True)
+    q = blk.attn.qkv_proj
+    a = torch.randn(3, 200).to(torch.float8_e4m3fn)
+    s = torch.ones(3, 1)
+    assert fcut.route(a, q.weight, s, q.weight_scale, BF16, None) is not None
+    assert fcut._stats.get("verify_calls") == 1 and not fcut._stats.get("verify_mismatch")
+    real = fcut.scaled_mm
+
+    def off_by_one(*args, **kw):  # noqa: ANN002,ANN003,ANN202
+        y = real(*args, **kw)
+        y.view(torch.int16)[1, 5] ^= 1
+        return y
+    monkeypatch.setattr(fcut, "scaled_mm", off_by_one)
+    assert fcut.route(a, q.weight, s, q.weight_scale, BF16, None) is not None
+    assert fcut._stats["verify_mismatch"] == 1 and "VERIFY: qkv M=3" in caplog.text
+    for k in ("verify_calls", "verify_mismatch"):
+        fcut._stats.pop(k, None)

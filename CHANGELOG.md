@@ -369,5 +369,20 @@
   the stock CUTLASS row-wise kernels is the tile raster without an L2 swizzle, not the hardware. Projection against the
   6b serving path: ~-1.5 s/step at 1344 (qkv, out, fc1), ~-0.7 at 960, double with SwiGLU in the epilogue; fc2 stays on
   cuBLASLt. Scripts `scripts/cutlass_sm120_*.py`; wiring as an opt-in `H3_TP2_FP8_GEMM=cutlass` level is next.
+- 2026-11-03 12:30: opt-in `H3_TP2_FP8_GEMM=cutlass` wired (default unchanged: two-pass): `h3_tp2/fp8_cutlass.py` +
+  `h3_tp2/fp8_cutlass_kernel.py` (the CuTe-DSL sm120 FP8 GEMM, NVIDIA BSD-3 header kept; `sa`/`sb` loads bounded by M/N,
+  padded swizzle tiles skipped), compiled once at install (0.9 s) and checked bit for bit against two-pass (integer and
+  random inputs, partial tiles); routes the DiT block's qkv / out / fc1 ahead of the stash hooks, fc2 keeps the
+  consumer-fused path, any failure falls back to two-pass. Kernel level: bit-identical on all four shapes at M = 21952
+  / 42848, fc1 bf16 + `silu_and_mul` bit-identical to fused SwiGLU level 1, host cost 41 us per call (no caching).
+  Fleet proof (queue57): the first request of each resolution in a cutlass boot is bit-identical (1344 calibration
+  4d6d69e4, 21.03 vs 21.64 s/step, -2.8 %), but the repeat of a resolution diverges (warm 960 probe a8713b89, second
+  1344 calibration 1305859b): **not shippable**, root cause open (stream ordering, launcher caching and request-like
+  offline sequences ruled out); `H3_TP2_FP8_CUTLASS_VERIFY=1` added to locate it in the next serving run. Found on the
+  way and fixed in the default path: `torch._scaled_mm` (cuBLASLt, sm121) can read a scalar scale filled just before
+  it as stale memory (some tiles off by a constant factor; reproduced without the DSL); the two-pass GEMM, the fc2 /
+  fc1 stashes now share one synchronised `fp8_gemm.unit_scale` (same value; serving digest 4d6d69e4 unchanged).
+  Test fixes: `tests/test_fp8_fused_gpu.py` did not parse (a comment swallowed a parametrize list) and leaked
+  `fp8_swiglu._state` into later modules. `results/20261103-cutlass-sm120/` "Serving proof".
 - 2026-11-03 09:00: boot probe tolerance 6 -> 8 % (limit 9.34 s/step on the 8.65 reference): the warm probes of the
   gated boots ran 8.96-9.16 against the old 9.17 limit, so a normal boot could be rejected and re-booted for nothing.

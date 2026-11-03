@@ -38,7 +38,7 @@ def host_cost(n=2000):
     w = torch.zeros(N, K, device=DEV).to(torch.float8_e4m3fn)
     sa, sb = torch.ones(M, device=DEV), torch.ones(N, device=DEV)
     y = torch.empty(M, N, device=DEV, dtype=torch.bfloat16)
-    one = torch.ones((), device=DEV)
+    one = fp8_gemm.unit_scale(torch.device(DEV))
     F8, BF = g._cutlass.Float8E4M3FN, g._cutlass.BFloat16
     res = {}
 
@@ -95,7 +95,7 @@ def main():
         from vllm_omni.diffusion.layers.activation import SiluAndMul
         act = SiluAndMul()
         emit({"silu_and_mul_forward": act._forward_method.__name__})
-    one = torch.ones((), device=DEV)
+    one = fp8_gemm.unit_scale(torch.device(DEV))
     for M in args.m:
         for shape in args.shapes:
             N, K = SHAPES[shape]
