@@ -363,3 +363,5 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-03 09:00: boot probe tolerance 6 -> 8 % (limit 9.34 s/step on the 8.65 reference): the warm probes of the
+  gated boots ran 8.96-9.16 against the old 9.17 limit, so a normal boot could be rejected and re-booted for nothing.

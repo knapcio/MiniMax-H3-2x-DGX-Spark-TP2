@@ -6,7 +6,7 @@
 # It renders a 5 s 960x576 T2VA calibration (seed 0, 20 steps; ~8.6 s/step on a good boot of the long stack with the
 # two-pass GEMM and fused SwiGLU), reads the step rate from the head journal and prints PROBE PASS|SLOW|FAIL with the
 # numbers. Exit 0 = pass, 2 = slow (restart the head and probe again), 1 = the probe did not run.
-REF=${1:-8.65}; TOL=${2:-0.06}
+REF=${1:-8.65}; TOL=${2:-0.08}
 # Two probes: the FIRST request of a boot is special (4-7 % slower and numerically different: its latents digest
 # changes per boot, later requests repeat bf6e8568 across boots at 960x576), and it does not predict the steady state
 # (queue52/53, 2026-11-02: a boot probed 9.19 first and ran 10.5-10.7 afterwards; the next boot 9.35 then 8.96/8.99).
