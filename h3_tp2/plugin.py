@@ -588,6 +588,14 @@ def _apply(role: str) -> None:
         from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _pp9e
 
         if not getattr(_pp9e, "_h3_tp2_cont_match_patched", False):
+            # 9g) H3_TP2_ID_LOCK (opt-in, unset = untouched): identity re-anchoring around the look-lock wrapper, see
+            #     h3_tp2/identity_lock.py and results/20261103-identity-drift/. A bad setting logs an error, never installs.
+            try:
+                from h3_tp2 import identity_lock as _idl
+
+                _idl.install(_cm)
+            except Exception as e:  # noqa: BLE001
+                logger.error("h3_tp2: identity lock NOT installed (%s)", e)
             _orig_match_dc = _pp9e.diffuse_continuation
             _apply_match = os.environ.get("H3_TP2_CONT_MATCH", "0").strip() == "1"
             _xfade = os.environ.get("H3_TP2_CONT_XFADE", "0").strip() == "1"
