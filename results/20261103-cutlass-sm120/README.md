@@ -260,3 +260,38 @@ Proof to run once a fix is in (same queue, three calibrations in B):
 2. B: `restart_head_gated` with `H3_TP2_FP8_GEMM=cutlass` added: the warm 960 boot probe must give `bf6e85687a6a`, then
    THREE calibrations, every digest `4d6d69e4aad0`; s/step from the second and third.
 3. C: `restart_head_gated` back to the defaults; append the done marker for the next queue.
+
+### VERIFY run (queue62, 2026-11-03 16:58-18:14; `H3_TP2_FP8_GEMM=cutlass` + `H3_TP2_FP8_CUTLASS_VERIFY=1`)
+
+Every routed DSL GEMM recomputed by two-pass and compared bit for bit (one sync per call, so the probe ran at 14-15
+s/step and the 1344 calibration at 32 s/step). Three gated boot attempts (all "slow" because of the verify cost, the
+third kept), two 1344 calibrations, then the defaults restored (probe 8.72 / 8.42).
+
+| rank | calls checked | mismatching | where |
+|---|---|---|---|
+| head | 24000 | 3 | `fc1 M=10240 N=28672 K=5376` call 519: 63 elements, row 4608 only; call 864: 64 elements, row 128 only; `qkv M=10240 N=21504 K=5376` call 6028: 378 elements, rows 640..642 |
+| rank 1 | 24000 | 1 | `qkv M=10240 N=21504 K=5376` call 8068: 314 elements, rows 0..4 |
+
+Both 1344 calibrations (M=18880) gave the default digest `4d6d69e4aad0` and framemd5 `c6f54e83`; the mismatches all
+fell in the 960 probe phase (M=10240) and, unlike queue57, the *second* 1344 request did not diverge.
+
+Reading:
+- 4 wrong GEMMs in 48000 (1 in 12000), each a few hundred elements: a rare race, not an arithmetic difference (the
+  bit-identical proofs and the 44000 clean calls say the maths is right).
+- Every wrong row is the **first row(s) of a 128-row M tile** (4608 = 36x128, 128, 640 = 5x128, 0..4) and a single
+  wrong row holds **64 elements = one MMA warp's N extent** (2x2 warps on the 128x128 tile): one quad of threads in
+  one warp computed one A row wrongly for all of its n-blocks, the warp beside it (same rows, other 64 columns) was
+  right. That is the signature of an A/B smem stage overwritten by the next TMA load (which fills the stage from row 0)
+  while a lagging MMA warp was still reading it, i.e. a stage released before every warp's ldmatrix of it had
+  completed, with the other warp of the same M half already done.
+- The per-call sync of VERIFY removed the request-level divergence of queue57 (the second 1344 request stayed
+  bit-identical): with the GPU drained between GEMMs the warps stay in step; in the real request stream (NCCL
+  all-to-alls on the comm stream and the next kernels queued behind) a warp lags more often. Same mechanism, rarer
+  under VERIFY.
+- The mainloop (`fp8_cutlass_kernel.py`, MMA warp group) already has the MMA-warp named barrier before every
+  `consumer_release`; the open question is whether the DSL lowers that barrier + release + the preceding
+  `ldmatrix` copies in program order (the 4.7.1 sm120 example path had four defects already), whether the
+  `consumer_arrive_cnt = mcast_size * num_mma_warps` matches how `PipelineTmaAsync.consumer_release` arrives, and
+  whether the DMA warp's `producer_acquire` of a stage can run ahead across the tile boundary (persistent scheduler).
+  Next: a stress reproducer (many back-to-back M=10240 qkv/fc1 GEMMs with a concurrent kernel on a second stream,
+  compared bit for bit) and the kernel fix, then the three-calibration proof above.
