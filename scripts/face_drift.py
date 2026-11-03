@@ -2,8 +2,9 @@
 """Face identity drift of a generated clip against its reference frame.
 
 For every sampled frame the faces are detected (MTCNN) and embedded (InceptionResnetV1, VGGFace2 weights, facenet-pytorch);
-each reference face is matched to the detected face closest to its horizontal position, and the cosine similarity of the
-embeddings is reported per sample. 1.0 = the same embedding; same-person pairs in VGGFace2 are typically > 0.6-0.7,
+each reference face is matched to a detected face (``--match position``: the one closest to its horizontal position,
+the default; ``--match embed``: greedy best-similarity assignment, for clips where the characters change sides), and the
+cosine similarity of the embeddings is reported per sample. 1.0 = the same embedding; same-person pairs in VGGFace2 are typically > 0.6-0.7,
 different people < 0.4. A slow fall over the clip is identity drift; a step at a window hand-over is a seam that changed
 the face. Also reports how often each face was not found (a turned or occluded face counts as missing, not as drift).
 
@@ -54,6 +55,8 @@ def main() -> int:
     ap.add_argument("--fps", type=float, default=24.0)
     ap.add_argument("--json", default="")
     ap.add_argument("--threads", type=int, default=8)
+    ap.add_argument("--match", choices=("position", "embed"), default="position",
+                    help="position: nearest horizontal position (people do not swap places); embed: greedy best similarity")
     args = ap.parse_args()
     torch.set_num_threads(args.threads)
     from facenet_pytorch import MTCNN, InceptionResnetV1
@@ -88,17 +91,24 @@ def main() -> int:
     rows = []
     for t, img in frames(args.clip, args.every, args.width):
         found = faces(img)
-        sims = []
-        for rf in ref:
-            if not found:
-                sims.append(None)
-                continue
-            # the candidate whose horizontal position is closest to the reference face (people do not swap places)
-            cand = min(found, key=lambda f: abs(f["x"] - rf["x"]))
-            if abs(cand["x"] - rf["x"]) > 0.25:
-                sims.append(None)
-                continue
-            sims.append(float(np.dot(cand["emb"], rf["emb"])))
+        sims = [None] * len(ref)
+        if found and args.match == "embed":
+            # greedy one-to-one assignment by similarity: the best pair first, then the best among the rest
+            pairs = sorted(((float(np.dot(f["emb"], rf["emb"])), i, j) for i, rf in enumerate(ref) for j, f in enumerate(found)),
+                           reverse=True)
+            used_ref, used_found = set(), set()
+            for sim, i, j in pairs:
+                if i in used_ref or j in used_found:
+                    continue
+                sims[i] = sim
+                used_ref.add(i)
+                used_found.add(j)
+        elif found:
+            for i, rf in enumerate(ref):
+                # the candidate whose horizontal position is closest to the reference face (people do not swap places)
+                cand = min(found, key=lambda f: abs(f["x"] - rf["x"]))
+                if abs(cand["x"] - rf["x"]) <= 0.25:
+                    sims[i] = float(np.dot(cand["emb"], rf["emb"]))
         rows.append({"t": round(t, 2), "sims": sims})
 
     shift = args.window - args.overlap
@@ -132,7 +142,7 @@ def main() -> int:
             print(f"{names[i]}: first 10 % {first:.3f} -> last 10 % {last:.3f} (drift {last - first:+.3f}); overall mean {np.mean(vals):.3f}, min {np.min(vals):.3f}")
     if args.json:
         with open(args.json, "w") as f:
-            json.dump({"clip": args.clip, "reference": args.reference, "faces": names, "rows": rows, "windows": summary}, f, indent=1)
+            json.dump({"clip": args.clip, "reference": args.reference, "match": args.match, "faces": names, "rows": rows, "windows": summary}, f, indent=1)
     return 0
 
 

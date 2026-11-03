@@ -36,7 +36,10 @@ left, woman right, both three-quarter to the camera) and holds it to 57 s, where
 for the last lines. The face numbers follow that: the woman's similarity is 0.15 while she is in profile on the wrong
 side, 0.5-0.64 once the composition matches; the man sits at 0.41-0.53 throughout (he is small in the frame; the metric
 is lower on wide shots than on the 960x544 doll clips, compare arms, not absolute values). Faces do not drift within the
-60 s: first-to-last 10 % is +0.02 (man) and +0.50 (woman, the composition change).
+60 s: first-to-last 10 % is +0.02 (man) and +0.50 (woman, the composition change). The table matches faces by
+horizontal position, so in window 1 (sides swapped) it compared the wrong pairs; `--match embed` (greedy best similarity,
+added for this case) gives the man 0.59 / 0.53 in windows 1-2 and the woman 0.15 / 0.30 (in profile she is not the
+reference face for the metric either), 0.46-0.64 for both once the composition matches.
 
 Audio: the dialogue is at -23.9 LUFS; the ambience bed came out at -44.6 LUFS and the piano at -24.8 LUFS, so the first
 mix (`mix_ambience.sh`, a fixed -16 / -20 dB offset) left the ambience inaudible (-64 dB in the pauses).
