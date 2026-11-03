@@ -410,3 +410,9 @@
   `fp8_swiglu._state` into later modules. `results/20261103-cutlass-sm120/` "Serving proof".
 - 2026-11-03 09:00: boot probe tolerance 6 -> 8 % (limit 9.34 s/step on the 8.65 reference): the warm probes of the
   gated boots ran 8.96-9.16 against the old 9.17 limit, so a normal boot could be rejected and re-booted for nothing.
+- 2026-11-04 00:15: the English shop scene for X (`results/20261103-xclip/`): 60 s 1344x768 on Ref2VA with the 2048 px
+  reference, 13 614 s; speech WER 0.007 (faster-whisper small), no language slip; faces hold (no drift within the clip)
+  but window 1 ignored the reference composition and the model cut to it at 17 s; pauses 1.7-2.5 s. The first mixes left
+  the ambience bed inaudible (fixed -16 dB on a -44.6 LUFS bed): `mix_v2.sh` normalises the bed to a target loudness
+  (-37 LUFS ambience, -40 LUFS piano) before ducking. v2 queued: composition stated in every prompt, three lines per
+  window.
