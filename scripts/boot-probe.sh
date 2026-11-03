@@ -20,15 +20,25 @@ T0=$(date "+%Y-%m-%d %H:%M:%S")
 grep Normal /proc/buddyinfo | awk '{printf "buddyinfo order9+ (head): "; for(i=14;i<=NF;i++) printf "%s ", $i; print ""}'
 unset CONT_PROMPTS CONT_PROMPTS_EXTRA AUDIO_URL EXTRA_JSON; export TASK=t2va
 export PROMPT="A cinematic shot of a forest stream at golden hour, leaves swaying in a light breeze, sunlight flickering through the canopy, gentle water sounds."
+# The Ref2VA partition rejects T2VA ("checkpoint partition 'ref2va' supports ['ref2va']", 2026-11-03), so on that
+# partition the probe is a 5 s ref2va request with a fixed reference image; its rate reference (PROBE_REF_R2V) is
+# separate and, when unset, the probe only reports (PASS with the numbers) instead of judging.
+IMG=""
+if grep -q "H3_MODEL=.*Ref2VA" ~/.h3-tp2.env 2>/dev/null; then
+  export TASK=ref2va; IMG=${H3_PROBE_IMAGE:-$HOME/h3-tp2-results/koninck.png}
+  [ -f "$IMG" ] || { echo "PROBE FAIL: Ref2VA partition but no probe image at $IMG"; exit 1; }
+  if [ -n "${PROBE_REF_R2V:-}" ]; then REF=$PROBE_REF_R2V; else REF=0; fi
+fi
 FIRST=""
 for k in $(seq 1 $PROBES); do
   Tk=$(date "+%Y-%m-%d %H:%M:%S")
-  OUT=$OUTROOT/$NAME-$k bash ~/h3-tp2/scripts/bench-matrix.sh "5:960:576:20:0" > $OUTROOT/$NAME-$k.log 2>&1 < /dev/null
+  OUT=$OUTROOT/$NAME-$k bash ~/h3-tp2/scripts/bench-matrix.sh "5:960:576:20:0" ${IMG:+"$IMG"} > $OUTROOT/$NAME-$k.log 2>&1 < /dev/null
   RATE=$(journalctl --user -u h3-tp2-head.service -a --since "$Tk" --no-pager -o short | tr "\r" "\n" | grep -o -E "20/20 \[[0-9:]+<00:00, +[0-9.]+s/it\]" | tail -1 | grep -o -E "[0-9.]+s/it" | tr -d "s/it")
   DIG=$(journalctl --user -u h3-tp2-head.service --since "$Tk" --no-pager | grep -o "h3_tp2 latents sha256 [0-9a-f]\{12\}" | tail -1 | awk '{print $4}')
   [ $k -lt $PROBES ] && { FIRST="first $RATE ($DIG), "; echo "probe $k: $RATE s/step latents $DIG"; }
 done
 [ -n "$RATE" ] || { echo "PROBE FAIL: no step rate in the journal (see $OUTROOT/$NAME.log)"; exit 1; }
+[ "$REF" = 0 ] && { echo "PROBE PASS (report only, $TASK, no reference rate): ${FIRST}warm $RATE s/step latents $DIG $(date +%H:%M:%S)"; exit 0; }
 LIMIT=$(python3 -c "print(round($REF*(1+$TOL),3))")
 if python3 -c "import sys; sys.exit(0 if $RATE <= $LIMIT else 2)"; then
   echo "PROBE PASS: ${FIRST}warm $RATE s/step (reference $REF, limit $LIMIT) latents $DIG $(date +%H:%M:%S)"; exit 0
