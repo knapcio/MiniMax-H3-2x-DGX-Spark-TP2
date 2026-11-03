@@ -363,6 +363,10 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-03 15:10: speed plan item 5 proven in serving (`results/20261103-ulysses-exact/`, queue59): with
+  `H3_TP2_ULYSSES_EXACT=1` the 5 s 1344x768 calibration gives the default digest `4d6d69e4aad0` twice, latents bit-equal
+  to the defaults boot, 20.16 / 20.45 s/step against 21.21 (-3.6..-5 %, cross-boot). Still opt-in until the default gate
+  (16 s 1344 continuation + 960 probe on an exact boot) passes.
 - 2026-11-03 14:10: character identity across windows measured (`scripts/face_drift.py`, `results/20261103-lalka-identity/`):
   a one-request FL2VA continuation drifts like the 11-01 PNG-chained film (woman 0.74 -> 0.48 in 60 s) because windows
   2+ lose the keyframe; the same request on the Ref2VA partition (reference 2048 px conditions every window) holds both

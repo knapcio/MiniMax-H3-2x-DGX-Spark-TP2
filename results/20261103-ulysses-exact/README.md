@@ -107,7 +107,31 @@ Commands:
     set -a; . ~/.h3-tp2.env; . ~/h3-tp2/scripts/env.sh; set +a; export PATH=/usr/local/cuda/bin:$PATH PYTHONPATH=/tmp/ux-exact
     cd /tmp/ux-exact && ~/h3-long/.venv/bin/python -m pytest tests/test_ulysses_exact_gpu.py -q
 
-## Serving proof (NOT run yet; the fleet was busy with queue56/57)
+## Serving proof: PASS (queue59, 2026-11-03 14:04-15:08, both Sparks, gated compacted boots)
+
+| arm | boot | 5 s 1344x768 T2VA calibration (seed 0, 20 steps) | digest | s/step | diffuse / decode |
+|---|---|---|---|---|---|
+| A defaults | 14:17 | q59-A-default | `4d6d69e4aad0` | 21.21 | 424.3 s / 26.5 s |
+| B `H3_TP2_ULYSSES_EXACT=1`, request 1 | 14:39 | q59-B-exact-1 | `4d6d69e4aad0` | 20.16 | 403.2 s / 26.2 s |
+| B, request 2 (same boot) | | q59-B-exact-2 | `4d6d69e4aad0` | 20.45 | 409.1 s / 26.3 s |
+
+- `latents_diff.py A B1`: video latents (1, 24, 37, 48, 84) and audio latents (2, 32, 207) **bit-equal** (max|d| 0).
+  The second exact request is bit-identical as well (same digest, same framemd5 `c6f54e83`), so unlike the cutlass
+  GEMM level the exact exchange has no second-request hazard.
+- Journal (head): `Ulysses exact exchange installed (mode 1)`, `producer = consumer-fused qkv (q, k and v written per
+  destination)`, `first redirect_fused`, `consumer fuse requested=1, installed sites: qkv, out, fc2` unchanged, exactly
+  one `first fallback` (the token refiner, as expected), no `first materialize` / `first out_copy` / `pack`.
+- Speed: -3.6 % and -5.0 % against the defaults boot of the same queue. The two boots were different boots (the 11-02
+  compacted-boot spread was 1.2 %), so the gain is real but its size is 3-5 %, to be pinned by the same-boot pair of
+  the default gate below. The motion/light/detail metrics, the 17-frame flicker check and the boundary steps of the
+  three clips are identical.
+- Boot E restored the defaults (probe 8.63 / warm 8.22 s/step, `bf6e85687a6a`), serving healthy.
+
+Default gate (queue63, after the X clip): 16 s 1344x768 FL2VA continuation (koninck, seed 1101) on a defaults boot
+and on an exact boot, framemd5 + per-window latents digests equal; the exact boot's 960x544 probe digest must be
+`bf6e85687a6a`. Pass = `H3_TP2_ULYSSES_EXACT=1` becomes the default.
+
+## Serving proof: the script as run (queue59 = this with Q58 -> Q59 and the LALKA-B-DONE wait)
 
 Note first: `H3_TP2_A2A_OVERLAP` is not in queue-lib's STRIP list, so the `export H3_TP2_A2A_OVERLAP=2` that queue50's
 P arm wrote is still in `~/.h3-tp2.env`: every head boot since 2026-11-02 19:14 runs the overlap with 2 head groups
@@ -190,7 +214,8 @@ be A's (it returns stock results).
 
 ## What is left
 
-- The serving proof above (and, if it passes, a 960x544 calibration and a long continuation before any default change).
+- DONE 15:08: the serving proof passed (table above). Open: the default gate (queue63: 960x544 probe digest + a 16 s
+  1344 continuation on both boots, same-boot speed pair), then default-on.
 - Copy 5 (reverse unpack) stays; removing it means the out-projection's activation quant reading the receive buffer
   [P, M, hl*d] directly (with the fp8 modules; per-tensor/per-token amax is order-independent, so it can be exact).
 - If B fails: the nocopy root cause is then in the live path too, and D's log says where.
