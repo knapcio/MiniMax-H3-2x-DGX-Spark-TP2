@@ -363,6 +363,10 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-03 17:05: identity arm C measured (`results/20261103-lalka-identity/`): FL2VA with the hidden end anchor
+  (`H3_TP2_ID_LOCK=end`, `H3_TP2_ID_END_EXTEND=68`) keeps the man at the Ref2VA level (0.77 -> 0.88) and the woman at
+  0.73 mean (Ref2VA 0.79, plain FL2VA 0.59) for 1.40x the plain time (Ref2VA 1.93x); one window cut to a 4 s insert
+  close-up of the letter. Ref2VA stays the recommendation for character clips; the end anchor is the cheaper fallback.
 - 2026-11-03 15:10: speed plan item 5 proven in serving (`results/20261103-ulysses-exact/`, queue59): with
   `H3_TP2_ULYSSES_EXACT=1` the 5 s 1344x768 calibration gives the default digest `4d6d69e4aad0` twice, latents bit-equal
   to the defaults boot, 20.16 / 20.45 s/step against 21.21 (-3.6..-5 %, cross-boot). Still opt-in until the default gate
