@@ -34,10 +34,11 @@ loads this module lazily).  Derived from CUTLASS 4.7.1's CuTe-DSL Blackwell-GeFo
 explained in ``results/20261103-cutlass-sm120/README.md``.  Changes against the example: warp-level FP8 MMA
 (mma.sync m16n8k32 e4m3) with the sm120 8-bit N permutation, the scaled epilogue y = sa[m] * (sb[n] * acc) in fp32 with
 one rounding to the output type, a direct register-to-global store through the MMA's C partition (the example's
-TMA-store epilogue scrambles the fp8 C layout at 128x128 tiles), the MMA-warp barrier before every stage release (as
-CUTLASS's C++ sm120 mainloop), a configurable L2 swizzle of the persistent scheduler, scale loads bounded by M and N in
-the kernel, and tiles past M or N (the swizzled scheduler rounds the grid up) skipped by both the producer and the MMA
-warps.  The example's command-line driver is not included.
+TMA-store epilogue scrambles the fp8 C layout at 128x128 tiles), a ``fence.proxy.async`` plus the MMA-warp barrier
+before every stage release (the barrier as CUTLASS's C++ sm120 mainloop; the fence orders the ldmatrix reads before the
+next TMA load into the stage, ``results/20261103-cutlass-sm120/race.md``), a configurable L2 swizzle of the persistent
+scheduler, scale loads bounded by M and N in the kernel, and tiles past M or N (the swizzled scheduler rounds the grid
+up) skipped by both the producer and the MMA warps.  The example's command-line driver is not included.
 """
 
 import cuda.bindings.driver as cuda
@@ -613,6 +614,11 @@ class Sm120GemmKernel:
                             )
 
                             if k_block_idx == num_k_blocks - 1:
+                                # Stage-release race (results/20261103-cutlass-sm120/race.md): ptxas issues the release
+                                # arrive without waiting for this stage's ldmatrix reads (generic proxy), so under load
+                                # the next TMA load (async proxy) could overwrite the stage before a read landed.  The
+                                # proxy fence completes every MMA thread's reads first; the named barrier alone did not.
+                                cute.arch.fence_proxy("async.shared", space="cta")
                                 self.mainloop_sync_barrier.arrive_and_wait()
                                 mainloop_pipeline.consumer_release(mainloop_consumer_state)
                                 mainloop_consumer_state.advance()
@@ -660,6 +666,8 @@ class Sm120GemmKernel:
                         )
 
                         if k_block_idx == num_k_blocks - 1:
+                            # same proxy fence as in the k-tile loop: the stage's ldmatrix reads complete first
+                            cute.arch.fence_proxy("async.shared", space="cta")
                             self.mainloop_sync_barrier.arrive_and_wait()
                             mainloop_pipeline.consumer_release(mainloop_consumer_state)
                             mainloop_consumer_state.advance()
