@@ -40,10 +40,11 @@ def _scales(M, N, seed):
 @pytest.fixture(autouse=True)
 def _enable():
     assert fp8_gemm.probe_triton("cuda"), "Triton scale pass must work for the reference"
-    saved = dict(fp8_gemm._state)
+    saved, saved_sw = dict(fp8_gemm._state), dict(fp8_swiglu._state)
     fp8_gemm._state["fused"] = True
     yield
     fp8_gemm._state.update(saved)
+    fp8_swiglu._state.update(saved_sw)   # probe_gemm_swiglu sets gemm_swiglu; later test modules expect the default
 
 
 @pytest.mark.parametrize("cfg", [None, (64, 64, 128, 4, 3), (128, 256, 64, 8, 3)])
@@ -87,7 +88,8 @@ def test_fused_random_within_reduction_noise(M, N, K):
     print(f"\nM={M} N={N} K={K}: {same * 100:.4f} % of outputs bit-identical to two-pass, max abs diff {d:.3e}")
 
 
-@pytest.mark.parametrize("M,half,K", [(200, 320, 512), (333, 1504, 464)  # N*2 must be a multiple of 16 for _scaled_mm (the 1500 case failed on the reference call, 2026-11-02), (512, 14336, 5376)])
+# 2 * half must be a multiple of 16 for _scaled_mm (the 1500 case failed on the reference call, 2026-11-02)
+@pytest.mark.parametrize("M,half,K", [(200, 320, 512), (333, 1504, 464), (512, 14336, 5376)])
 def test_gemm_swiglu_bit_identical_on_exact_accumulators(M, half, K):
     a, w = _int_ops(M, 2 * half, K, 3)
     g = torch.Generator(device="cuda").manual_seed(4)

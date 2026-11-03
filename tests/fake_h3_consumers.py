@@ -88,16 +88,18 @@ CALLS: list[str] = []
 
 
 # ---- fake layers ---------------------------------------------------------------------------------------------------
-def dispatch(a, b, scale_a, scale_b, out_dtype, bias):  # noqa: ANN001,ANN202
-    """fp8_gemm's dispatcher, two-pass branch: the hooks first, then fp32 product + the scale pass (eager mirror)."""
-    for hook in fp8_gemm._stash_hooks:
-        ph = hook(a, b, scale_a, scale_b, out_dtype, bias)
-        if ph is not None:
-            return ph
+def _two_pass_cpu(a, b, scale_a, scale_b, out_dtype, bias=None):  # noqa: ANN001,ANN202
+    """``scaled_mm_tensor32`` off the GPU: fp32 product + the scale pass (eager mirror, an fma for the bias)."""
     M, N = a.shape[0], b.shape[1]
     y = torch.empty((M, N), dtype=out_dtype)
     return fp8_consumers.scale_pass_into(fp8_consumers._product_fp32(a, b), fp8_consumers._vec(scale_a, M),
                                          fp8_consumers._vec(scale_b, N), bias, y)
+
+
+def dispatch(a, b, scale_a, scale_b, out_dtype, bias):  # noqa: ANN001,ANN202
+    """fp8_gemm's dispatcher, two-pass branch (``fp8_gemm.route``: routers, then the hooks, then two-pass), with the
+    CPU two-pass mirror."""
+    return fp8_gemm.route(a, b, scale_a, scale_b, out_dtype, bias, two_pass=_two_pass_cpu)
 
 
 class FakeFP8Linear(nn.Module):

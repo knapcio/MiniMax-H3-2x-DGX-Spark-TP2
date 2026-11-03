@@ -1,5 +1,7 @@
 """FP8 scale pass fused into the kernels that consume the GEMM output (``H3_TP2_FP8_CONSUMER_FUSE=1``, off by default;
-speed plan 2026-11-02 item 6b).  Needs ``H3_TP2_FP8_GEMM=tensor32`` (the default two-pass path).
+speed plan 2026-11-02 item 6b).  Needs ``H3_TP2_FP8_GEMM=tensor32`` (the default two-pass path); under
+``H3_TP2_FP8_GEMM=cutlass`` only the fc2 site is installed (qkv and out are computed by the CuTe-DSL kernel straight
+to bf16 and read by their stock consumers, ``h3_tp2/fp8_cutlass.py``).
 
 Today (vLLM-Omni v0.30.0 ``a8576ccb7``) each DiT block runs four two-pass FP8 GEMMs.  For three of them the scale pass
 (``fp8_gemm._scale_bias_cast``) writes a bf16 [M, N] tensor (``fp8_gemm.scaled_mm_tensor32``: ``y = torch.empty``) that
@@ -515,7 +517,7 @@ class _Ctx:
 def _product_fp32(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     """The two-pass GEMM's fp32 product (the same call as ``scaled_mm_tensor32``); fp32 matmul on the CPU (tests)."""
     if a.is_cuda:
-        one = torch.ones((), device=a.device, dtype=torch.float32)
+        one = fp8_gemm.unit_scale(a.device)
         return torch._scaled_mm(a, b, scale_a=one, scale_b=one, out_dtype=torch.float32)
     return a.float() @ b.float()
 
@@ -859,9 +861,19 @@ def install(sites: tuple[str, ...] = SITES, tr=None, *, check_source: bool = Tru
     sites = tuple(s for s in SITES if s in sites)
     if not sites:
         return []
-    if fp8_gemm._state.get("level") != "tensor32" or fp8_gemm._state.get("fused"):
+    level = fp8_gemm._state.get("level")
+    if level not in ("tensor32", "cutlass") or fp8_gemm._state.get("fused"):
         logger.warning("h3_tp2 fp8 consumer fuse: needs H3_TP2_FP8_GEMM=tensor32 (two-pass); skipped")
         return []
+    if level == "cutlass":   # the DSL kernel produces qkv / out in bf16 ahead of the stash hook: stock consumers there
+        from .fp8_cutlass import SITES as _dsl_sites
+        dropped = [s for s in sites if s in _dsl_sites]
+        sites = tuple(s for s in sites if s not in _dsl_sites)
+        if dropped:
+            logger.warning("h3_tp2 fp8 consumer fuse: H3_TP2_FP8_GEMM=cutlass computes %s in bf16; those consumers stay "
+                           "stock, fused sites: %s", ", ".join(dropped), ", ".join(sites) or "none")
+        if not sites:
+            return []
     if not _state["cpu_mirror"] and not (_HAVE_TRITON and fp8_gemm._state.get("triton")):
         logger.warning("h3_tp2 fp8 consumer fuse: Triton scale pass not usable in this process; skipped")
         return []

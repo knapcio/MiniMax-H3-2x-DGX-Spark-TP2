@@ -128,3 +128,82 @@ Plan (about one day plus the GPU proof):
    cache the cute tensors per (data_ptr, shape) or use the TVM-FFI entry. 150 GEMMs/step make this small but nonzero.
 5. Proof: same-boot latents digest A/B, 5 s 1344x768 T2VA (expect `4d6d69e4` unchanged) and the 960 warm probe
    (`bf6e8568`), then the s/step gain.
+
+## Serving proof (`H3_TP2_FP8_GEMM=cutlass`, opt-in; wiring plan steps 1-5 done)
+
+### What was built
+
+- `h3_tp2/fp8_cutlass_kernel.py`: the kernel, vendored from the generated `scripts/cutlass_sm120_dsl_fp8_gemm.py` with
+  NVIDIA's BSD-3-Clause header (the example's command-line driver dropped, the diagnosis env knobs fixed to their
+  correct values). Kernel touch-ups of plan step 2: the `sa` / `sb` loads are bounded by M / N in the kernel (an edge row
+  or column reads the last valid scale; its store is predicated off), so no host-side padded scale copy is made; tiles
+  past M or N (the swizzled scheduler rounds the grid up, 172 -> 176 row tiles at M = 21952) are skipped by the producer
+  warp and the MMA warps alike before the mainloop. The SwiGLU epilogue for fc1 (optional item) was not built.
+- `h3_tp2/fp8_cutlass.py`: lazy `import cutlass`; one compile per process at install (0.9-1.0 s, dynamic layouts, one
+  compile for every M / N / K) and a bitwise install check against `fp8_gemm.scaled_mm_tensor32` (NaN-filled output):
+  integer inputs (200x400x512, 333x272x1024) and random inputs with partial row tiles (M = 200 and 4100 on the out,
+  qkv and fc1 shapes); 0.2 s. Any import / compile / check failure logs one line and the process stays on two-pass.
+- Dispatcher (`fp8_gemm.install(level="cutlass")`): a router ahead of the stash hooks takes the GEMMs whose weight is
+  the running DiT block's `attn.qkv_proj`, `attn.out_proj` or `mlp.fc1` weight (block context set by a wrapper of
+  `MiniMaxH3DiTBlock.forward`, `functools.wraps` so the consumer fuse's source fingerprints are unchanged); a call it
+  cannot take (fp16 output, a bias, a misaligned pointer, M = 0) falls through to the ordinary dispatch, a launch
+  exception switches the level off for the process. At this level `fp8_consumers` installs only its fc2 site (qkv / out
+  go to the stock `fused_qk_norm_rope` / `indexed_gate_rms_norm_scale_shift` on the bf16 output), and fc1's bf16 output
+  goes to the MLP's own `silu_and_mul` (fp8_swiglu's stash hook is never reached for fc1). Every other FP8 GEMM keeps
+  two-pass. The plugin's diagnostics line now shows `FP8 GEMM requested=... running=...`.
+
+### Kernel-level checks on Spark_06 (serving head up and idle; `scripts/fp8_cutlass_check.py`, `wiring-check.jsonl`:
+the first host line is from the build with the weight-side cache, the last from the final build)
+
+Per-token / per-channel quantised inputs (`scripts/fp8_epilogue_probe.make_inputs`), min of 5 CUDA-event runs:
+
+| M | GEMM | two-pass ms | DSL ms | DSL TF | DSL vs two-pass |
+|---|---|---|---|---|---|
+| 21952 | qkv | 44.96 | 31.15 | 162.9 | bit-identical |
+| 21952 | out | 12.72 | 10.29 | 164.5 | bit-identical |
+| 21952 | fc1 | 59.53 | 41.03 | 164.9 | bit-identical |
+| 21952 | fc2 | 22.60 | 21.13 | 160.1 | bit-identical (not routed) |
+| 42848 | qkv | 86.09 | 59.25 | 167.2 | bit-identical |
+| 42848 | out | 24.91 | 19.78 | 167.0 | bit-identical |
+| 42848 | fc1 | 114.31 | 78.18 | 169.0 | bit-identical |
+| 42848 | fc2 | 41.78 | 41.44 | 159.4 | bit-identical (not routed) |
+
+The touched-up kernel runs at the speed of the probe's (qkv 31.15 vs 31.26 ms, fc1 41.03 vs 40.82 at M = 21952; the
+skipped padded tiles are within noise here). **fc1, bf16 + `silu_and_mul` vs fused-SwiGLU level 1** (vLLM-Omni's
+`SiluAndMul`, which dispatches to `forward_cuda` = `torch.ops._C.silu_and_mul` in this build): **bit-identical** at
+M = 21952 and 42848 (and at 200 / 4100 in the GPU test), measured 55.61 -> 49.38 ms (21952) and 107.41 -> 96.37 ms
+(42848) for the whole fc1 + activation; the projection's bandwidth estimate (~94.6 at 42848) was 2 ms optimistic.
+
+Host cost per call (`--parts host`, 128x128x64 problem, 2000 calls): `from_dlpack` for the five tensors 23.4 us, the
+compiled launcher 5.0 us, `DslGemm.run` 33.8 us, the dispatcher's `fp8_cutlass.scaled_mm` 41.4 us (torch._scaled_mm:
+8.2 us). Below the ~50 us threshold of plan step 4, so nothing is cached (a per-(data_ptr, shape) cache of the weight
+side saved ~10 us but kept references to the weights; removed). 150 routed GEMMs per step: ~6 ms of host time, hidden
+behind the GPU.
+
+### A cuBLASLt scale-read hazard found on the way (fixed in the two-pass path)
+
+The first GPU test run failed 3 of 22 cases: the *reference* was wrong, not the DSL output. After CuTe-DSL launches and
+`torch.cuda.empty_cache()` in the same process, `torch._scaled_mm` with a scalar scale tensor allocated and filled just
+before the call (`one = torch.ones(())`, as `scaled_mm_tensor32`, `fp8_consumers._product_fp32` and the fc1 stash did
+on every call) computed some output tiles with a stale scale: 8-12 % of the elements, every wrong one off by the same
+factor (0.0014, the earlier contents of that memory). Correct with a long-lived scale or a `synchronize()` after the
+fill; the inputs themselves were always read correctly (bit-identical when only the scale tensor was replaced). Not
+reproduced without the DSL in the process (60 trials with planted stale values, with and without `empty_cache`), so
+the trigger is not fully explained. The three call sites now share `fp8_gemm.unit_scale(device)`, one 1.0 per device
+made and synchronised once; the probe no longer calls `empty_cache()`. With today's defaults the DSL never loads, the
+value passed is the same 1.0, so the default path's numerics are unchanged (checked by the baseline arm below).
+
+### Tests
+
+- CPU (Mac, `tests/test_fp8_cutlass_routing.py`, 11 tests, fake H3 modules with upstream's verbatim block / attention /
+  MLP forwards; the fake dispatcher now goes through the real `fp8_gemm.route`): block output bit-identical to the
+  two-pass block with the router taking qkv / out / fc1 (3 DSL calls) and fc2 consumer-fused (1 stash, 1 fused), SwiGLU
+  stash hook never reached, stock consumers called; bias falls through; only the running block's weights are routed;
+  router before the hooks; launch failure switches the level off; fingerprints unchanged by the wrapper; probe failures
+  (no Triton, import error, check mismatch) and dispatcher fallback with a fake vLLM.
+- GPU (Spark_06, `tests/test_fp8_cutlass_gpu.py`, 22 tests): the four DiT shapes at M = 200 / 1000 / 4100 bit for bit,
+  integer inputs with partial row and column tiles and 4096-element guards on both sides of the output, a side stream,
+  the not-taken cases, fc1 + `silu_and_mul` = fused SwiGLU, and a negative control (one flipped low bit fails the check).
+  All FP8 test files together on Spark_06: 169 passed.
+
+<<SERVING-RESULTS>>

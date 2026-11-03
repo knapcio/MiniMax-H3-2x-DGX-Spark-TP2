@@ -15,6 +15,11 @@ one rounding): the fp32 product is never written or read.  The epilogue is bit-i
 construction (tests/test_fp8_fused_epilogue_cpu.py, and on order-independent integer inputs on the GPU); the
 accumulator is bit-identical to cuBLASLt's only if both reduce K in the same order with the same MMA instruction,
 which scripts/fp8_epilogue_probe.py measures.  Tile config: ``H3_TP2_FP8_FUSED_CFG=BM,BN,BK,warps,stages``.
+
+``H3_TP2_FP8_GEMM=cutlass`` (opt-in) keeps this two-pass path for every call and adds a router ahead of the stash hooks:
+the qkv, out and fc1 GEMMs of the running DiT block go to a CuTe-DSL sm120 FP8 GEMM with the same epilogue in
+registers (``h3_tp2/fp8_cutlass.py``; bit-identical to two-pass where its accumulator equals cuBLASLt's, checked at
+install), falling back to two-pass if its import, compile or install check fails.
 """
 from __future__ import annotations
 
@@ -121,10 +126,30 @@ def scale_bias_cast_torch(x32: torch.Tensor, sa: torch.Tensor, sb: torch.Tensor,
     return y.to(out_dtype)
 
 
+_UNIT: dict = {}
+
+
+def unit_scale(device) -> torch.Tensor:  # noqa: ANN001
+    """The fp32 scalar 1.0 the scalar-scale GEMMs pass to cuBLASLt, made once per device and synchronised before its
+    first use.  A scale tensor filled right before ``torch._scaled_mm`` on the same stream was read as stale memory
+    by some tiles of the cuBLASLt sm121 kernel in one state of the process (seen on Spark_06 2026-11-03 after CuTe-DSL
+    launches and ``torch.cuda.empty_cache()``: every wrong element off by the same factor, the old contents of that
+    memory; correct with a synchronised or long-lived scale; not reproduced without the DSL in the process), so the
+    product never depends on a just-written scale."""
+    key = (device.type, device.index) if isinstance(device, torch.device) else str(device)
+    one = _UNIT.get(key)
+    if one is None:
+        one = torch.ones((), device=device, dtype=torch.float32)
+        if one.is_cuda and not torch.cuda.is_current_stream_capturing():
+            torch.cuda.synchronize(one.device)
+        _UNIT[key] = one
+    return one
+
+
 def scaled_mm_tensor32(a: torch.Tensor, b: torch.Tensor, scale_a: torch.Tensor, scale_b: torch.Tensor, out_dtype: torch.dtype, bias: torch.Tensor | None = None) -> torch.Tensor:
     """Drop-in for ``ops.cutlass_scaled_mm(a, b, scale_a, scale_b, out_dtype, bias)`` on the row/column-scaled case."""
     M, N = a.shape[0], b.shape[1]
-    one = torch.ones((), device=a.device, dtype=torch.float32)
+    one = unit_scale(a.device)
     x32 = torch._scaled_mm(a, b, scale_a=one, scale_b=one, out_dtype=torch.float32)
     sa = scale_a.reshape(-1).float()
     sb = scale_b.reshape(-1).float()
@@ -273,6 +298,16 @@ def probe_triton(device) -> bool:  # noqa: ANN001
 
 
 _stash_hooks: list = []
+_routers: list = []      # level "cutlass": fn(a, b, scale_a, scale_b, out_dtype, bias) -> tensor or None, before the hooks
+
+
+def _route_summary() -> str:
+    """Level "cutlass": how many of the two-pass-eligible calls the DSL kernel took (appended to the dispatch log)."""
+    if _state["level"] != "cutlass":
+        return ""
+    from . import fp8_cutlass
+    st = fp8_cutlass.stats()
+    return f" (of the two-pass calls: CuTe-DSL {st['dsl']}, not taken {st['fallthrough']})"
 
 
 def set_stash_hook(fn) -> None:  # noqa: ANN001
@@ -283,13 +318,38 @@ def set_stash_hook(fn) -> None:  # noqa: ANN001
         _stash_hooks.append(fn)
 
 
+def set_router(fn) -> None:  # noqa: ANN001
+    """Register a router that may compute an eligible call itself (``fp8_cutlass.route``); it runs before the stash
+    hooks and returns None for the calls it does not take."""
+    if fn not in _routers:
+        _routers.append(fn)
+
+
+def route(a, b, scale_a, scale_b, out_dtype, bias=None, two_pass=None):  # noqa: ANN001,ANN201
+    """The dispatch of a call that passed the dispatcher's eligibility test: routers, then stash hooks, then the fused
+    or two-pass GEMM (``two_pass`` replaces ``scaled_mm_tensor32``: the CPU fakes in tests/ pass their eager mirror)."""
+    for router in _routers:
+        y = router(a, b, scale_a, scale_b, out_dtype, bias)
+        if y is not None:
+            return y
+    for hook in _stash_hooks:
+        placeholder = hook(a, b, scale_a, scale_b, out_dtype, bias)
+        if placeholder is not None:
+            return placeholder
+    if _state["fused"]:
+        return scaled_mm_fused(a, b, scale_a, scale_b, out_dtype, bias)
+    return (two_pass or scaled_mm_tensor32)(a, b, scale_a, scale_b, out_dtype, bias)
+
+
 def install(level: str = "tensor32") -> None:
-    """Route the row/column-scaled FP8 GEMMs of vLLM's linear path through the two-pass kernel (``level`` "tensor32")
-    or the fused one-kernel GEMM ("fused", falls back to two-pass if its install check fails); scalar-scaled calls and
-    layouts ``torch._scaled_mm`` cannot take (non-row-major A, B whose transpose is not contiguous) keep the stock kernel."""
+    """Route the row/column-scaled FP8 GEMMs of vLLM's linear path through the two-pass kernel (``level`` "tensor32"),
+    the fused one-kernel GEMM ("fused", falls back to two-pass if its install check fails) or two-pass plus the CuTe-DSL
+    kernel for the DiT block's qkv / out / fc1 ("cutlass", same fallback; the caller then wires the block context with
+    ``fp8_cutlass.install_sites``); scalar-scaled calls and layouts ``torch._scaled_mm`` cannot take (non-row-major A,
+    B whose transpose is not contiguous) keep the stock kernel.  ``_state["level"]`` is the level actually running."""
     from vllm import _custom_ops as ops
 
-    if level not in ("tensor32", "fused"):
+    if level not in ("tensor32", "fused", "cutlass"):
         raise ValueError(f"unknown FP8 GEMM level {level!r}")
 
     orig = ops.cutlass_scaled_mm
@@ -317,19 +377,29 @@ def install(level: str = "tensor32") -> None:
             seen.add((M, N, a.shape[1]))
             logger.info("h3_tp2: FP8 GEMM two-pass shape M=%d N=%d K=%d", M, N, a.shape[1])
         if n == 2000 or n % 20000 == 0:
-            logger.info("h3_tp2: FP8 GEMM dispatch so far: two-pass %d, stock %d", stats["two_pass"], stats["stock"])
-        for hook in _stash_hooks:
-            placeholder = hook(a, b, scale_a, scale_b, out_dtype, bias)
-            if placeholder is not None:
-                return placeholder
-        if _state["fused"]:
-            return scaled_mm_fused(a, b, scale_a, scale_b, out_dtype, bias)
-        return scaled_mm_tensor32(a, b, scale_a, scale_b, out_dtype, bias)
+            logger.info("h3_tp2: FP8 GEMM dispatch so far: two-pass %d, stock %d%s", stats["two_pass"], stats["stock"],
+                        _route_summary())
+        return route(a, b, scale_a, scale_b, out_dtype, bias)
 
     _mm._h3_tp2_tensor32 = True
     _mm.stats = stats
     ops.cutlass_scaled_mm = _mm
     triton_ok = probe_triton("cuda") if torch.cuda.is_available() else False
+    if level == "cutlass":
+        from . import fp8_cutlass
+
+        if triton_ok and fp8_cutlass.probe("cuda"):
+            set_router(fp8_cutlass.route)
+            _state["level"] = "cutlass"
+            logger.warning("h3_tp2: FP8 GEMM cutlass (CuTe-DSL sm120 FP8 GEMM with the scale epilogue in registers for "
+                           "the DiT qkv / out / fc1, two-pass for the rest; %s) ON; bit-identical to two-pass on the "
+                           "install check", fp8_cutlass._state["reason"])
+            return
+        _state["level"] = "tensor32"
+        logger.warning("h3_tp2: FP8 GEMM cutlass level unavailable (%s); two-pass path (%s)",
+                       fp8_cutlass._state["reason"] if triton_ok else "Triton scale pass not usable",
+                       "Triton pass" if triton_ok else "eager torch pass")
+        return
     if level == "fused" and triton_ok and probe_fused("cuda"):
         logger.warning("h3_tp2: FP8 GEMM fused (one Triton FP8 GEMM, scale epilogue in registers, tile %s) ON; "
                        "not bit-identical to the stock kernel, bit-identical to two-pass only where the accumulators are "

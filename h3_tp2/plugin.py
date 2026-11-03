@@ -272,6 +272,14 @@ def _apply(role: str) -> None:
 
         ulysses_nocopy.install(ov_groups)
         logger.warning("h3_tp2: EXPERIMENT Ulysses nocopy exchange (groups=%d; not yet measured on the GPU)", ov_groups)
+    # 6e) opt-in: H3_TP2_ULYSSES_EXACT=1|fwd|verify, the copy-free exchange that keeps stock's cuDNN/NCCL layouts
+    #     (h3_tp2/ulysses_exact.py, results/20261103-ulysses-exact).  Replaces the overlap when both are set.
+    elif os.environ.get("H3_TP2_ULYSSES_EXACT", "0").strip().lower() not in ("", "0"):
+        from h3_tp2 import ulysses_exact
+
+        ulysses_exact.install(os.environ["H3_TP2_ULYSSES_EXACT"])
+        logger.warning("h3_tp2: EXPERIMENT Ulysses exact exchange mode %s%s", os.environ["H3_TP2_ULYSSES_EXACT"].strip(),
+                       f" (H3_TP2_A2A_OVERLAP={ov_groups} not installed)" if ov_groups > 1 else "")
     elif ov_groups > 1:
         from h3_tp2 import ulysses_overlap
 
@@ -405,11 +413,25 @@ def _apply(role: str) -> None:
     #     H3_TP2_FP8_GEMM=fused (opt-in, speed-plan item 4): one Triton FP8 GEMM with the same epilogue in registers, no
     #     fp32 product (and with SwiGLU level 1, fc1 + SwiGLU in one kernel); falls back to tensor32 if its install
     #     check fails.  Bit-identical to tensor32 only where the accumulators are: scripts/fp8_epilogue_probe.py.
+    #     H3_TP2_FP8_GEMM=cutlass (opt-in, item 4 reopened 2026-11-03): two-pass as tensor32, plus a CuTe-DSL sm120 FP8
+    #     GEMM with the scale epilogue in registers for the DiT blocks' qkv / out / fc1 (bf16 out, stock consumers and
+    #     silu_and_mul; fc2 keeps the consumer-fused cuBLASLt path).  Compiled and checked bit for bit against two-pass
+    #     at install; any failure falls back to tensor32 with all its defaults.  See h3_tp2/fp8_cutlass.py and
+    #     results/20261103-cutlass-sm120/.
     _gemm = os.environ.get("H3_TP2_FP8_GEMM", "tensor32").strip().lower()
-    if _gemm in ("tensor32", "fused"):
+    if _gemm in ("tensor32", "fused", "cutlass"):
         from . import fp8_gemm as _fp8
 
         _fp8.install(level=_gemm)
+        if _fp8._state["level"] == "cutlass":
+            from . import fp8_cutlass as _fcut
+
+            try:
+                _fcut.install_sites()
+            except Exception:  # noqa: BLE001  (an opt-in level must not take the rank down)
+                logger.warning("h3_tp2: FP8 GEMM cutlass block wiring failed; two-pass path", exc_info=True)
+                _fp8._routers.clear()
+                _fp8._state["level"] = "tensor32"
         # 9b') H3_TP2_FP8_FUSE_SWIGLU=1: the MLP's fc1 keeps its fp32 product and one Triton kernel applies the
         #      epilogue and silu_and_mul (the bf16 [M, 2*ffn] intermediate is neither written nor read; a placeholder of
         #      that size is still allocated).  Matches two-pass + silu_and_mul on the tested inputs and build.
@@ -432,7 +454,7 @@ def _apply(role: str) -> None:
         #       layout runs the ordinary scale pass and the stock kernel.  "qkv,out,fc2" (any subset) selects sites.
         #       Only with tensor32 (the fused GEMM level has no fp32 product).  See h3_tp2/fp8_consumers.py.
         _cfuse = os.environ.get("H3_TP2_FP8_CONSUMER_FUSE", "1")  # default ON since 2026-11-03 (probe: bit-identical, -1.04 s/step at 1344; serving digest unchanged)
-        if _gemm == "tensor32" and _cfuse.strip() not in ("", "0"):
+        if _gemm in ("tensor32", "cutlass") and _cfuse.strip() not in ("", "0"):
             from . import fp8_consumers as _fcons
 
             _sites = _fcons.parse_sites(_cfuse)
@@ -801,6 +823,12 @@ def _apply(role: str) -> None:
     _requested_fuse = os.environ.get("H3_TP2_FP8_FUSE_SWIGLU")
     _requested_fuse = ("<default>" if _requested_fuse is None else
                        _requested_fuse.strip() if _requested_fuse.strip() in ("0", "1", "2") else "<other>")
-    logger.warning("h3_tp2: fused SwiGLU class marker=%s, requested=%s, role=%s",
-                   fused_swiglu_marker(), _requested_fuse, role)
+    from . import fp8_gemm as _fp8_diag
+
+    _fp8_level = _fp8_diag._state["level"] if _gemm in ("tensor32", "fused", "cutlass") else "stock"
+    if _fp8_level == "fused" and not _fp8_diag._state["fused"]:
+        _fp8_level = "tensor32"   # the fused level's install check failed
+    logger.warning("h3_tp2: fused SwiGLU class marker=%s, requested=%s, role=%s, FP8 GEMM requested=%s running=%s",
+                   fused_swiglu_marker(), _requested_fuse, role, os.environ.get("H3_TP2_FP8_GEMM", "<default>"),
+                   _fp8_level)
     logger.info("h3_tp2 plugin active: role=%s world=%s", role, world)

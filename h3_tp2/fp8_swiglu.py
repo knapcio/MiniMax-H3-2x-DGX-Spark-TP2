@@ -265,7 +265,7 @@ def probe_gemm_swiglu(device) -> bool:  # noqa: ANN001
         w = torch.randint(-2, 3, (width, K), device=device, generator=g).to(torch.float8_e4m3fn)
         sa = torch.rand(M, device=device, generator=g) * 0.01 + 1e-3
         sb = torch.rand(width, device=device, generator=g) * 0.01 + 1e-3
-        one = torch.ones((), device=device)
+        one = fp8_gemm.unit_scale(torch.device(device))
         x32 = torch._scaled_mm(a, w.t(), scale_a=one, scale_b=one, out_dtype=torch.float32)
         ok = torch.equal(gemm_swiglu(a, w.t(), sa, sb, None).view(torch.int16), scale_swiglu(x32, sa, sb, None).view(torch.int16))
         a = (torch.randn(M, K, device=device, generator=g) * 2).to(torch.float8_e4m3fn)
@@ -414,7 +414,7 @@ def _stash_hook(a, b, scale_a, scale_b, out_dtype, bias):  # noqa: ANN001
     if _state["gemm_swiglu"]:                                     # level 1 under H3_TP2_FP8_GEMM=fused only
         _tls.stash = (GemmOperands(a, b), sa, sb, bias)          # the forward runs GEMM + SwiGLU in one kernel
     else:
-        one = torch.ones((), device=a.device, dtype=torch.float32)
+        one = fp8_gemm.unit_scale(a.device)
         x32 = torch._scaled_mm(a, b, scale_a=one, scale_b=one, out_dtype=torch.float32)
         _tls.stash = (x32, sa, sb, bias)
     _tls.stash_next = False
