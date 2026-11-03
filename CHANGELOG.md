@@ -363,6 +363,11 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-03 14:10: character identity across windows measured (`scripts/face_drift.py`, `results/20261103-lalka-identity/`):
+  a one-request FL2VA continuation drifts like the 11-01 PNG-chained film (woman 0.74 -> 0.48 in 60 s) because windows
+  2+ lose the keyframe; the same request on the Ref2VA partition (reference 2048 px conditions every window) holds both
+  faces (man 0.80 -> 0.91, woman 0.78 -> 0.76) at 1.65x the time. Opt-in `H3_TP2_ID_LOCK` (`h3_tp2/identity_lock.py`)
+  for the FL2VA partition is next to test; the boot probe sends a ref2va request on the Ref2VA partition.
 - 2026-11-03 09:15: speed plan item 4 reopened and answered on the GPU (`results/20261103-cutlass-sm120/`): a CuTe-DSL
   sm120 FP8 GEMM with the per-row/per-column epilogue runs at 157-168 TF on GB10 (cuBLASLt 175-190) and is bit-identical
   to the two-pass output on all four shapes at M=21952 and 42848 (its fp32 accumulator equals cuBLASLt's). The 61 TF of
