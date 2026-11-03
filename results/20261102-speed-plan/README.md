@@ -232,3 +232,19 @@ first call (first 64 rows, stock pair = scale pass + upstream kernel) and disabl
 Spark_06 with the head stopped `~/h3-long/.venv/bin/python scripts/fp8_consumer_probe.py --json
 ~/h3-tp2-results/fp8-consumer-probe/probe.json` (timing per site, bits on random and directed data, registers, peak),
 then a same-boot latents digest A/B at 5 s 1344x768 T2VA.
+
+### Item 6b measured 2026-11-03 00:36-01:35 (`item6b`): GPU probe with the head stopped, then serving
+
+| site | M | old: scale pass + consumer | fused | saving per step (50 layers) | bit-identical | regs / spills |
+|---|---|---|---|---|---|---|
+| qkv (q, k) | 21952 | 19.29 ms (13.15 + 6.13) | 13.29 ms | +0.30 s | yes | 38 / 0 |
+| out | 42848 | 14.40 ms (6.41 + 8.11) | 10.22 ms | +0.21 s | yes | 64 / 0 |
+| fc2 | 42848 | 12.58 ms (6.41 + 6.26) | 8.12 ms | +0.22 s | yes | 62 / 0 |
+| all sites | 42848 | | | **+1.04 s/step** | | |
+| all sites | 21952 | | | **+0.52 s/step** | | |
+
+Extra peak over the product drops (e.g. out 1.38 -> 0.92 GB). Serving, 5 s 1344 T2VA seed 0 through the gate:
+default env (same code) 22.43 s/step digest `4d6d69e4` (the stash-hook list refactor leaves the default path exact);
+`H3_TP2_FP8_CONSUMER_FUSE=1` 21.53 and 22.10 s/step, digest `4d6d69e4` (bit-identical); the 960 warm probe digest is
+also the stock one (bf6e8568). **Default since 2026-11-03 01:35.** The remaining scale-pass cost is fc1's (already
+fused with SwiGLU) and v's column scaling.

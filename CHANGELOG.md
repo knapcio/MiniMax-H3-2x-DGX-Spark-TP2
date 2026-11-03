@@ -360,3 +360,6 @@
   landed opt-in earlier tonight (nocopy exchange: wrong on the GPU, closed; step caches: 0.03-0.1 %, off).
 - 2026-11-02 23:50: end state: 30 s Koninck 1344x768 with every default of the day (lock classes + tail + ramp 1.0,
   batched tile decode, speed-gated compacted boot) in 4648 s against 4964 s in the afternoon, same quality profile.
+- 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
+  pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
+  -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.

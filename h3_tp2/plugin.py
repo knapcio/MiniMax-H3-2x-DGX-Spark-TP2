@@ -431,7 +431,7 @@ def _apply(role: str) -> None:
         #       on its first call and disables itself on a mismatch; any call that does not match the reviewed
         #       layout runs the ordinary scale pass and the stock kernel.  "qkv,out,fc2" (any subset) selects sites.
         #       Only with tensor32 (the fused GEMM level has no fp32 product).  See h3_tp2/fp8_consumers.py.
-        _cfuse = os.environ.get("H3_TP2_FP8_CONSUMER_FUSE", "0")
+        _cfuse = os.environ.get("H3_TP2_FP8_CONSUMER_FUSE", "1")  # default ON since 2026-11-03 (probe: bit-identical, -1.04 s/step at 1344; serving digest unchanged)
         if _gemm == "tensor32" and _cfuse.strip() not in ("", "0"):
             from . import fp8_consumers as _fcons
 
