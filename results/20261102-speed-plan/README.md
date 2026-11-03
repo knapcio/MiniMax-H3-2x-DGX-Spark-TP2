@@ -253,3 +253,8 @@ fused with SwiGLU) and v's column scaling.
 (warm probe 9.00 s/step, digest bf6e8568): 5 s 1344x768 T2VA **21.98 s/step, digest `4d6d69e4` unchanged, decode 26.4 s**
 (10-30 reference 23.2 s/step and 42 s decode). Levers in production: two-pass FP8 GEMM + fused SwiGLU level 1 +
 consumer-fused scale pass, batched tile decode, class-aware/tail/ramp-1.0 look-lock, boot gate with host compaction.
+
+## 2026-11-03 09:15: item 4 reopened with a CuTe-DSL kernel, see `results/20261103-cutlass-sm120/`
+
+A generated sm120 FP8 kernel carries the scale epilogue at 157-168 TF, bit-identical to the two-pass output; the stock
+CUTLASS kernels' 61 TF was the tile raster (no L2 swizzle). Worth ~1.5 s/step at 1344 against today's path.

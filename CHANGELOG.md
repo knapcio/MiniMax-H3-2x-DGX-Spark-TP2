@@ -363,5 +363,11 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-03 09:15: speed plan item 4 reopened and answered on the GPU (`results/20261103-cutlass-sm120/`): a CuTe-DSL
+  sm120 FP8 GEMM with the per-row/per-column epilogue runs at 157-168 TF on GB10 (cuBLASLt 175-190) and is bit-identical
+  to the two-pass output on all four shapes at M=21952 and 42848 (its fp32 accumulator equals cuBLASLt's). The 61 TF of
+  the stock CUTLASS row-wise kernels is the tile raster without an L2 swizzle, not the hardware. Projection against the
+  6b serving path: ~-1.5 s/step at 1344 (qkv, out, fc1), ~-0.7 at 960, double with SwiGLU in the epilogue; fc2 stays on
+  cuBLASLt. Scripts `scripts/cutlass_sm120_*.py`; wiring as an opt-in `H3_TP2_FP8_GEMM=cutlass` level is next.
 - 2026-11-03 09:00: boot probe tolerance 6 -> 8 % (limit 9.34 s/step on the 8.65 reference): the warm probes of the
   gated boots ran 8.96-9.16 against the old 9.17 limit, so a normal boot could be rejected and re-booted for nothing.

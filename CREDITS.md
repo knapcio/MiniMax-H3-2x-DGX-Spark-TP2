@@ -14,6 +14,9 @@
 - **brandneway** for vllm-omni #7241 (freeing the allocator's cached pages at the denoise/decode boundary; bit-identical).
 - **NVIDIA** DGX Spark playbooks (Connect Two Sparks, NCCL for two Sparks, the 175 Gbps bandwidth gate in
   `spark_cluster_setup.py`) and the ConnectX-7 twin-port measurements.
+- **NVIDIA CUTLASS** (CuTe DSL 4.7.1, BSD-3-Clause): `scripts/cutlass_sm120_dsl_fp8_gemm.py` is derived from the
+  Blackwell-GeForce dense GEMM example (`examples/python/CuTeDSL/cute/blackwell_geforce/kernel/dense_gemm/dense_gemm.py`);
+  the header is kept, the FP8 MMA, epilogue, pipeline barrier and edge-tile changes are ours (`results/20261103-cutlass-sm120/`).
 - **tonyd2wild** for the MemAvailable guard pattern on GB10 (`h3_guard.sh`, MIT); ours restarts the systemd unit instead.
 - **vLLM** project: the `MessageQueue` (shm_broadcast) remote-reader mode over ZMQ is what lets rank 1 live on another host
   without Ray.
