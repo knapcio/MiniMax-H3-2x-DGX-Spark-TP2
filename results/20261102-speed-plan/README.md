@@ -248,3 +248,8 @@ default env (same code) 22.43 s/step digest `4d6d69e4` (the stash-hook list refa
 `H3_TP2_FP8_CONSUMER_FUSE=1` 21.53 and 22.10 s/step, digest `4d6d69e4` (bit-identical); the 960 warm probe digest is
 also the stock one (bf6e8568). **Default since 2026-11-03 01:35.** The remaining scale-pass cost is fc1's (already
 fused with SwiGLU) and v's column scaling.
+
+## Serving state 2026-11-03 02:06 (queue55): all defaults of the two days, boot through the compacting two-probe gate
+(warm probe 9.00 s/step, digest bf6e8568): 5 s 1344x768 T2VA **21.98 s/step, digest `4d6d69e4` unchanged, decode 26.4 s**
+(10-30 reference 23.2 s/step and 42 s decode). Levers in production: two-pass FP8 GEMM + fused SwiGLU level 1 +
+consumer-fused scale pass, batched tile decode, class-aware/tail/ramp-1.0 look-lock, boot gate with host compaction.
