@@ -69,7 +69,9 @@ corollary: vLLM's C++ kernel would probably recover most of its gap with the sch
    sm120 mainloop (`sm120_mma_tma.hpp`) does `NamedBarrier::sync(thr_size(tiled_mma))` before every `consumer_release`.
    Without it, wrong tiles (different on every run) appear as soon as more than 2 stages let the producer refill early
    (ab_stage 4/5/11). The example never saw this because its 8 epilogue stages left room for only 2. Added; 4/4 runs
-   bit-identical at 5 and 11 stages since.
+   bit-identical at 5 and 11 stages since. **Not the whole fix** (2026-11-03 night, `race.md`): the barrier only made
+   the race rare; the actual order is given by a `fence.proxy.async` before the barrier (the ldmatrix reads are
+   generic-proxy, the next TMA load is async-proxy, and ptxas issued the release arrive without waiting for the loads).
 4. **Swizzled scheduler pads the grid**: `PersistentTileSchedulerParams` rounds the swizzled dimension up to a multiple
    of the swizzle (M=21952: 172 row tiles -> 176). The padded tiles are real work items, so the store predicates M and N
    and the scale vectors are padded to the rounded grid. Cost: 2.3 % wasted MMA work at M=21952, 0.3 % at 42848.
@@ -293,5 +295,10 @@ Reading:
   `ldmatrix` copies in program order (the 4.7.1 sm120 example path had four defects already), whether the
   `consumer_arrive_cnt = mcast_size * num_mma_warps` matches how `PipelineTmaAsync.consumer_release` arrives, and
   whether the DMA warp's `producer_acquire` of a stage can run ahead across the tile boundary (persistent scheduler).
-  Next: a stress reproducer (many back-to-back M=10240 qkv/fc1 GEMMs with a concurrent kernel on a second stream,
-  compared bit for bit) and the kernel fix, then the three-calibration proof above.
+  Answered the same night in `race.md`: the arrive count and the producer schedule are right; the SASS shows the
+  release arrive issued without waiting on the ldmatrix scoreboard and no proxy fence, so under load (a pointer-chase
+  kernel on a second stream in the reproducer; NCCL in serving) the next TMA load lands on rows a lagging warp has not
+  read yet. Fix: `fence.proxy.async` before the MMA-warp barrier at both release sites. Stress
+  (`scripts/fp8_cutlass_stress.py`, M=10240 qkv/fc1 with a busy stream): 81 wrong of 13216 calls before, 0 of 12176
+  after; positive control without the barrier 648/648 wrong, barrier removed + fence 0/552. The three-calibration
+  serving proof is queued (queue67).
