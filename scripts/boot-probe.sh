@@ -12,6 +12,9 @@ REF=${1:-8.65}; TOL=${2:-0.08}
 # (queue52/53, 2026-11-02: a boot probed 9.19 first and ran 10.5-10.7 afterwards; the next boot 9.35 then 8.96/8.99).
 # The verdict is on the SECOND (warm) request against the warm reference; the first is reported.
 PROBES=${PROBES:-2}
+# The probe sets its own PROMPT / task / size: a caller's request variables (queue60b exported H3_PROMPT_FILE before its
+# gated boot, 2026-11-03 19:57, and render.sh refused "choose H3_PROMPT_FILE or PROMPT, not both") must not leak in.
+unset H3_PROMPT_FILE H3_EXTRA_JSON_FILE PROMPT CONT_PROMPTS CONT_PROMPTS_EXTRA AUDIO_URL EXTRA_JSON
 OUTROOT=${H3_PROBE_ROOT:-$HOME/h3-tp2-results}
 NAME=boot-probe-$(date +%Y%m%d-%H%M%S)
 health() { curl -s -m 3 -o /dev/null -w "%{http_code}" http://127.0.0.1:18093/health; }

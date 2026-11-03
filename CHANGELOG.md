@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-03 20:40: `scripts/boot-probe.sh` clears the caller's request variables (`H3_PROMPT_FILE`, `EXTRA_JSON`, ...)
+  before its own request: a queue that exported a prompt file before its gated boot made the probe fail with
+  "choose H3_PROMPT_FILE or PROMPT, not both" (boot kept, speed gate skipped).
 - 2026-11-03 18:30: cutlass level VERIFY run (queue62): 4 of 48000 routed GEMMs differ from two-pass, each by 63-378
   elements in the first row(s) of a 128-row tile over one MMA warp's 64 columns: an A/B smem stage overwritten by the
   next TMA load while a lagging warp still read it (stage-release race); the per-call sync of VERIFY made the second
