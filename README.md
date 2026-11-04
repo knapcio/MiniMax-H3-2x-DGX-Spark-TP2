@@ -139,6 +139,7 @@ unless noted; `results/20261028-clip-metrics/` has the per-second numbers):
 |---|---|---|
 | Speed of the continuation | `H3_TP2_REF_SHORT_EDGE=1024` | -24 % at 960x576, -3 % at 1344x768, no other effect (same fades and detail): recommended |
 | Motion decay across windows | per-window prompts (`CONT_PROMPTS=auto`) | fixed, free |
+| Character identity across windows (faces) | Ref2VA with the reference at 1024 px (`H3_TP2_REF_SHORT_EDGE=1024`) | held for 60 s (face similarity 0.81 / 0.75 mean vs 0.66 / 0.60 on FL2VA) at 1.06x the FL2VA time; the 2048 px reference adds a few points for 1.8x (`results/20261103-lalka-identity/`) |
 | Generated-audio fade (-8..-18 dB over 30-60 s) | a driving soundtrack (`audio_mode: lock_source`) or the largest window (345 frames) | both keep the level flat; `audio_flow_shift` 1 makes it worse |
 | Texture blur over 60 s | the largest window (345) | no blur, but over-sharpening instead at the end |
 | Unrequested cuts and dissolves inside windows | prompt wording, light-lock wording, an opening-frames anchor, a tail anchor, H3's own looped audio as the track | none works: the cuts land on the same frames whatever the prompt (sampling events of the per-window seed), the anchors add cuts, the loop runs the motion away. One 60 s clip with a music track had no cuts; one sample. |
@@ -147,7 +148,10 @@ So a 30 s 960x576 clip with reference 1024 + per-window prompts + a soundtrack c
 `results/20261028-v030-recipe-30s-960/`); at 1344x768 and at 60 s no combination tried is reliably free of the
 model's own scene changes, and the final detail drifts (blur with 277-frame windows, over-sharpening with 345). The
 30 s 960x576 recipe is the honest offer; longer or larger is possible (the mode allows 300 s, about 2.2 h per 60 s)
-but comes with the model's own cuts. Not yet tested on other prompts and references.
+but comes with the model's own cuts. Since 2026-11-03 the dialogue scenes (`results/20261103-lalka-identity/`,
+`results/20261103-xclip/`) render 60 s without a cut when every window prompt restates the composition (camera
+position, who stands where, faces three-quarter): five 60 s renders, one insert cut (the hidden-anchor arm C) and one
+cut in the X clip's first version whose first window ignored the reference composition.
 
 ### A painting that comes alive (locked camera, the picture as the first frame): the request
 
