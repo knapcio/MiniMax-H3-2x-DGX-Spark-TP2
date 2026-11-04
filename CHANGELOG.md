@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-04 06:30: X clip v2 (`results/20261103-xclip/`): composition stated in every window's prompt + three short
+  lines per window: one continuous take, no cuts, pauses 1.5/1.7 s only (v1: seven of 1.7-2.5 s), WER 0.005, faces
+  0.64/0.62 mean vs 0.46/0.43; 12 031 s. This is the clip for X.
 - 2026-11-04 02:25: Ulysses exact exchange on by default (`H3_TP2_ULYSSES_EXACT=1`; `0` = stock). Gate queue63: on a
   defaults boot and on an exact boot the 960 probe, the 5 s 1344 calibration and a 16 s 1344 FL2VA continuation gave the
   same latents digests and the same decoded frames (`4d6d69e4aad0`/`c6f54e83dac8`, `200e38721c9e` `4138eba5a964`/

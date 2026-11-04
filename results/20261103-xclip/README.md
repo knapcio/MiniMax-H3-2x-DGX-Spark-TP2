@@ -51,13 +51,34 @@ LUFS, peaks -7 dB.
 Delivered (`~/Downloads/h3-prod-smoke/xclip/`): `xclip60_raw_1344x768_ref2va_20261103.mp4`,
 `xclip60_ambience_1344x768_20261103.mp4`, `xclip60_piano_1344x768_20261103.mp4`.
 
-## v2 (queue68, queued 00:10 behind the Ulysses gate)
+## v2: PASS (queue68, 2026-11-04 02:41-06:01)
 
 Two fixes, both in the prompt: the composition sentence of the reference prompt goes into the main and every continuation
 prompt ("the camera stands at the end of a polished wooden counter, on the left the man ..., on the right the woman ...,
 both faces fully visible in three-quarter view"), and three short lines per window instead of two (18 lines,
-`xclip/dialogue_en2.txt`, "answering each other promptly") against the 1.7-2.5 s pauses. Same reference (2208), seed
-2304. The queue runs face drift, speech QA, both normalised mixes and the pause check itself.
+`xclip/dialogue_en2.txt`, "answering each other promptly") against the 1.7-2.5 s pauses. Same reference (2208), seed 2304.
+
+| item | v1 (seed 2204) | v2 (seed 2304) |
+|---|---|---|
+| render | 13 613.7 s | 12 030.6 s (six diffuse phases 2086-2109 s), peak head 75.3 GB |
+| speech (faster-whisper small) | en, WER 0.007, 12/12 lines | en, **WER 0.005**, 18/18 lines in order |
+| pauses (raw, < -40 dB for >= 1.5 s) | 7 (1.7-2.5 s) | **2 (1.5, 1.7 s)** |
+| scene cuts | 2 (17.0 s, 57.0 s) | **none**: one continuous take, the reference composition from frame 0 |
+| seams (ratio to local motion, luma step) | 0.35-1.20, <= 2.9 | 0.19-0.57, <= 0.2 (no retry) |
+| faces vs the reference, per window (position match) | man 0.47 / 0.41 / 0.46 / 0.47 / 0.46 / 0.53; woman 0.15 / 0.31 / 0.59 / 0.52 / 0.50 / 0.64 | man 0.77 / 0.57 / 0.65 / 0.54 / 0.63 / 0.68; woman 0.76 / 0.47 / 0.59 / 0.54 / 0.58 / 0.76 |
+| overall mean / min | 0.46 / 0.30 (man), 0.43 / 0.05 (woman) | 0.64 / 0.44 (man), 0.62 / 0.37 (woman) |
+
+The frames: man left, woman right, three-quarter to the camera from the first frame to the last, the same counter, lamp,
+scale and inkwell, customers only far behind. The woman turns to the man (profile) for a few seconds in windows 2-5
+(3-5 "missing" samples per window), which is where her minima come from, not a change of face. First-to-last 10 %:
+man 0.90 -> 0.68, woman 0.89 -> 0.77 (the first second is the reference pose itself).
+
+Delivered (`~/Downloads/h3-prod-smoke/xclip/`): `xclip60v2_raw_1344x768_ref2va_20261104.mp4`,
+`xclip60v2_ambience_1344x768_20261104.mp4` (-21.2 LUFS), `xclip60v2_piano_1344x768_20261104.mp4`. v2 is the clip for X.
+
+Lessons: the reference image fixes the faces, the prompt fixes the blocking (state the camera position and who stands
+where in every window's prompt); three short lines per 11.5 s window keep the pauses under 2 s; name props instead of
+negating them; normalise beds by loudness.
 
 ## Files on Spark_06 (`~/h3-tp2-results/`)
 
