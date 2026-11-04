@@ -170,9 +170,37 @@ def test_selfcheck_mismatch_disables_site(monkeypatch):
     blk, inp = _block(mod)
     assert _same(blk(**inp), ref)
     s = fq.stats()
-    assert s["selfcheck_fail"] == 1 and s["fused_qkv"] == 0 and "qkv" in fq._state["disabled"]
+    assert s["selfcheck_fail"] == 2 and s["fused_qkv"] == 0 and "qkv" in fq._state["disabled"]   # both modes tried
     assert (s["fused_out"], s["fused_fc1"], s["fused_fc2"]) == (1, 1, 1)
-    assert _same(blk(**inp), ref) and fq.stats()["selfcheck_fail"] == 1   # disabled for the process: not re-checked
+    assert _same(blk(**inp), ref) and fq.stats()["selfcheck_fail"] == 2   # disabled for the process: not re-checked
+
+
+@pytest.mark.parametrize("site", ["qkv", "fc1"])
+def test_reload_mode_when_registers_differ(monkeypatch, site):
+    """Mode 0 (bf16 only in registers) failing its self-check falls back to mode 1 (upstream's bf16 store kept)."""
+    ref = _reference()
+    mod = _load(_make_quant_cls())
+    _install(mod)
+    name = {"qkv": "rms_quant", "fc1": "gate_rms_quant"}[site]
+    real = getattr(fq, name)
+    modes_seen = []
+
+    def wrong_in_registers(*a, **k):  # noqa: ANN002,ANN003,ANN202
+        out = real(*a, **k)
+        ph = a[7 if site == "qkv" else 9]
+        modes_seen.append(ph is not None)
+        if ph is None:
+            q = out[-2].clone()
+            q.view(torch.uint8)[0, 0] ^= 1
+            out = (*out[:-2], q, out[-1])
+        return out
+    monkeypatch.setattr(fq, name, wrong_in_registers)
+    blk, inp = _block(mod)
+    assert _same(blk(**inp), ref)
+    s = fq.stats()
+    assert s["selfcheck_fail"] == 1 and s["fused_" + site] == 1 and site not in fq._state["disabled"]
+    assert modes_seen == [False, True, True]          # mode 0 check, mode 1 check, the full call in mode 1
+    assert fq._state["checked"][next(k for k in fq._state["checked"] if k[0] == site and k[-1] == 1)] is True
 
 
 def test_layer_that_never_quantises_is_rerun():

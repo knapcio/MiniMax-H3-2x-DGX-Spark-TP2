@@ -118,9 +118,30 @@ try:
         return tl.reduce(tl.where(mask, tl.abs(h32), 0.0), 0, _nan_maximum)
 
     @triton.jit
+    def _vec8(columns):
+        # the same column indices with a provable contiguity of 8 only: Triton coalesces the fp8 store of the row to
+        # 8 elements per thread (64-bit stores) instead of 16, so every memory op of the kernel asks for upstream's
+        # layout (8 bf16 per thread) and the RMS reduction keeps upstream's per-thread order and shuffle tree
+        return (columns // 8) * 8 + columns % 8
+
+    @triton.jit
+    def _bf16_row(output, ph_ptrs, mask, RELOAD: tl.constexpr):
+        # The bf16 value stock stores, as fp32.  RELOAD 0: rounded in registers (the bf16 row is never written).
+        # RELOAD 1: upstream's own store of the row into the placeholder, a CTA barrier, then the row read back, so the
+        # part of the kernel before the store is upstream's code with upstream's only memory operations (if the
+        # extra quant work made the compiler pick another layout for the RMS reduction, this mode still matches).
+        if RELOAD:
+            tl.store(ph_ptrs, output, mask=mask)
+            tl.debug_barrier()
+            return tl.load(ph_ptrs, mask=mask, other=0.0).to(tl.float32)
+        else:
+            return output.to(tl.bfloat16).to(tl.float32)
+
+    @triton.jit
     def _rms_norm_indexed_scale_shift_quant_kernel(
         q_ptr,
         s_ptr,
+        ph_ptr,
         x_ptr,
         weight_ptr,
         shift_ptr,
@@ -137,6 +158,7 @@ try:
         block_n: tl.constexpr,
         MIN_SF: tl.constexpr,
         MAXV: tl.constexpr,
+        RELOAD: tl.constexpr,
     ):
         # Copy of vLLM-Omni a8576ccb7 _rms_norm_indexed_scale_shift_kernel (indexed_modulation.py:91-126, Apache-2.0)
         # up to ``output``; the bf16 store becomes the bf16 rounding + the per-token FP8 quant of the row.
@@ -156,10 +178,10 @@ try:
         scale = tl.load(scale_ptr + index * stride_scale_row + columns, mask=mask, other=0.0).to(tl.float32)
         output = normalized * (1.0 + scale) + shift
 
-        h32 = output.to(tl.bfloat16).to(tl.float32)            # the value stock stores in its bf16 output
+        h32 = _bf16_row(output, ph_ptr + row * hidden_size + columns, mask, RELOAD)   # the value stock stores
         row_scale = _row_scale(_abs_max(h32, mask), fp8_max, MIN_SF)
         q = _quant_values(h32, row_scale, MAXV)
-        tl.store(q_ptr + row.to(tl.int64) * hidden_size + columns, q, mask=mask)
+        tl.store(q_ptr + row.to(tl.int64) * hidden_size + _vec8(columns), q, mask=mask)
         tl.store(s_ptr + row, row_scale)
 
     @triton.jit
@@ -167,6 +189,7 @@ try:
         residual_out_ptr,
         q_ptr,
         s_ptr,
+        ph_ptr,
         residual_ptr,
         gate_ptr,
         branch_ptr,
@@ -187,6 +210,7 @@ try:
         block_n: tl.constexpr,
         MIN_SF: tl.constexpr,
         MAXV: tl.constexpr,
+        RELOAD: tl.constexpr,
     ):
         # Copy of vLLM-Omni a8576ccb7 _indexed_gate_rms_norm_scale_shift_kernel (indexed_modulation.py:129-173,
         # Apache-2.0); residual_out is stored as upstream, the modulated bf16 store becomes the per-token FP8 quant.
@@ -209,10 +233,10 @@ try:
         scale = tl.load(scale_ptr + index * stride_scale_row + columns, mask=mask, other=0.0).to(tl.float32)
         output = normalized * (1.0 + scale) + shift
 
-        h32 = output.to(tl.bfloat16).to(tl.float32)
+        h32 = _bf16_row(output, ph_ptr + row * hidden_size + columns, mask, RELOAD)
         row_scale = _row_scale(_abs_max(h32, mask), fp8_max, MIN_SF)
         q = _quant_values(h32, row_scale, MAXV)
-        tl.store(q_ptr + row.to(tl.int64) * hidden_size + columns, q, mask=mask)
+        tl.store(q_ptr + row.to(tl.int64) * hidden_size + _vec8(columns), q, mask=mask)
         tl.store(s_ptr + row, row_scale)
 
     @triton.jit
@@ -300,35 +324,43 @@ def quant(h: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     return q, s
 
 
-def rms_quant(x, weight, shift, scale, indices, eps, stock=None):  # noqa: ANN001,ANN201
-    """``rms_norm_indexed_scale_shift`` + the per-token quant of its output: (fp8 [M, H], scale [M, 1])."""
+def rms_quant(x, weight, shift, scale, indices, eps, stock=None, ph=None):  # noqa: ANN001,ANN201
+    """``rms_norm_indexed_scale_shift`` + the per-token quant of its output: (fp8 [M, H], scale [M, 1]).  With ``ph``
+    (bf16, like ``x``) the kernel also stores stock's bf16 output there and quantises the row read back (RELOAD)."""
     if not _gpu(x):
-        return quant_torch(stock(x, weight, shift, scale, indices, eps))
+        h = stock(x, weight, shift, scale, indices, eps)
+        if ph is not None:
+            ph.copy_(h)
+        return quant_torch(h)
     rows, hidden = x.shape
     q, s = _alloc(rows, hidden, x.device)
     if rows:
         _rms_norm_indexed_scale_shift_quant_kernel[(rows,)](
-            q, s, x, weight, shift, scale, indices, hidden, eps,
+            q, s, ph if ph is not None else q, x, weight, shift, scale, indices, hidden, eps,
             x.stride(0), shift.stride(0), scale.stride(0), indices.stride(0), 0, FP8_MAX,
-            block_n=triton.next_power_of_2(hidden), MIN_SF=MIN_SCALE, MAXV=FP8_MAX, num_warps=_ROW_WARPS,
+            block_n=triton.next_power_of_2(hidden), MIN_SF=MIN_SCALE, MAXV=FP8_MAX, RELOAD=ph is not None,
+            num_warps=_ROW_WARPS,
         )
     return q, s
 
 
-def gate_rms_quant(residual, gate, branch, weight, shift, scale, indices, eps, stock=None):  # noqa: ANN001,ANN201
+def gate_rms_quant(residual, gate, branch, weight, shift, scale, indices, eps, stock=None, ph=None):  # noqa: ANN001,ANN201
     """``indexed_gate_rms_norm_scale_shift`` with the modulated output quantised per token:
-    (residual_out bf16 [M, H], fp8 [M, H], scale [M, 1])."""
+    (residual_out bf16 [M, H], fp8 [M, H], scale [M, 1]); ``ph`` as in ``rms_quant``."""
     if not _gpu(residual):
         res, mod = stock(residual, gate, branch, weight, shift, scale, indices, eps)
+        if ph is not None:
+            ph.copy_(mod)
         return (res, *quant_torch(mod))
     rows, hidden = residual.shape
     residual_out = torch.empty_like(residual)
     q, s = _alloc(rows, hidden, residual.device)
     if rows:
         _indexed_gate_rms_norm_scale_shift_quant_kernel[(rows,)](
-            residual_out, q, s, residual, gate, branch, weight, shift, scale, indices, hidden, eps,
-            residual.stride(0), gate.stride(0), branch.stride(0), shift.stride(0), scale.stride(0), indices.stride(0),
-            0, FP8_MAX, block_n=triton.next_power_of_2(hidden), MIN_SF=MIN_SCALE, MAXV=FP8_MAX, num_warps=_ROW_WARPS,
+            residual_out, q, s, ph if ph is not None else q, residual, gate, branch, weight, shift, scale, indices,
+            hidden, eps, residual.stride(0), gate.stride(0), branch.stride(0), shift.stride(0), scale.stride(0),
+            indices.stride(0), 0, FP8_MAX, block_n=triton.next_power_of_2(hidden), MIN_SF=MIN_SCALE, MAXV=FP8_MAX,
+            RELOAD=ph is not None, num_warps=_ROW_WARPS,
         )
     return residual_out, q, s
 
@@ -373,7 +405,7 @@ def silu_mul_quant(x: torch.Tensor, stock=None) -> tuple[torch.Tensor, torch.Ten
 
 _tls = threading.local()   # ctx: _Ctx of the DiT block whose forward is running in this thread
 _state: dict[str, Any] = {"sites": (), "cpu_mirror": False, "checked": {}, "disabled": set(), "orig_quant": None,
-                          "quant_cls": None, "act_cls": None, "verify": False}
+                          "quant_cls": None, "act_cls": None, "verify": False, "modes": (0, 1)}
 _stats: dict[str, int] = {"fused_qkv": 0, "fused_out": 0, "fused_fc1": 0, "fused_fc2": 0, "consumed": 0,
                           "materialize": 0, "rerun": 0, "selfcheck_pass": 0, "selfcheck_fail": 0,
                           "verify_calls": 0, "verify_mismatch": 0}
@@ -439,8 +471,9 @@ def _bits(t: torch.Tensor) -> torch.Tensor:
     return t.view(torch.uint8) if t.element_size() == 1 else t.view({2: torch.int16, 4: torch.int32}[t.element_size()])
 
 
-def _selfcheck(key, fused_fn, stock_fn) -> bool:  # noqa: ANN001
-    """Once per (site, width): fused vs stock pair on the first rows, bit for bit; a mismatch disables the site."""
+def _selfcheck(key, fused_fn, stock_fn, *, last: bool = True) -> bool:  # noqa: ANN001
+    """Once per key (site, width, ..., mode): fused vs stock pair on the first rows, bit for bit.  A mismatch of the
+    ``last`` candidate disables the site for the process."""
     ok = _state["checked"].get(key)
     if ok is not None:
         return ok
@@ -457,10 +490,22 @@ def _selfcheck(key, fused_fn, stock_fn) -> bool:  # noqa: ANN001
         logger.info("h3_tp2 fp8 quant fuse: self-check %s bit-identical", key)
     else:
         _count("selfcheck_fail")
-        _state["disabled"].add(key[0])
-        logger.warning("h3_tp2 fp8 quant fuse: self-check %s NOT bit-identical to the stock producer + QuantFP8; "
-                       "site %s disabled for this process", key, key[0])
+        if last:
+            _state["disabled"].add(key[0])
+        logger.warning("h3_tp2 fp8 quant fuse: self-check %s NOT bit-identical to the stock producer + QuantFP8; %s",
+                       key, f"site {key[0]} disabled for this process" if last else "trying the next mode")
     return ok
+
+
+def _pick_mode(key, fused_for, stock_fn):  # noqa: ANN001,ANN202
+    """The RMS-norm sites: mode 0 (bf16 row only in registers) if it passes the self-check, else mode 1 (upstream's
+    bf16 store kept, row read back); None when neither is bit-identical (site disabled).  ``stock_fn`` returns the
+    stock outputs with the bf16 row last (compared in mode 1 only, where the fused kernel writes it too)."""
+    modes = _state["modes"]
+    for m in modes:
+        if _selfcheck(key + (m,), lambda: fused_for(m), lambda: stock_fn()[:None if m else -1], last=m == modes[-1]):
+            return m
+    return None
 
 
 def _stock_quant(quant_obj, h: torch.Tensor):  # noqa: ANN001,ANN202
@@ -643,14 +688,24 @@ def make_rms_wrapper(orig):  # noqa: ANN001,ANN201
                     and indices.dim() == 1 and indices.shape[0] == x.shape[0] and _device_ok(x, weight, shift, scale, indices):
                 r = min(_SELFCHECK_ROWS, x.shape[0])
                 key = ("qkv", x.shape[1], shift.dtype, weight.dtype)
-                if _selfcheck(key, lambda: rms_quant(x[:r], weight, shift, scale, indices[:r], eps, orig),
-                              lambda: _stock_quant(qobj, orig(x[:r], weight, shift, scale, indices[:r], eps))):
-                    q, s = rms_quant(x, weight, shift, scale, indices, eps, orig)
+
+                def _fused_sub(mode):  # noqa: ANN001,ANN202
+                    ph_r = torch.empty_like(x[:r]) if mode else None
+                    q_r, s_r = rms_quant(x[:r], weight, shift, scale, indices[:r], eps, orig, ph_r)
+                    return (q_r, s_r) + ((ph_r,) if mode else ())
+
+                def _stock_sub():  # noqa: ANN202
+                    h = orig(x[:r], weight, shift, scale, indices[:r], eps)
+                    return (*_stock_quant(qobj, h), h)
+
+                mode = _pick_mode(key, _fused_sub, _stock_sub)
+                if mode is not None:
                     ph = torch.empty_like(x)
+                    q, s = rms_quant(x, weight, shift, scale, indices, eps, orig, ph if mode else None)
 
                     def fill(t, _a=(x, weight, shift, scale, indices, eps)):  # noqa: ANN001,ANN202
                         t.copy_(orig(*_a))
-                    ctx.pending = Pending("qkv", ph, x.shape[1], q, s, qobj, layer, fill)
+                    ctx.pending = Pending("qkv", ph, x.shape[1], q, s, qobj, layer, (lambda t: None) if mode else fill)
                     _count("fused_qkv")
                     return ph
         return orig(x, weight, shift, scale, indices, eps)
@@ -674,18 +729,25 @@ def make_gate_rms_wrapper(orig):  # noqa: ANN001,ANN201
                 r = min(_SELFCHECK_ROWS, residual.shape[0])
                 key = ("fc1", residual.shape[1], gate.dtype, weight.dtype)
 
+                def _fused_sub(mode):  # noqa: ANN001,ANN202
+                    ph_r = torch.empty_like(residual[:r]) if mode else None
+                    out = gate_rms_quant(residual[:r], gate, branch[:r], weight, shift, scale, indices[:r], eps, orig,
+                                         ph_r)
+                    return out + ((ph_r,) if mode else ())
+
                 def _stock_sub():  # noqa: ANN202
                     res, mod = orig(residual[:r], gate, branch[:r], weight, shift, scale, indices[:r], eps)
-                    return (res, *_stock_quant(qobj, mod))
+                    return (res, *_stock_quant(qobj, mod), mod)
 
-                if _selfcheck(key, lambda: gate_rms_quant(residual[:r], gate, branch[:r], weight, shift, scale,
-                                                          indices[:r], eps, orig), _stock_sub):
-                    res, q, s = gate_rms_quant(residual, gate, branch, weight, shift, scale, indices, eps, orig)
+                mode = _pick_mode(key, _fused_sub, _stock_sub)
+                if mode is not None:
                     ph = torch.empty_like(residual)
+                    res, q, s = gate_rms_quant(residual, gate, branch, weight, shift, scale, indices, eps, orig,
+                                               ph if mode else None)
 
                     def fill(t, _a=(residual, gate, branch, weight, shift, scale, indices, eps)):  # noqa: ANN001,ANN202
                         t.copy_(orig(*_a)[1])
-                    ctx.pending = Pending("fc1", ph, residual.shape[1], q, s, qobj, layer, fill)
+                    ctx.pending = Pending("fc1", ph, residual.shape[1], q, s, qobj, layer, (lambda t: None) if mode else fill)
                     _count("fused_fc1")
                     return res, ph
         return orig(residual, gate, branch, weight, shift, scale, indices, eps)
@@ -896,6 +958,8 @@ def install(sites: tuple[str, ...] = SITES, tr=None, *, quant_cls=None, act_cls=
     block_cls.forward = make_block_forward(block_cls.forward, sites, _lora_types() if lora_types is None else lora_types)
     _state["sites"] = sites
     _state["verify"] = os.environ.get("H3_TP2_FP8_QUANT_FUSE_VERIFY", "0").strip() == "1"
+    mode = os.environ.get("H3_TP2_FP8_QUANT_FUSE_MODE", "auto").strip().lower()
+    _state["modes"] = {"0": (0,), "1": (1,)}.get(mode, (0, 1))
     return list(sites)
 
 
