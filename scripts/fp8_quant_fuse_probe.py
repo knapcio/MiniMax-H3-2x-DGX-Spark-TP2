@@ -81,7 +81,7 @@ def site_inputs(site: str, M: int, seed: int):
     return dict(h=h)
 
 
-def run_site(site: str, M: int, quant, reps: int) -> dict:
+def run_site(site: str, M: int, quant, reps: int, mode: int = 0) -> dict:
     from vllm_omni.diffusion.layers import indexed_modulation as im
     from vllm_omni.diffusion.layers.activation import SiluAndMul
 
@@ -92,12 +92,14 @@ def run_site(site: str, M: int, quant, reps: int) -> dict:
     if site == "qkv":
         x, w, sh, sc, idx = inp["x"], inp["w"], inp["shift"], inp["scale"], inp["idx"]
         producer = lambda: im.rms_norm_indexed_scale_shift(x, w, sh, sc, idx, eps)  # noqa: E731
-        fused = lambda: fq.rms_quant(x, w, sh, sc, idx, eps)  # noqa: E731
+        ph = torch.empty_like(x) if mode else None
+        fused = lambda: fq.rms_quant(x, w, sh, sc, idx, eps, None, ph)  # noqa: E731
         k = HIDDEN
     elif site == "fc1":
         x, w, sh, sc, gt, idx, br = (inp[n] for n in ("x", "w", "shift", "scale", "gate", "idx", "branch"))
         producer = lambda: im.indexed_gate_rms_norm_scale_shift(x, gt, br, w, sh, sc, idx, eps)  # noqa: E731
-        fused = lambda: fq.gate_rms_quant(x, gt, br, w, sh, sc, idx, eps)  # noqa: E731
+        ph = torch.empty_like(x) if mode else None
+        fused = lambda: fq.gate_rms_quant(x, gt, br, w, sh, sc, idx, eps, None, ph)  # noqa: E731
         k = HIDDEN
     elif site == "out":
         recv = inp["recv"]
@@ -122,7 +124,7 @@ def run_site(site: str, M: int, quant, reps: int) -> dict:
         extra_ok = bits_equal(out[0], ref[0])
         out, ref = out[1:], ref[1:]
     q_ok, s_ok = bits_equal(out[0], ref[0]), bits_equal(out[1], ref[1])
-    rec = dict(site=site, M=M, K=k, fp8_identical=q_ok, scale_identical=s_ok, byproduct_identical=extra_ok,
+    rec = dict(site=site, mode=mode, M=M, K=k, fp8_identical=q_ok, scale_identical=s_ok, byproduct_identical=extra_ok,
                fp8_mismatch=0 if q_ok else mismatch_count(out[0], ref[0]),
                scale_mismatch=0 if s_ok else mismatch_count(out[1], ref[1]))
     del ref, out
@@ -207,11 +209,14 @@ def main() -> None:
               quant_forward=getattr(qobj._forward_method, "__name__", str(qobj._forward_method))))
     for M in args.m:
         total = 0.0
+        best: dict[str, float] = {}
         for site in args.sites:
-            rec = run_site(site, M, quant, args.reps)
-            total += rec["saving_s_per_step"]
-            emit(dict(kind="site", **rec))
-        emit(dict(kind="total", M=M, saving_s_per_step=total))
+            for mode in ((0, 1) if site in ("qkv", "fc1") else (0,)):
+                rec = run_site(site, M, quant, args.reps, mode)
+                if rec["fp8_identical"] and rec["scale_identical"] and rec["byproduct_identical"]:
+                    best[site] = max(best.get(site, float("-inf")), rec["saving_s_per_step"])
+                emit(dict(kind="site", **rec))
+        emit(dict(kind="total", M=M, saving_s_per_step=sum(best.values()), per_site=best))
     if not args.no_level2:
         emit(dict(kind="level2", **level2_diagnosis(quant)))
 
