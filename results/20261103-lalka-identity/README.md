@@ -70,6 +70,30 @@ Per window (mean similarity), A vs B vs C vs C2 vs D:
   passer-by under the same seed). C stays the FL2VA-only fallback at 1.3x A's time; D remains the default.
 - The X clip (English, 1344x768) goes on Ref2VA (queue60).
 
+## 120 s on Ref2VA (queue66, 2026-11-04 10:55-13:52; reference 2048 px, seed 3301, 12 windows)
+
+The same scene for two minutes in one Ref2VA continuation request (12 windows of 277 frames, 22-frame overlap, one
+dialogue line per window, `lalka-ab/extra12.json`): 9807.9 s wall (817 s per window, 1.86x the 1024 px rate of arm D),
+peak 71.4 GB, no seam retry (seam-check ratios 0.86-1.0), no cut, light flat (luma 49-59, steps <= 0.8 at the seams).
+
+| face | first 10 % | last 10 % | mean over 120 s | min | windows 1-9 mean | windows 10-12 mean |
+|---|---|---|---|---|---|---|
+| man | 0.830 | 0.744 | 0.819 | 0.597 | 0.831 | 0.784 (3 samples with the face turned away) |
+| woman | 0.804 | 0.721 | 0.779 | 0.391 | 0.799 | 0.673 |
+
+Per window (mean), man / woman: 0.83/0.80, 0.87/0.79, 0.83/0.81, 0.85/0.82, 0.82/0.82, 0.85/0.78, 0.80/0.82,
+0.82/0.78, 0.80/0.77, 0.84/0.67, 0.70/0.75, 0.81/0.60.
+
+Reading: the identity holds for the first 100 s at the 60 s arm B level (both faces 0.77-0.87 per window), then
+windows 10-11 (104-112 s) stage a move: the man turns his back and walks a step away, the woman is in profile (the 0.39
+minimum is a profile, the 3 missing samples a back view), and at 114 s both are back in the reference composition
+(window 12: man 0.81, woman 0.60). The dip is blocking, not a slow drift: the man's number returns to the window-1
+level once he faces the camera again, the woman's final 0.60 is the one worsening to watch in a longer render. The
+seam at 107 s (motion 2.6 against 3.4 before it) is the walk itself. So a 2-minute character clip on Ref2VA is a
+single request with the faces held throughout, at 2.7 h per minute at 960x544 with the 2048 px reference (about
+1.5 h per minute expected with the 1024 px reference of arm D). Clip
+`~/Downloads/h3-prod-smoke/d120_lalka_960x544_ref2va_20261104.mp4`, numbers `lalka-ab/drift-ref2va120.txt`.
+
 Clips: `~/Downloads/h3-prod-smoke/d60_lalka_960x544_fl2va_jeden_request_20261103.mp4` (A),
 `~/Downloads/h3-prod-smoke/d60_lalka_960x544_ref2va_20261103.mp4` (B),
 `~/Downloads/h3-prod-smoke/d60_lalka_960x544_fl2va_endhidden_20261103.mp4` (C),

@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-04 14:05: 120 s doll scene on Ref2VA in one continuation request (queue66, 12 windows, 2048 px reference,
+  `results/20261103-lalka-identity/`): 9808 s, no cut, no seam retry, faces 0.82 / 0.78 mean over two minutes (held
+  at the 60 s level for 100 s, a staged turn-away in windows 10-11, back in composition by 114 s).
 - 2026-11-04 10:45: doll identity arm C2 (`results/20261103-lalka-identity/`): the hidden end anchor with a second seed
   renders 60 s without a cut (faces man 0.777 / woman 0.739 mean, as C), so the 11-03 insert close-up was the window-4
   seed, not the anchor. Ranking unchanged: Ref2VA 1024 px (D) default, C the FL2VA-only fallback.
