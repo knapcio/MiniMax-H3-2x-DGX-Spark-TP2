@@ -150,7 +150,7 @@ model's own scene changes, and the final detail drifts (blur with 277-frame wind
 30 s 960x576 recipe is the honest offer; longer or larger is possible (the mode allows 300 s, about 2.2 h per 60 s)
 but comes with the model's own cuts. Since 2026-11-03 the dialogue scenes (`results/20261103-lalka-identity/`,
 `results/20261103-xclip/`) render 60 s without a cut when every window prompt restates the composition (camera
-position, who stands where, faces three-quarter): five 60 s renders, one insert cut (the hidden-anchor arm C) and one
+position, who stands where, faces three-quarter): six 60 s renders, four clean, one insert cut (the hidden-anchor arm C) and one
 cut in the X clip's first version whose first window ignored the reference composition.
 
 ### A painting that comes alive (locked camera, the picture as the first frame): the request
