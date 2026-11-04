@@ -470,6 +470,25 @@ def _apply(role: str) -> None:
             logger.warning("h3_tp2: EXPERIMENT FP8 consumer fuse requested=%s, installed sites: %s", _cfuse.strip(),
                            ", ".join(_done) or "none")
 
+    # 9b4) H3_TP2_FP8_QUANT_FUSE=1 (EXPERIMENTAL, off by default; speed plan item 6): the per-token FP8 quant of the
+    #      DiT blocks' GEMM inputs moves into the kernels that produce them (qkv: rms_norm_indexed_scale_shift, out:
+    #      the Ulysses reverse unpack of H3_TP2_ULYSSES_EXACT=1, fc1: indexed_gate_rms_norm_scale_shift, fc2: SiluAndMul
+    #      on fc1's bf16 output at the cutlass level); the producer writes the fp8 row and its scale instead of the
+    #      bf16 row and the layer's QuantFP8 returns them.  Bit-for-bit self-check per site on the first call (stock
+    #      producer + the layer's own QuantFP8), a mismatch disables the site.  "qkv,out,fc1,fc2" (any subset)
+    #      selects sites; H3_TP2_FP8_QUANT_FUSE_VERIFY=1 compares every call (slow).  See h3_tp2/fp8_quant_fuse.py.
+    _qfuse = os.environ.get("H3_TP2_FP8_QUANT_FUSE", "0")
+    if _qfuse.strip() not in ("", "0"):
+        from . import fp8_quant_fuse as _fq
+
+        try:
+            _qdone = _fq.install(_fq.parse_sites(_qfuse))
+        except Exception:  # noqa: BLE001  (an opt-in experiment must not take the rank down)
+            logger.warning("h3_tp2: FP8 quant fuse install failed; stock quant", exc_info=True)
+            _qdone = []
+        logger.warning("h3_tp2: EXPERIMENT FP8 quant fuse requested=%s, installed sites: %s", _qfuse.strip(),
+                       ", ".join(_qdone) or "none")
+
     # 9c) H3_TP2_VAE_STACK_TILES=1: the checkpoint's batched tile path for the video VAE (``stack_tiling``), DECODE ONLY
     #     (the flag is raised around decode_latent / decode_with_chunks and lowered again, so the reference-image encode
     #     keeps the stock per-tile path and the diffusion stays bit-identical), with at most H3_TP2_VAE_TILE_BATCH tiles
