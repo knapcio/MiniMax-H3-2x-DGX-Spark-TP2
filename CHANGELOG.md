@@ -363,6 +363,10 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-04 07:50: doll identity arm D (`results/20261103-lalka-identity/`): Ref2VA with the 1024 px reference
+  (`H3_TP2_REF_SHORT_EDGE=1024`) holds the faces at the 2048 px arm's level (man 0.806 / woman 0.746 mean vs 0.856 /
+  0.790; FL2VA 0.659 / 0.601) in 3384 s, 6 % over plain FL2VA and 0.55x the 2048 px arm. No cuts, no seam retry. The
+  default recipe for character clips is now Ref2VA with a 1024 px reference.
 - 2026-11-04 06:30: X clip v2 (`results/20261103-xclip/`): composition stated in every window's prompt + three short
   lines per window: one continuous take, no cuts, pauses 1.5/1.7 s only (v1: seven of 1.7-2.5 s), WER 0.005, faces
   0.64/0.62 mean vs 0.46/0.43; 12 031 s. This is the clip for X.
