@@ -363,6 +363,10 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-04 02:25: Ulysses exact exchange on by default (`H3_TP2_ULYSSES_EXACT=1`; `0` = stock). Gate queue63: on a
+  defaults boot and on an exact boot the 960 probe, the 5 s 1344 calibration and a 16 s 1344 FL2VA continuation gave the
+  same latents digests and the same decoded frames (`4d6d69e4aad0`/`c6f54e83dac8`, `200e38721c9e` `4138eba5a964`/
+  `e46129c05cc6`); continuation window 1 85.1 vs 89.0 s/step. `results/20261103-ulysses-exact/` "Default gate".
 - 2026-11-04 00:15: the English shop scene for X (`results/20261103-xclip/`): 60 s 1344x768 on Ref2VA with the 2048 px
   reference, 13 614 s; speech WER 0.007 (faster-whisper small), no language slip; faces hold (no drift within the clip)
   but window 1 ignored the reference composition and the model cut to it at 17 s; pauses 1.7-2.5 s. The first mixes left

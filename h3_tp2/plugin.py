@@ -272,14 +272,17 @@ def _apply(role: str) -> None:
 
         ulysses_nocopy.install(ov_groups)
         logger.warning("h3_tp2: EXPERIMENT Ulysses nocopy exchange (groups=%d; not yet measured on the GPU)", ov_groups)
-    # 6e) opt-in: H3_TP2_ULYSSES_EXACT=1|fwd|verify, the copy-free exchange that keeps stock's cuDNN/NCCL layouts
-    #     (h3_tp2/ulysses_exact.py, results/20261103-ulysses-exact).  Replaces the overlap when both are set.
-    elif os.environ.get("H3_TP2_ULYSSES_EXACT", "0").strip().lower() not in ("", "0"):
+    # 6e) default since 2026-11-04: H3_TP2_ULYSSES_EXACT=1|fwd|verify (0 = stock exchange), the copy-free exchange that
+    #     keeps stock's cuDNN/NCCL layouts (h3_tp2/ulysses_exact.py, results/20261103-ulysses-exact: bit-identical
+    #     digests and frames on the 1344 calibration and a 16 s continuation on both boots, -3.6..-5 % per step).
+    #     Replaces the overlap when both are set.
+    elif os.environ.get("H3_TP2_ULYSSES_EXACT", "1").strip().lower() not in ("", "0"):
         from h3_tp2 import ulysses_exact
 
-        ulysses_exact.install(os.environ["H3_TP2_ULYSSES_EXACT"])
-        logger.warning("h3_tp2: EXPERIMENT Ulysses exact exchange mode %s%s", os.environ["H3_TP2_ULYSSES_EXACT"].strip(),
-                       f" (H3_TP2_A2A_OVERLAP={ov_groups} not installed)" if ov_groups > 1 else "")
+        mode = os.environ.get("H3_TP2_ULYSSES_EXACT", "1").strip()
+        ulysses_exact.install(mode)
+        logger.info("h3_tp2: Ulysses exact exchange mode %s%s", mode,
+                    f" (H3_TP2_A2A_OVERLAP={ov_groups} not installed)" if ov_groups > 1 else "")
     elif ov_groups > 1:
         from h3_tp2 import ulysses_overlap
 

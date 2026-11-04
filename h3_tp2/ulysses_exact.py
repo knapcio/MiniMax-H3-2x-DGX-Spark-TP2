@@ -1,5 +1,6 @@
 """Ulysses exchange without the removable permute copies, every cuDNN and NCCL operand in stock's layout
-(``H3_TP2_ULYSSES_EXACT``, off by default; speed plan 2026-11-02 item 5, second attempt after ``ulysses_nocopy``).
+(``H3_TP2_ULYSSES_EXACT``, default ``1`` since 2026-11-04, ``0`` = stock; speed plan 2026-11-02 item 5, second attempt
+after ``ulysses_nocopy``).
 
 Stock strict Ulysses at batch 1 (vLLM-Omni v0.30.0 ``a8576ccb7``, ``SeqAllToAll4D`` -> ``comm.all_to_all_4D``) per
 attention layer and rank, with M local rows, P = 2 ranks, H = 56 heads, hl = H / P, d = 128:

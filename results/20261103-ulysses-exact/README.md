@@ -212,10 +212,29 @@ a second A/B pair). If B differs: C equal to A localises the difference to the r
 log names the tensor (q/k/v = the exchange under real NCCL, attn = cuDNN, result = the reverse) while its digest must
 be A's (it returns stock results).
 
+## Default gate: PASS (queue63, 2026-11-04 00:00-02:19, both Sparks, gated compacted boots)
+
+Arm A = serving defaults, arm B = `H3_TP2_ULYSSES_EXACT=1`; each arm on its own gated boot: the 960x544 boot probe, the
+5 s 1344x768 calibration (seed 1101) and a 16 s 1344x768 FL2VA continuation (two windows, the painting prompt, seed 1101,
+`EXTRA_JSON` continuation).
+
+| check | A (defaults) | B (exact) |
+|---|---|---|
+| boot probe | PASS, warm 8.84 s/step, latents `bf6e85687a6a` | PASS, warm 8.22 s/step, latents `bf6e85687a6a` |
+| 1344 calibration digest / framemd5 | `4d6d69e4aad0` / `c6f54e83dac8` | `4d6d69e4aad0` / `c6f54e83dac8` |
+| 1344 calibration s/step | 26.59 (slow boot: probe 9.18 first) | 22.05 |
+| 16 s continuation digests (window 1, 2) / framemd5 | `200e38721c9e` `4138eba5a964` / `e46129c05cc6` | `200e38721c9e` `4138eba5a964` / `e46129c05cc6` |
+| continuation window 1 / 2 s/step, diffuse s | 89.0 / 27.1, 1795.7 + 542.1 | 85.1 / 29.4, 1705.2 + 589.0 |
+
+Every digest and every decoded frame is identical between the arms, on the probe, the calibration and both continuation
+windows, so the exchange is exact in serving on a continuation request too (the hand-over path, the id-lock and the seam
+retries all read the same latents). Speed on these two boots: window 1 -4.4 %, calibration -17 % (arm A landed on a slow
+boot, so only the queue59 pair, 20.16/20.45 vs 21.21 s/step on compacted boots, is the speed number). Default since
+2026-11-04 02:25 (`h3_tp2/plugin.py`, `H3_TP2_ULYSSES_EXACT=0` restores the stock exchange).
+
 ## What is left
 
-- DONE 15:08: the serving proof passed (table above). Open: the default gate (queue63: 960x544 probe digest + a 16 s
-  1344 continuation on both boots, same-boot speed pair), then default-on.
+- DONE 15:08: the serving proof passed; DONE 11-04 02:19: the default gate passed (tables above); default since 02:25.
 - Copy 5 (reverse unpack) stays; removing it means the out-projection's activation quant reading the receive buffer
   [P, M, hl*d] directly (with the fp8 modules; per-tensor/per-token amax is order-independent, so it can be exact).
 - If B fails: the nocopy root cause is then in the live path too, and D's log says where.
