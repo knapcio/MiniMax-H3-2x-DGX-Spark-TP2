@@ -40,6 +40,62 @@ def _sync() -> None:
         torch.cuda.synchronize()
 
 
+_REPLAY = {"files": None, "next": 0}
+
+
+def _replay_files() -> list[str] | None:
+    """``H3_TP2_REPLAY_LATENTS=<path-or-glob>[,<path-or-glob>...]``: saved diffusion outputs (``H3_TP2_SAVE_LATENTS`` files,
+    one per window and seam attempt, in order) that stand in for the denoising of the next request.  Recovery tool: the
+    120 s 1344x768 X clip of 2026-11-04 diffused for 7.5 h and then died in the API server's 600 s async-output wait
+    during the VAE decode (642 s); replaying its 14 window files through the same hand-over, stitch, decode and mux
+    gave the clip in 15 minutes.  Every rank replays its own copies (the save hook writes on both hosts), the geometry
+    of every file is checked against the diffuse call and a mismatch (a probe, another request) fails that request
+    instead of consuming a file.  Set it for one boot only; the queue library strips it at the next restart."""
+    spec = os.environ.get("H3_TP2_REPLAY_LATENTS", "").strip()
+    if not spec:
+        return None
+    if _REPLAY["files"] is None:
+        import glob
+
+        files: list[str] = []
+        for pat in spec.split(","):
+            pat = os.path.expanduser(pat.strip())
+            if not pat:
+                continue
+            hits = sorted(glob.glob(pat))
+            files.extend(hits if hits else [pat])
+        _REPLAY["files"] = files
+        logger.warning("h3_tp2 REPLAY: %d saved latents files stand in for the diffusion, in order: %s", len(files),
+                       ", ".join(os.path.basename(f) for f in files))
+    return _REPLAY["files"]
+
+
+def _replay_take(kw: dict):  # noqa: ANN001
+    """Return the next saved (video, audio) latents for this diffuse call, or None when replay is off."""
+    files = _replay_files()
+    if not files:
+        return None
+    i = _REPLAY["next"]
+    if i >= len(files):
+        raise RuntimeError(f"h3_tp2 REPLAY: diffuse call {i + 1} but only {len(files)} saved latents files were given")
+    obj = torch.load(files[i], map_location="cpu")
+    if not (isinstance(obj, (tuple, list)) and len(obj) == 2 and all(torch.is_tensor(t) for t in obj)):
+        raise RuntimeError(f"h3_tp2 REPLAY: {files[i]} is not a saved (video, audio) latents pair")
+    video, audio = obj
+    want_v = (kw.get("latent_t"), kw.get("latent_h"), kw.get("latent_w"))
+    if all(x is not None for x in want_v) and tuple(video.shape[-3:]) != tuple(int(x) for x in want_v):
+        raise RuntimeError(f"h3_tp2 REPLAY: {os.path.basename(files[i])} video latents {tuple(video.shape)} do not match the "
+                           f"request's (t, h, w) {want_v}; this request is not the one that saved them")
+    if kw.get("audio_t") is not None and int(audio.shape[-1]) != int(kw["audio_t"]):
+        raise RuntimeError(f"h3_tp2 REPLAY: {os.path.basename(files[i])} audio latents {tuple(audio.shape)} do not match the "
+                           f"request's audio_t {kw['audio_t']}")
+    _REPLAY["next"] = i + 1
+    dev = torch.device("cuda", torch.cuda.current_device()) if torch.cuda.is_available() else torch.device("cpu")
+    logger.warning("h3_tp2 REPLAY %d/%d: %s -> video %s audio %s (seed %s not sampled)", i + 1, len(files),
+                   os.path.basename(files[i]), tuple(video.shape), tuple(audio.shape), kw.get("seed"))
+    return video.to(dev), audio.to(dev)
+
+
 def to_uint8_frames(video: torch.Tensor) -> torch.Tensor:
     """(B, C, F, H, W) float -> (B, F, H, W, C) uint8, same arithmetic as the stock numpy path."""
     out = []
@@ -217,15 +273,17 @@ def install(pipeline_module, api_utils_module, convert_u8: bool = True) -> None:
         def diffuse(self, *a, **kw):  # noqa: ANN001
             t0 = time.monotonic()
             out = None
-            _step0["armed"] = True
+            replayed = _replay_take(kw)  # H3_TP2_REPLAY_LATENTS: saved latents instead of the denoising (recovery)
+            _step0["armed"] = replayed is None
             try:
-                out = orig_diffuse(self, *a, **kw)
+                out = replayed if replayed is not None else orig_diffuse(self, *a, **kw)
                 return out
             finally:
                 _sync()
-                logger.info("h3_tp2 phase diffuse %.1f s", time.monotonic() - t0)
+                logger.info("h3_tp2 phase diffuse %.1f s%s", time.monotonic() - t0, " (replayed)" if replayed is not None else "")
                 _log_digest("latents", out)
-                _save_latents(out)
+                if replayed is None:
+                    _save_latents(out)
 
         cls.decode = decode
         cls.encode_prompt = encode_prompt

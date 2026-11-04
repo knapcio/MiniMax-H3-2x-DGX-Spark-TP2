@@ -28,6 +28,8 @@ export NCCL_IB_ADDR_FAMILY=AF_INET
 export HF_HUB_OFFLINE=1 VLLM_OMNI_VIDEO_SYNC_TIMEOUT=${VLLM_OMNI_VIDEO_SYNC_TIMEOUT:-14400}
 export VLLM_OMNI_DLO_DP_WAVE_TIMEOUT=${VLLM_OMNI_DLO_DP_WAVE_TIMEOUT:-14400}
 export H3_TP2_REQUEST_TIMEOUT_S=${H3_TP2_REQUEST_TIMEOUT_S:-14400}
+# the API server's wait for one engine step's output (decode of a 120 s 1344x768 clip = 642 s; upstream default 600 s killed it 2026-11-04)
+export VLLM_OMNI_ASYNC_OUTPUT_TIMEOUT=${VLLM_OMNI_ASYNC_OUTPUT_TIMEOUT:-7200}
 export H3_TP2_EMPTY_CACHE_BEFORE_DECODE=${H3_TP2_EMPTY_CACHE_BEFORE_DECODE:-1}   # return cached pages before the VAE peak (bit-identical)
 export VAE_PP=${VAE_PP:-2}   # VAE decode tiles split across both GPUs (bit-identical, measured)
 export TRITON_CACHE_DIR=$H3_ROOT/runtime/cache/triton FLASHINFER_WORKSPACE_BASE=$H3_ROOT/runtime/cache/flashinfer
