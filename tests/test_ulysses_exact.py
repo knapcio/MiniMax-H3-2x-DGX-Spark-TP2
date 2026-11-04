@@ -486,7 +486,7 @@ class WiringTest(unittest.TestCase):
 
     def test_bad_mode_rejected(self):
         with self.assertRaises(ValueError):
-            ux.make_forward_impl(lambda *a: None, "2", INFO)
+            ux.make_forward_impl(lambda *a: None, "3", INFO)
 
 
 if __name__ == "__main__":

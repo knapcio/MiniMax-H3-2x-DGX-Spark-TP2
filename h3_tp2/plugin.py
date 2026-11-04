@@ -275,7 +275,9 @@ def _apply(role: str) -> None:
     # 6e) default since 2026-11-04: H3_TP2_ULYSSES_EXACT=1|fwd|verify (0 = stock exchange), the copy-free exchange that
     #     keeps stock's cuDNN/NCCL layouts (h3_tp2/ulysses_exact.py, results/20261103-ulysses-exact: bit-identical
     #     digests and frames on the 1344 calibration and a 16 s continuation on both boots, -3.6..-5 % per step).
-    #     Replaces the overlap when both are set.
+    #     Replaces the overlap when both are set.  =2 (opt-in, 2026-11-04): also without copy 5, the reverse unpack;
+    #     the out-projection's per-token FP8 quant reads the receive buffer (h3_tp2/ulysses_outq.py, bit-for-bit
+    #     self-check on the first call; results/20261104-ulysses-copy5).
     elif os.environ.get("H3_TP2_ULYSSES_EXACT", "1").strip().lower() not in ("", "0"):
         from h3_tp2 import ulysses_exact
 

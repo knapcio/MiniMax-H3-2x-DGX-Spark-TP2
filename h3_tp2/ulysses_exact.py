@@ -33,7 +33,10 @@ identical; ``tests/test_ulysses_exact_gpu.py`` checks the producers, the exchang
 serving digest is the proof (results/20261103-ulysses-exact).  Removed per layer and rank: 3 (upstream producer) or 4
 (consumer-fused producer) x 14336*M bytes written and as many read (4 x 614 MB at M = 42848).
 
-Modes (``H3_TP2_ULYSSES_EXACT``): ``1`` = all of the above; ``fwd`` = forward side only, the reverse runs stock's
+Modes (``H3_TP2_ULYSSES_EXACT``): ``1`` = all of the above; ``2`` = ``1`` without copy 5 as well (opt-in,
+2026-11-04): the reverse exchange hands the attention a stride-0 placeholder and the out-projection's per-token FP8
+quant reads the receive buffer itself (``h3_tp2/ulysses_outq.py``, bit-for-bit self-check on the first call, copy 5
+back for the process on a mismatch); ``fwd`` = forward side only, the reverse runs stock's
 ``all_to_all_4D`` (bisects a digest mismatch); ``verify`` = diagnostic: every call also runs the stock exchange,
 attention and reverse on the same q/k/v (producers stay stock), compares the received q, k, v, the attention output
 and the result bitwise (logged), and returns the STOCK result.  ``H3_TP2_A2A_OVERLAP`` is not combined with this module (the plugin installs only this one).
@@ -60,7 +63,7 @@ import torch.distributed as dist
 
 logger = logging.getLogger("vllm_omni.h3_tp2.exact")
 
-MODES = ("1", "fwd", "verify")
+MODES = ("1", "2", "fwd", "verify")
 _SELFCHECK_ROWS = 64  # fp8_consumers' self-check runs the producer on this many rows: never redirect those calls
 
 _tls = threading.local()  # armed: (MiniMaxH3Attention, rows) of the running forward; pending: _Pending
@@ -129,8 +132,10 @@ def exchange_fwd(send: torch.Tensor, a2a, pg=None) -> torch.Tensor:  # noqa: ANN
     return recv.view(1, p * m, hl, d)
 
 
-def exchange_back(o: torch.Tensor, heads: int, ws: int, a2a, pg=None) -> torch.Tensor:  # noqa: ANN001
-    """Attention output o [1, P*M, hl, d] -> [1, M, H, d] contiguous: one all-to-all of o itself, one unpack copy."""
+def exchange_back(o: torch.Tensor, heads: int, ws: int, a2a, pg=None, defer: bool = False) -> torch.Tensor:  # noqa: ANN001
+    """Attention output o [1, P*M, hl, d] -> [1, M, H, d] contiguous: one all-to-all of o itself, one unpack copy.
+    ``defer`` (mode 2): if the running attention's out-projection was prepared for it, return ulysses_outq's
+    placeholder instead of the copy (its quant then reads the receive buffer)."""
     o3 = o[0]
     if not o3.is_contiguous():  # cuDNN returns dense BSHD for contiguous BSHD q; anything else costs stock's copy
         _count("out_copy")
@@ -139,6 +144,12 @@ def exchange_back(o: torch.Tensor, heads: int, ws: int, a2a, pg=None) -> torch.T
     m = s // ws
     recv = torch.empty((ws, m, hl, d), dtype=o3.dtype, device=o3.device)
     a2a(recv, o3, group=pg)  # chunk p of o3 = the rows of rank p's sequence shard
+    if defer:
+        from h3_tp2 import ulysses_outq
+
+        ph = ulysses_outq.defer(recv, heads)
+        if ph is not None:
+            return ph
     result = torch.empty((1, m, heads, d), dtype=o3.dtype, device=o3.device)
     result[0].view(m, ws, hl, d).copy_(recv.transpose(0, 1))
     return result
@@ -148,7 +159,8 @@ def exact_forward(query, key, value, run_attn, *, ws, pg=None, a2a=None, sends=N
                   stock_back=None):
     """Strict Ulysses at batch 1.  ``sends``: a list [send_q, send_k] or [send_q, send_k, send_v] filled by a
     redirected producer (popped here so the buffers die after their exchange; q/k/v arguments are then placeholders
-    for what the list holds), or None to pack from query/key/value.  ``back``: "exact" or "stock"."""
+    for what the list holds), or None to pack from query/key/value.  ``back``: "exact", "defer" (exact, copy 5 left
+    to the out-projection's quant when prepared) or "stock"."""
     a2a = a2a or _a2a
     _, m, heads, d = value.shape
     shape = send_shape(m, heads, d, ws)
@@ -174,7 +186,7 @@ def exact_forward(query, key, value, run_attn, *, ws, pg=None, a2a=None, sends=N
     del q, k, v
     if back == "stock":
         return (stock_back or (lambda t: _stock_a2a_4d(t, 1, 2, pg)))(o)
-    return exchange_back(o, heads, ws, a2a, pg)
+    return exchange_back(o, heads, ws, a2a, pg, defer=back == "defer")
 
 
 def _same(a: torch.Tensor, b: torch.Tensor) -> bool:
@@ -330,17 +342,28 @@ def eligible_shape(query, key, value, ws: int) -> bool:  # noqa: ANN001
     return key.dtype == query.dtype == value.dtype and key.device == query.device == value.device
 
 
-def make_armed_forward(orig_fwd):  # noqa: ANN001,ANN201
-    """Wrap ``MiniMaxH3Attention.forward(self, x, ...)`` so the producers know which attention their q/k feed."""
+def make_armed_forward(orig_fwd, outq: bool = False):  # noqa: ANN001,ANN201
+    """Wrap ``MiniMaxH3Attention.forward(self, x, ...)`` so the producers know which attention their q/k feed (and,
+    with ``outq``, so the reverse exchange may leave copy 5 to this attention's out-projection quant)."""
 
     def forward(self, x, *a, **kw):  # noqa: ANN001,ANN202
         prev = getattr(_tls, "armed", None)
-        _tls.armed = (self, int(x.shape[0]) if hasattr(x, "shape") and x.ndim >= 1 else -1)
+        rows = int(x.shape[0]) if hasattr(x, "shape") and x.ndim >= 1 else -1
+        _tls.armed = (self, rows)
+        if outq:
+            from h3_tp2 import ulysses_outq
+
+            oprev = ulysses_outq.arm(self, rows)
+        done = False
         try:
-            return orig_fwd(self, x, *a, **kw)
+            out = orig_fwd(self, x, *a, **kw)
+            done = True
+            return out
         finally:
             _tls.armed = prev
             _tls.pending = None  # never leak send buffers past the forward that made them
+            if outq:
+                ulysses_outq.disarm(oprev, check=done)  # raises if a deferred receive was never quantised
 
     forward._h3_tp2_exact_armed = True
     return forward
@@ -458,7 +481,7 @@ def make_forward_impl(orig, mode: str, strategy_info, *, a2a=None, stock_fwd=Non
         else:
             _count("pack")
         return exact_forward(query, key, value, run, ws=ws, pg=pg, a2a=a2a, sends=sends,
-                             back="stock" if mode == "fwd" else "exact", stock_back=stock_back)
+                             back={"fwd": "stock", "2": "defer"}.get(mode, "exact"), stock_back=stock_back)
 
     return _forward_impl
 
@@ -468,7 +491,7 @@ def make_forward_impl(orig, mode: str, strategy_info, *, a2a=None, stock_fwd=Non
 # ---------------------------------------------------------------------------------------------------------------
 
 
-def _hook_producers(strategy_info) -> None:  # noqa: ANN001
+def _hook_producers(strategy_info, mode: str = "1") -> None:  # noqa: ANN001
     """Attach the arming wrapper and the producer hook (called on the first wrapped attention call)."""
     from vllm_omni.diffusion.models.minimax_h3 import minimax_h3_transformer as tr
 
@@ -476,7 +499,14 @@ def _hook_producers(strategy_info) -> None:  # noqa: ANN001
 
     att_cls = tr.MiniMaxH3Attention
     if not getattr(att_cls.forward, "_h3_tp2_exact_armed", False):
-        att_cls.forward = make_armed_forward(att_cls.forward)
+        outq = mode == "2"
+        if outq:
+            from h3_tp2 import ulysses_outq
+
+            reason = ulysses_outq.check_sources(att_cls.forward)   # the forward as upstream wrote it, before wrapping
+            logger.warning("h3_tp2 ulysses exact: copy 5 %s", "left to the out-projection quant (self-check on the "
+                           "first call)" if reason is None else f"kept ({reason})")
+        att_cls.forward = make_armed_forward(att_cls.forward, outq=outq)
     if getattr(tr.fused_qk_norm_rope, "_h3_tp2_consumer_fuse", False):
         from h3_tp2 import fp8_consumers as fc
 
@@ -504,7 +534,7 @@ def install(mode: str = "1") -> None:
         return
     info = nc._vllm_strategy_info
     # verify compares the exchanges on real q/k/v: the producers stay stock there
-    hook = None if mode == "verify" else (lambda: _hook_producers(info))
+    hook = None if mode == "verify" else (lambda: _hook_producers(info, mode))
     cls._forward_impl = make_forward_impl(cls._forward_impl, mode, info, on_first=hook)
     cls._h3_tp2_exact = mode
     logger.info("h3_tp2: Ulysses exact exchange installed (mode %s)", mode)
