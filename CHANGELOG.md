@@ -363,6 +363,11 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-04 09:10: cutlass level serving proof PASS (queue67, `results/20261103-cutlass-sm120/`): on one
+  `H3_TP2_FP8_GEMM=cutlass` boot the 960 probe and three consecutive 5 s 1344x768 calibrations are bit-identical to the
+  defaults boot (digests bf6e85687a6a / 4d6d69e4aad0, latents max abs diff 0), 20.6-21.4 vs 22.1 s/it. The second
+  request no longer diverges, so the proxy fence closed the race in serving. Still opt-in; default gate = queue69
+  (two 16 s 1344 FL2VA continuations against the queue63 digests and framemd5).
 - 2026-11-04 07:50: doll identity arm D (`results/20261103-lalka-identity/`): Ref2VA with the 1024 px reference
   (`H3_TP2_REF_SHORT_EDGE=1024`) holds the faces at the 2048 px arm's level (man 0.806 / woman 0.746 mean vs 0.856 /
   0.790; FL2VA 0.659 / 0.601) in 3384 s, 6 % over plain FL2VA and 0.55x the 2048 px arm. No cuts, no seam retry. The

@@ -131,7 +131,7 @@ Plan (about one day plus the GPU proof):
 5. Proof: same-boot latents digest A/B, 5 s 1344x768 T2VA (expect `4d6d69e4` unchanged) and the 960 warm probe
    (`bf6e8568`), then the s/step gain.
 
-## Serving proof (`H3_TP2_FP8_GEMM=cutlass`, opt-in; wiring plan steps 1-5 done; NOT shippable yet)
+## Serving proof (`H3_TP2_FP8_GEMM=cutlass`, opt-in; wiring plan steps 1-5 done; race fixed and proven 2026-11-04, default gate queued)
 
 ### What was built
 
@@ -302,3 +302,23 @@ Reading:
   (`scripts/fp8_cutlass_stress.py`, M=10240 qkv/fc1 with a busy stream): 81 wrong of 13216 calls before, 0 of 12176
   after; positive control without the barrier 648/648 wrong, barrier removed + fence 0/552. The three-calibration
   serving proof is queued (queue67).
+
+### Serving proof after the fix (queue67, 2026-11-04 07:43-08:57; `queue67-cutlass-proof.sh` / `queue67.log` on Spark_06): PASS
+
+One defaults boot and one cutlass boot (both with the Ulysses exact exchange, default since 02:25), the 5 s 1344x768
+T2VA calibration once on the defaults boot and three times in a row on the cutlass boot, latents saved
+(`H3_TP2_SAVE_LATENTS`) and compared with `scripts/latents_diff.py`.
+
+| boot | 960 probe (first / warm s/step, digest) | calibration | s/it | latents digest |
+|---|---|---|---|---|
+| A defaults | 9.16 / 8.03, bf6e85687a6a | q67-A-default | 22.07 | 4d6d69e4aad0 |
+| B + `H3_TP2_FP8_GEMM=cutlass` | 9.02 / 7.84, bf6e85687a6a | q67-B-cutlass-1 | 20.62 | 4d6d69e4aad0 (bit-equal to A: max abs diff 0 on both latent tensors) |
+| | | q67-B-cutlass-2 | 21.42 | 4d6d69e4aad0 |
+| | | q67-B-cutlass-3 | 20.62 | 4d6d69e4aad0 |
+| E defaults restored | 8.40 / 9.16, bf6e85687a6a | | | |
+
+The second and third requests of the cutlass boot no longer diverge (queue57 diverged on the second, queue62 only under
+the per-call sync): the proxy fence closed the race in serving, not only in the stress reproducer. Speed on this boot
+-3..-6.6 % per step at 1344 (cross-boot, two samples at 20.62), in line with the -2.8 % of queue57. The level is
+shippable; the default gate is queue69 (cutlass boot -> two 16 s 1344x768 FL2VA continuations, pass = digests
+200e38721c9e 4138eba5a964 and framemd5 e46129c05cc6 as on both queue63 boots), after the 120 s doll render.
