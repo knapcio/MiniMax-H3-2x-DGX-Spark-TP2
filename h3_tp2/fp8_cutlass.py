@@ -1,4 +1,4 @@
-"""CuTe-DSL sm120 FP8 GEMM with the scale epilogue in registers for qkv, out and fc1 (``H3_TP2_FP8_GEMM=cutlass``, opt-in).
+"""CuTe-DSL sm120 FP8 GEMM with the scale epilogue in registers for qkv, out and fc1 (``H3_TP2_FP8_GEMM=cutlass``, the default since 2026-11-04; ``tensor32`` = two-pass only).
 
 The kernel (``h3_tp2/fp8_cutlass_kernel.py``, derived from CUTLASS's CuTe-DSL Blackwell-GeForce dense GEMM example)
 computes y = bf16_rn(sa[m] * (sb[n] * acc)) with the fp32 accumulator in registers: the same operations, in the same

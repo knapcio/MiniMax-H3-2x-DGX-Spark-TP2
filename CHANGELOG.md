@@ -363,6 +363,10 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-04 15:55: `H3_TP2_FP8_GEMM=cutlass` is the default (`tensor32` = two-pass only). Gate queue69: two 16 s
+  1344x768 FL2VA continuations on one cutlass boot bit-identical to both queue63 boots (digests 200e38721c9e
+  4138eba5a964, framemd5 e46129c05cc6), window 1 82-87 vs 85-89 s/step; with queue67 five bit-identical requests
+  in a row. Any DSL import/compile/check failure falls back to two-pass with a warning.
 - 2026-11-04 14:05: 120 s doll scene on Ref2VA in one continuation request (queue66, 12 windows, 2048 px reference,
   `results/20261103-lalka-identity/`): 9808 s, no cut, no seam retry, faces 0.82 / 0.78 mean over two minutes (held
   at the 60 s level for 100 s, a staged turn-away in windows 10-11, back in composition by 114 s).

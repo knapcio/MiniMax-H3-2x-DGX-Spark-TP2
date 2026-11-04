@@ -416,12 +416,13 @@ def _apply(role: str) -> None:
     #     H3_TP2_FP8_GEMM=fused (opt-in, speed-plan item 4): one Triton FP8 GEMM with the same epilogue in registers, no
     #     fp32 product (and with SwiGLU level 1, fc1 + SwiGLU in one kernel); falls back to tensor32 if its install
     #     check fails.  Bit-identical to tensor32 only where the accumulators are: scripts/fp8_epilogue_probe.py.
-    #     H3_TP2_FP8_GEMM=cutlass (opt-in, item 4 reopened 2026-11-03): two-pass as tensor32, plus a CuTe-DSL sm120 FP8
+    #     H3_TP2_FP8_GEMM=cutlass (DEFAULT since 2026-11-04, item 4 reopened 2026-11-03): two-pass as tensor32, plus a CuTe-DSL sm120 FP8
     #     GEMM with the scale epilogue in registers for the DiT blocks' qkv / out / fc1 (bf16 out, stock consumers and
     #     silu_and_mul; fc2 keeps the consumer-fused cuBLASLt path).  Compiled and checked bit for bit against two-pass
     #     at install; any failure falls back to tensor32 with all its defaults.  See h3_tp2/fp8_cutlass.py and
-    #     results/20261103-cutlass-sm120/.
-    _gemm = os.environ.get("H3_TP2_FP8_GEMM", "tensor32").strip().lower()
+    #     results/20261103-cutlass-sm120/ (stage-release race fixed 11-03; serving proof queue67 and the 16 s continuation
+    #     gate queue69 bit-identical to two-pass; -3..-6.6 % per step at 1344).  H3_TP2_FP8_GEMM=tensor32 = two-pass only.
+    _gemm = os.environ.get("H3_TP2_FP8_GEMM", "cutlass").strip().lower()  # cutlass DEFAULT since 2026-11-04 (gate queue69)
     if _gemm in ("tensor32", "fused", "cutlass"):
         from . import fp8_gemm as _fp8
 

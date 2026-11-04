@@ -131,7 +131,7 @@ Plan (about one day plus the GPU proof):
 5. Proof: same-boot latents digest A/B, 5 s 1344x768 T2VA (expect `4d6d69e4` unchanged) and the 960 warm probe
    (`bf6e8568`), then the s/step gain.
 
-## Serving proof (`H3_TP2_FP8_GEMM=cutlass`, opt-in; wiring plan steps 1-5 done; race fixed and proven 2026-11-04, default gate queued)
+## Serving proof (`H3_TP2_FP8_GEMM=cutlass`; wiring plan steps 1-5 done; race fixed and proven 2026-11-04, DEFAULT since 2026-11-04 15:55)
 
 ### What was built
 
@@ -322,3 +322,20 @@ the per-call sync): the proxy fence closed the race in serving, not only in the 
 -3..-6.6 % per step at 1344 (cross-boot, two samples at 20.62), in line with the -2.8 % of queue57. The level is
 shippable; the default gate is queue69 (cutlass boot -> two 16 s 1344x768 FL2VA continuations, pass = digests
 200e38721c9e 4138eba5a964 and framemd5 e46129c05cc6 as on both queue63 boots), after the 120 s doll render.
+
+### Default gate (queue69, 2026-11-04 13:53-15:40; `queue69-cutlass-gate.sh` / `queue69.log`): PASS, default-on
+
+One cutlass boot on FL2VA (probe 8.89 / 7.99 s/step, bf6e85687a6a), then the 16 s 1344x768 FL2VA continuation of the
+Ulysses gate (painting prompt, seed 1101) twice in a row; pass = the digests and framemd5 of both queue63 boots.
+
+| request | window 1 s/it (two ranks) | window 2 | latents digests | framemd5 |
+|---|---|---|---|---|
+| queue63 A defaults / B exact (reference) | 89.0 / 85.1 | 27.1 / 29.4 | 200e38721c9e 4138eba5a964 | e46129c05cc6 |
+| q69-cont16-1 (cutlass) | 82.2 / 83.0 | 27.1 / 26.8 | 200e38721c9e 4138eba5a964 | e46129c05cc6 |
+| q69-cont16-2 (cutlass) | 87.0 / 88.1 | 27.9 / 27.9 | 200e38721c9e 4138eba5a964 | e46129c05cc6 |
+
+Both continuations bit-identical in latents and frames; defaults restored 15:40 (health 200). With queue67 (three
+1344 calibrations) that is five consecutive bit-identical requests on cutlass boots, so `H3_TP2_FP8_GEMM=cutlass` is
+the plugin default from 2026-11-04 15:55 (`tensor32` = the two-pass path alone; any DSL import, compile or install-check
+failure falls back to it with a warning). First serving boot with the default: the FL2VA restore after the 120 s
+X-clip render (queue70). Next: fuse the per-token quant into the kernel's epilogue (speed-plan item 6).

@@ -16,7 +16,7 @@ construction (tests/test_fp8_fused_epilogue_cpu.py, and on order-independent int
 accumulator is bit-identical to cuBLASLt's only if both reduce K in the same order with the same MMA instruction,
 which scripts/fp8_epilogue_probe.py measures.  Tile config: ``H3_TP2_FP8_FUSED_CFG=BM,BN,BK,warps,stages``.
 
-``H3_TP2_FP8_GEMM=cutlass`` (opt-in) keeps this two-pass path for every call and adds a router ahead of the stash hooks:
+``H3_TP2_FP8_GEMM=cutlass`` (the default since 2026-11-04; ``tensor32`` = two-pass only) keeps this two-pass path for every call and adds a router ahead of the stash hooks:
 the qkv, out and fc1 GEMMs of the running DiT block go to a CuTe-DSL sm120 FP8 GEMM with the same epilogue in
 registers (``h3_tp2/fp8_cutlass.py``; bit-identical to two-pass where its accumulator equals cuBLASLt's, checked at
 install), falling back to two-pass if its import, compile or install check fails.
