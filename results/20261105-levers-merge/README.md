@@ -100,7 +100,8 @@ alone saves, plus the receive-buffer quant's small edge.
 ## First serving boot on the flipped defaults: PASS (queue77, 2026-11-05 08:45-09:06, main eda87aa)
 
 A gated FL2VA boot with a clean env (no lever line; the stale `H3_TP2_FP8_QUANT_FUSE=1` line the queue75 restore had left
-was removed by hand at 07:24): probe `bf6e85687a6a` (8.17 first / 7.54 warm s/step), the 5 s 1344x768 calibration
+was removed by hand at 07:24. Cause: the queue library strips known lever lines on every restart, but the copy on Spark_06
+at the 07:19 restore predated the `FP8_QUANT_FUSE` entry in its strip list, which arrived with the 07:25 sync): probe `bf6e85687a6a` (8.17 first / 7.54 warm s/step), the 5 s 1344x768 calibration
 `4d6d69e4aad0` at 19.60 s/it (diffuse 392.1 s, decode 27.2 s; the fastest calibration on record, the two-lever boot of
 queue74 gave 20.47 / 19.82, the defaults boot 21.24). Both ranks log the new defaults from the code alone:
 `Ulysses exact exchange installed (mode 2)`, `FP8 quant fuse requested=1, installed sites: qkv, fc1, fc2`, the out site

@@ -1,7 +1,7 @@
 # Continuation window length: 192 frames instead of 277 (2026-11-05)
 
 **Question.** The denoising step time of a continuation window grows faster than its length (a 277-frame window at
-1344x768 runs 80-84 s per step, the 165-frame tail window 26 s), so shorter windows should cut the time per generated
+1344x768 runs 80-84 s per step, the 141-frame second window of the 16 s gate 26 s, the 124-frame 5 s calibration 20 s), so shorter windows should cut the time per generated
 frame. What does a 60 s clip cost and look like with 192-frame windows (9 windows, 8 hand-overs) against the default
 277 (6 windows, 5 hand-overs), same scene, same seed?
 
@@ -55,8 +55,10 @@ use the time column), the render log and timing JSON on Spark_06.
 - **The saving at 960x544 is 11 %, not a half.** The step time has a term linear in the window's token count and a
   quadratic one; at 960x544 the quadratic part of a 277-frame window is small (29 s per step against 17 s for 192
   frames, 1.70x the time for 1.44x the frames), so the per-frame cost falls 13 % and the extra windows' fixed costs eat
-  part of that. The S² share is larger at 1344x768 (a 277-frame window 82 s per step, the 165-frame tail 26 s), so
-  the saving there should be larger; it is not measured. The 120 s 1344x768 clip at 277 took 7.9 h of denoising.
+  part of that. The S² share is larger at 1344x768: the three measured window lengths there (124 frames 20 s, 141 frames 26 s,
+  277 frames 82 s per step) fit t = 0.058·F + 0.00086·F², which predicts 43 s per step for 192 frames, 5.0 s of
+  denoising per new frame against 6.4 s for 277, a saving of about a fifth, not a half (queue80 measures the 192-frame
+  step directly). A 120 s clip is 17 windows of 192 frames (16 hand-overs) against 12 of 277.
 - **Every hand-over costs identity and pacing.** The woman's face lost 0.13 of similarity over the clip (PL3 and PL4
   held her at 0.69-0.71 mean) and the word error rate rose with new single-word slips; eight hand-overs instead of five
   give the model eight occasions to re-settle the second face and the voices. One seed, so the size of the cost is
