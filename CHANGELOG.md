@@ -363,6 +363,11 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-05 21:30: several reference images per Ref2VA request measured (`results/20261105-multiref/`, queue84/86):
+  the scene frame + a crop per character raises every face-similarity measure by 0.1-0.2 and causes no cut, but the
+  woman still comes back weaker after an occlusion (0.57 against 0.83 before; scene-only 0.49 against 0.69). +25 %
+  window time at 960x544 (the crops are upscaled to the reference short edge). Next: model-rendered identity cards,
+  second seed (queue87).
 - 2026-11-05 20:30: the 118 s Polish doll scene delivered clean (queue85): 0 cuts, 0 pauses >= 1.5 s, WER 0.085, faces
   0.81 / 0.68 to the end, window 11 cut check 1.10; second partial replay (10 windows) 1038 s. Story and numbers in
   `results/20261105-polish-pacing/`, "The 118 s version".
