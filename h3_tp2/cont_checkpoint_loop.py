@@ -47,7 +47,8 @@ def run(diffuse, kwargs, *, api, options, text_conditioning=None, checkpoint=Non
         wrapped = match.wrap_diffuse(diffuse, apply=options['apply_match'], overlap_v_hint=api._video_t(overlap_frames),
                                      retries=options['retries'], max_ratio=options['max_ratio'], lock=options['lock'],
                                      lock_strength=options['lock_strength'], lock_ramp=options['lock_ramp'],
-                                     lock_audio=options['lock_audio'], lock_std=options['lock_std'], lock_ref=options['lock_ref'])
+                                     lock_audio=options['lock_audio'], lock_std=options['lock_std'], lock_ref=options['lock_ref'],
+                                     lock_classes=options['lock_classes'])
         windows = api.plan_continuation_windows(kwargs['num_frames'], window_frames, overlap_frames)
         if text_conditioning is not None and len(text_conditioning) != len(windows):
             raise api.OmniClientError('MiniMax H3 requires one text conditioning per continuation window')

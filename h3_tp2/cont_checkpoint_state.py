@@ -72,7 +72,10 @@ def validate(tensors: dict[str, torch.Tensor], *, window: int, end_frame: int, w
             raise ValueError('overlap must be smaller than the window')
     required = {'cumulative.video', 'cumulative.audio', 'match.index', 'match.prev', 'match.ref_mean', 'match.ref_std'}
     audio_keys = {'match.audio_mean', 'match.audio_std'}
-    if not isinstance(tensors, dict) or set(tensors) not in (required, required | audio_keys):
+    # the class-aware look-lock reference (lock_classes, default since 2026-11-02): block-start tokens (A) and the rest (B)
+    class_keys = {'match.ref_A_mean', 'match.ref_A_std', 'match.ref_B_mean', 'match.ref_B_std'}
+    if not isinstance(tensors, dict) or set(tensors) not in (required, required | audio_keys, required | class_keys,
+                                                               required | audio_keys | class_keys):
         raise ValueError('checkpoint state tensors are incomplete or unexpected')
     if require_audio_ref and not audio_keys.issubset(tensors):
         raise ValueError('audio look-lock reference is missing')
@@ -95,6 +98,12 @@ def validate(tensors: dict[str, torch.Tensor], *, window: int, end_frame: int, w
         raise ValueError('checkpoint contains non-finite values')
     if (std < 0).any().item():
         raise ValueError('video reference standard deviation is negative')
+    if class_keys.issubset(tensors):
+        for cls in ('A', 'B'):
+            m_c, s_c = tensors[f'match.ref_{cls}_mean'], tensors[f'match.ref_{cls}_std']
+            if (m_c.dtype != torch.float32 or s_c.dtype != torch.float32 or m_c.shape != mean.shape
+                    or s_c.shape != std.shape or (s_c < 0).any().item()):
+                raise ValueError('class video reference shape, dtype or standard deviation differs')
     if audio_keys.issubset(tensors):
         audio_mean, audio_std = tensors['match.audio_mean'], tensors['match.audio_std']
         if (audio_mean.dtype != torch.float32 or audio_std.dtype != torch.float32

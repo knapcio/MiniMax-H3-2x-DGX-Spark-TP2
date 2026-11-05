@@ -195,10 +195,16 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
         prev, ref, ref_audio = state["prev"], state["ref"], state["ref_audio"]
         if state["index"] < 1 or not isinstance(prev, torch.Tensor) or prev.dim() != 5 or ref is None:
             raise ValueError("no completed tensor window with a reference to snapshot")
+        # the class-aware reference (lock_classes, default since 2026-11-02) is {"all": (m, s), "A": (m, s), "B": (m, s)}
+        ref_all = ref["all"] if isinstance(ref, dict) else ref
         tensors = {"match.index": torch.tensor(state["index"], dtype=torch.int64),
                    "match.prev": prev.detach().to("cpu", copy=True),
-                   "match.ref_mean": ref[0].detach().to("cpu", copy=True),
-                   "match.ref_std": ref[1].detach().to("cpu", copy=True)}
+                   "match.ref_mean": ref_all[0].detach().to("cpu", copy=True),
+                   "match.ref_std": ref_all[1].detach().to("cpu", copy=True)}
+        if isinstance(ref, dict):
+            for cls in ("A", "B"):
+                tensors[f"match.ref_{cls}_mean"] = ref[cls][0].detach().to("cpu", copy=True)
+                tensors[f"match.ref_{cls}_std"] = ref[cls][1].detach().to("cpu", copy=True)
         if ref_audio is not None:
             tensors["match.audio_mean"] = ref_audio[0].detach().to("cpu", copy=True)
             tensors["match.audio_std"] = ref_audio[1].detach().to("cpu", copy=True)
@@ -208,9 +214,11 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
         """Restore a fresh wrapper's match state; caller must verify request and cumulative AV state."""
         required = {"match.index", "match.prev", "match.ref_mean", "match.ref_std"}
         audio_keys = {"match.audio_mean", "match.audio_std"}
+        class_keys = {"match.ref_A_mean", "match.ref_A_std", "match.ref_B_mean", "match.ref_B_std"}
         if state["index"] != 0:
             raise ValueError("match state can only be restored into a fresh wrapper")
-        if not isinstance(tensors, dict) or set(tensors) not in (required, required | audio_keys):
+        if not isinstance(tensors, dict) or set(tensors) not in (required, required | audio_keys, required | class_keys,
+                                                                   required | audio_keys | class_keys):
             raise ValueError("incomplete or unexpected match-state tensors")
         if any(not isinstance(value, torch.Tensor) for value in tensors.values()):
             raise ValueError("match state contains a non-tensor value")
@@ -226,6 +234,15 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
             raise ValueError("match state contains non-finite values")
         if (std < 0).any().item():
             raise ValueError("invalid match reference standard deviation")
+        ref = (mean.to(device=device, copy=True), std.to(device=device, copy=True))
+        if class_keys.issubset(tensors):
+            ref = {"all": ref}
+            for cls in ("A", "B"):
+                m_c, s_c = tensors[f"match.ref_{cls}_mean"], tensors[f"match.ref_{cls}_std"]
+                if (m_c.dtype != torch.float32 or s_c.dtype != torch.float32 or m_c.shape != mean.shape
+                        or s_c.shape != std.shape or (s_c < 0).any().item()):
+                    raise ValueError("invalid class match reference")
+                ref[cls] = (m_c.to(device=device, copy=True), s_c.to(device=device, copy=True))
         ref_audio = None
         if audio_keys.issubset(tensors):
             audio_mean, audio_std = tensors["match.audio_mean"], tensors["match.audio_std"]
@@ -234,8 +251,7 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
                     or (audio_std < 0).any().item()):
                 raise ValueError("invalid audio match reference")
             ref_audio = (audio_mean.to(device=device, copy=True), audio_std.to(device=device, copy=True))
-        restored = {"prev": prev.to(device=device, copy=True), "index": int(index.item()),
-                    "ref": (mean.to(device=device, copy=True), std.to(device=device, copy=True)), "ref_audio": ref_audio}
+        restored = {"prev": prev.to(device=device, copy=True), "index": int(index.item()), "ref": ref, "ref_audio": ref_audio}
         state.update(restored)
 
     # Introspection is inert unless explicitly invoked; the serving loop does

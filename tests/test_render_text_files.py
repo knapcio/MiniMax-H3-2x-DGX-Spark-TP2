@@ -78,7 +78,7 @@ os.execv({executable!r}, [{executable!r}, *sys.argv[1:]])
             self.env.pop(name, None)
         temporary = self.root / 'temp; "quoted",comma\\path'
         temporary.mkdir()
-        self.env.update(H3_VENV=str(self.root), H3_API_HOST='127.0.0.1', H3_API_PORT=str(self.server.server_port),
+        self.env.update(HOME=str(self.root), H3_VENV=str(self.root), H3_API_HOST='127.0.0.1', H3_API_PORT=str(self.server.server_port),
                         H3_EXEC_AUDIT=str(self.audit), TMPDIR=str(temporary), H3_RENDER_TIMEOUT_S='15')
 
     def render(self, prompt=b'', extra=None, *, duration=30, positional='', **environment):
