@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-05 08:50: `docs/DIALOGUE_CLIPS.md`: the recipe for 60-120 s dialogue clips as delivered (reference frame from the
+  model, three lines per window and the density rule, composition in every window prompt, the request and its costs,
+  the checks, beds and mixing, replay after a late failure), with the open items.
 - 2026-11-05 07:45: `scripts/plan_dialogue_windows.py` counts the words each window must speak in its new content
   and warns above `--max-words-per-second` (default 2.75, between the Polish pacing arm's observations: 2.26-2.64 words/s
   spoken, the 6 s tail at 2.85 dropped half a line); the report carries `words_approx` / `words_per_new_second_approx` per window and `warnings`.

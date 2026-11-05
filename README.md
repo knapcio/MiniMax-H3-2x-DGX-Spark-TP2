@@ -266,7 +266,8 @@ window. One line per window leaves the model 7-8 s to fill, and it fills them wi
 invented non-Polish speech; three lines per window removed both at no render cost (`results/20261105-polish-pacing/`,
 `results/20261103-xclip/`).
 
-`scripts/plan_dialogue_windows.py` can prepare that explicit list from a JSON array such as
+The whole path from the reference frame to the mixed clip, with the costs and checks of the delivered 60-120 s scenes, is
+in `docs/DIALOGUE_CLIPS.md`. `scripts/plan_dialogue_windows.py` can prepare that explicit list from a JSON array such as
 `[{"start": 0.3, "end": 3.3, "speaker": "S1", "text": "Dzień dobry."}, {"start": 12, "end": 14.8,
 "speaker": "S1", "text": "Do zobaczenia."}]`. Run, for example:
 
