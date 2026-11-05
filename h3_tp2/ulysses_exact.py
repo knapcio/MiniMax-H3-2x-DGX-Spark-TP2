@@ -129,6 +129,14 @@ def exchange_fwd(send: torch.Tensor, a2a, pg=None) -> torch.Tensor:  # noqa: ANN
     return recv.view(1, p * m, hl, d)
 
 
+_unpack_hook: dict = {"fn": None}   # fn(recv [P, M, hl, d], heads) -> [1, M, H, d] or None (fp8_quant_fuse's out site)
+
+
+def set_unpack_hook(fn) -> None:  # noqa: ANN001
+    """Let a producer replace the reverse unpack copy (it must return stock's [1, M, H, d] layout, or None)."""
+    _unpack_hook["fn"] = fn
+
+
 def exchange_back(o: torch.Tensor, heads: int, ws: int, a2a, pg=None) -> torch.Tensor:  # noqa: ANN001
     """Attention output o [1, P*M, hl, d] -> [1, M, H, d] contiguous: one all-to-all of o itself, one unpack copy."""
     o3 = o[0]
@@ -139,6 +147,11 @@ def exchange_back(o: torch.Tensor, heads: int, ws: int, a2a, pg=None) -> torch.T
     m = s // ws
     recv = torch.empty((ws, m, hl, d), dtype=o3.dtype, device=o3.device)
     a2a(recv, o3, group=pg)  # chunk p of o3 = the rows of rank p's sequence shard
+    hook = _unpack_hook["fn"]
+    if hook is not None:     # H3_TP2_FP8_QUANT_FUSE out site: unpack + per-token FP8 quant in one kernel
+        result = hook(recv, heads)
+        if result is not None:
+            return result
     result = torch.empty((1, m, heads, d), dtype=o3.dtype, device=o3.device)
     result[0].view(m, ws, hl, d).copy_(recv.transpose(0, 1))
     return result

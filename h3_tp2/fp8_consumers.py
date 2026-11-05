@@ -46,6 +46,7 @@ placeholder -- and then calls the stock consumer, so the fallback is the stock p
 """
 from __future__ import annotations
 
+import functools
 import logging
 import os
 import threading
@@ -784,6 +785,7 @@ def block_plan(block, rope_table, sites, lora_types=()) -> tuple[dict | None, st
 
 
 def make_block_forward(orig_forward, sites, lora_types):  # noqa: ANN001,ANN201
+    @functools.wraps(orig_forward)       # keeps __wrapped__: later source fingerprints (fp8_quant_fuse) see upstream's
     def forward(self, *args, **kwargs):  # noqa: ANN001,ANN202
         want, reason = block_plan(self, kwargs.get("rope_table"), sites, lora_types)
         if want is None:
