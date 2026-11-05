@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-05 08:55: Polish pacing, second seed (PL4, `results/20261105-polish-pacing/`): WER 0.0816 both seeds, 0 cuts,
+  0-1 pauses, faces 0.80 / 0.71; seven of nine transcript errors identical across seeds (`może`, `pieniądze`, `porządnie`,
+  `czynsz`, `lepszym`, the dropped tail half-line): text-driven, not sampling noise. Respelling arm next.
 - 2026-11-05 08:50: `docs/DIALOGUE_CLIPS.md`: the recipe for 60-120 s dialogue clips as delivered (reference frame from the
   model, three lines per window and the density rule, composition in every window prompt, the request and its costs,
   the checks, beds and mixing, replay after a late failure), with the open items.

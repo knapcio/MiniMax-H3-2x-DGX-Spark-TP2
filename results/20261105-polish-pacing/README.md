@@ -65,12 +65,33 @@ the gaps between consecutive lines 0.0-0.5 s, speech until the last frame.
   more when they answer each other promptly, which lowers a frontal-face metric. No face is missing in any sample and
   no window shows a step, so nothing here contradicts the identity verdict (Ref2VA 1024 px holds the faces).
 
+## Second seed (PL4, queue76, 2026-11-05 07:20-08:45): the mispronunciations are systematic
+
+Same prompt, extra, reference and settings, seed 3501 (the defaults boot of 07:20; `H3_TP2_FP8_QUANT_FUSE=1` was still
+in the env from the lever gate, a bit-exact lever). Wall 3255.9 s (PL3 3433.9), peak 64.4 GB, no seam retry.
+
+| | PL3 (seed 3401) | PL4 (seed 3501) |
+|---|---|---|
+| speech (faster-whisper small, pl) | WER 0.0816, 18/18 lines | WER 0.0816, 18/18 lines |
+| pauses (raw, < -40 dB for >= 1.5 s) | 0 | 1 (1.5 s) |
+| cuts | 0 | 0 |
+| faces, mean man / woman (min) | 0.799 / 0.689 (0.54 / 0.43) | 0.801 / 0.710 (0.64 / 0.48) |
+| transcript errors | `dziewczyna pisze` -> `dziewczy napisze`; `może` -> `meże` (twice); `pieniądze` -> `pienięże`; `porządnie` -> `pożądnie`; `wyjścia` -> `wyjście`; `czynsz` -> `czynż`; `lepszym` -> `lepsym`; `Czynsz może poczekać` dropped in the tail | `nikogo` -> `nikiego`; `może` -> `meże` (twice); `pieniądze` -> `pieniejże`; `porządnie` -> `pożądnie`; `wyjścia` -> `wyjście`; `odpowiedź` -> `obsować`; `czynsz` -> `czynż`; `lepszym` -> `lepsym`; the same half-line dropped |
+
+Seven of the nine errors repeat word for word across the two seeds (`może`, `pieniądze`, `porządnie`, `wyjścia`,
+`czynsz`, `lepszym`, the dropped tail half-line); two are seed noise. So the Polish slips are driven by the text, not by
+sampling: the letters `ż`, `ą`/`ę` and `sz` in those words are read the same wrong way every time, and the 6 s tail
+cannot hold three lines whichever seed. Next arm (PL5): the same lines with the four nasal / `ż` words respelled the way
+they sound (`morze`, `pieniondze`, `porzondnie`) and the tail reduced to two lines; the word-error reference keeps the
+intended spellings, so a WER drop means the words were heard right. Clip: `~/Downloads/h3-prod-smoke/lalka-pl4/`.
+
 ## What this means for the recipe
 
 Three short lines per 11.5 s window (and the composition restated in every window prompt) is now the dialogue
 pacing for both languages; one line per window produces pauses and, in Polish, foreign babble. The last, partial
-window gets as many lines as fit its length. The pronunciation slips on nasal vowels and `sz`/`rz` are the open Polish
-quality item.
+window gets as many lines as fit its length (two seeds dropped the same half-line in the 6 s tail). The pronunciation
+slips on nasal vowels and `sz`/`rz` are the open Polish quality item; they repeat across seeds (PL4), so a respelling arm is
+the next step.
 
 Clip (private, the doll reference frame was prompted as a named actor, so not for X):
 `~/Downloads/h3-prod-smoke/lalka-pl3/lalka60_pl3_3linie_na_okno_960x544_ref2va1024_20261105.mp4`. Inputs and raw
