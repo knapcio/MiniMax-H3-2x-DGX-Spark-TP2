@@ -374,6 +374,14 @@
   buffer), env clean after the restore. Speed inside the boot-to-boot spread (A 21.24, B 21.75 / 21.02 / 21.87, C 20.47
   / 19.82 s/it); the 16 s continuation gate (queue75) decides the default flip. `results/20261104-quant-fuse/` and
   `results/20261105-levers-merge/`, "Serving proof".
+- 2026-11-05 06:10: the CPU test suite passes again (505 passed, 8 skipped; 57 failed since 2026-11-02). Two causes:
+  the render tests' stub `curl` lives in `$H3_VENV/bin`, but `scripts/env.sh` sources `~/.h3-tp2.env`, which on a serving
+  host sets `H3_VENV`, so the stub fell off PATH and the tests' requests reached the live API (one started a 60 s
+  continuation on 2026-11-05 03:04); the render tests now run with a private `HOME`. And the continuation checkpoint
+  prototype (`cont_checkpoint*`, the loop-extraction test helper, the inert `snapshot_state` / `restore_state`) did not
+  know the class-aware look-lock reference (`lock_classes`, default since 2026-11-02): `lock_classes` is a request option
+  and the A / B class statistics travel as `match.ref_A_*` / `match.ref_B_*`. Serving untouched. On a serving host run
+  the suite with `H3_API_PORT=1 HOME=<empty dir>` so nothing can reach the head.
 - 2026-11-05 02:30: the 120 s English clip for X is recovered by replay (`results/20261103-xclip/`, section 120 s):
   `H3_TP2_REPLAY_LATENTS` on a fresh Ref2VA boot reproduced the 14 saved windows (seam ratios and digests identical to the
   original journal), decode 632.9 s under the 7200 s wait, HTTP 200 after 21 minutes instead of an 8 h re-render; the
