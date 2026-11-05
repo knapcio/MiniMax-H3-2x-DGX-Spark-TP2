@@ -50,7 +50,9 @@ print("200", end="")
         self.env = os.environ.copy()
         for name in ("H3_VIDEO_FLOW_SHIFT", "H3_AUDIO_FLOW_SHIFT", "H3_LORA_JSON", "CONT_PROMPTS_REST", "CONT_PROMPTS_EXTRA", "H3_AUDIO_FILE", "H3_AUDIO_MAX_FIELD_BYTES", "AUDIO_URL", "H3_PROMPT_FILE", "H3_EXTRA_JSON_FILE", "H3_TEXT_MAX_FIELD_BYTES"):
             self.env.pop(name, None)
-        self.env.update(H3_VENV=str(self.root), H3_TEST_CAPTURE=str(self.root / "fields.json"),
+        # HOME = the temp root: env.sh sources $HOME/.h3-tp2.env, and a serving host's file sets H3_VENV (the stub curl
+        # would fall off PATH and the request would reach the real API)
+        self.env.update(HOME=str(self.root), H3_VENV=str(self.root), H3_TEST_CAPTURE=str(self.root / "fields.json"),
                         H3_TEST_AUDIO_CAPTURE=str(self.root / "audio.bin"), TMPDIR=str(self.root),
                         CONT_PROMPTS="auto", TASK="t2va")
 

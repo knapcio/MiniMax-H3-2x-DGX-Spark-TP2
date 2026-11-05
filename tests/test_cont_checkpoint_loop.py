@@ -81,7 +81,7 @@ def production_loop(options):
            '_xfade': options['crossfade'], '_edit': options['edit'], '_retries': options['retries'],
            '_max_ratio': options['max_ratio'], '_lock': options['lock'], '_lock_strength': options['lock_strength'],
            '_lock_ramp': options['lock_ramp'], '_lock_audio': options['lock_audio'], '_lock_std': options['lock_std'],
-           '_lock_ref': options['lock_ref'], '_seed_step': options['seed_step']}
+           '_lock_ref': options['lock_ref'], '_lock_classes': options['lock_classes'], '_seed_step': options['seed_step']}
     module = ast.fix_missing_locations(ast.Module(body=[nodes[0]], type_ignores=[]))
     exec(compile(module, str(ROOT / 'h3_tp2/plugin.py'), 'exec'), env)  # actual function body, synthetic dependencies
     return env['_dc']
@@ -90,7 +90,7 @@ def production_loop(options):
 def options(**overrides):
     result = {'window_frames': 277, 'overlap_frames': 22, 'apply_match': False, 'crossfade': True, 'edit': 2,
               'retries': 1, 'max_ratio': 100., 'lock': 'first', 'lock_strength': 1., 'lock_ramp': .25,
-              'lock_audio': True, 'lock_std': None, 'lock_ref': 'window', 'seed_step': 1}
+              'lock_audio': True, 'lock_std': None, 'lock_ref': 'window', 'lock_classes': True, 'seed_step': 1}
     result.update(overrides); return result
 
 

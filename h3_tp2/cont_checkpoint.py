@@ -26,7 +26,7 @@ SHA256 = re.compile(r'^[0-9a-f]{64}$')
 RUN_ID = re.compile(r'^[0-9a-f]{32}$')
 REQUEST_OPTIONS = frozenset(('window_frames', 'overlap_frames', 'apply_match', 'crossfade', 'edit', 'retries',
                              'max_ratio', 'lock', 'lock_strength', 'lock_ramp', 'lock_audio', 'lock_std',
-                             'lock_ref', 'seed_step'))
+                             'lock_ref', 'lock_classes', 'seed_step'))
 
 
 def _hash_file(path: Path) -> str:

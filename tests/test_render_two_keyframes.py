@@ -40,7 +40,7 @@ class TwoKeyframeTransport(unittest.TestCase):
         for key in ('EXTRA_JSON', 'H3_PROMPT_FILE', 'H3_EXTRA_JSON_FILE', 'CONT_PROMPTS', 'CONT_PROMPTS_EXTRA',
                     'CONT_PROMPTS_REST', 'H3_END_IMAGE_FILE', 'H3_LORA_JSON', 'H3_AUDIO_FILE', 'AUDIO_URL', 'TASK'):
             self.env.pop(key, None)
-        self.env.update(H3_API_HOST='127.0.0.1', H3_API_PORT=str(self.server.server_port),
+        self.env.update(HOME=str(self.root), H3_API_HOST='127.0.0.1', H3_API_PORT=str(self.server.server_port),
                         H3_END_IMAGE_FILE=str(self.last), H3_RENDER_TIMEOUT_S='10', TMPDIR=str(self.root))
 
     def render(self, *, first=None, where='both', seconds='10', extra=None, **updates):
