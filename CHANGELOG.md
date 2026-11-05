@@ -363,6 +363,11 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-05 12:00: Polish respelling proven (PL5, queue79, `results/20261105-polish-pacing/`): the same 60 s scene and
+  seed with `może`, `pieniądze`, `porządnie` written phonetically in the prompt (`morze`, `pieniondze`, `porzondnie`;
+  the speech-QA reference keeps the intended spellings) and a two-line tail: WER 0.035 against 0.082 (PL3/PL4), all
+  three respelled words heard right, the tail fully spoken, 0 pauses >= 1.5 s, 0 cuts, faces 0.81 / 0.70. Left:
+  `sz` clusters (`czynsz` -> `czynż`, `lepszym` -> `lepsym`) and `winien` -> `winiem`. Recipe in `docs/DIALOGUE_CLIPS.md`.
 - 2026-11-05 10:45: continuation window length measured (`results/20261105-window-length/`, W192, queue78): 192-frame
   windows render the 60 s 960x544 Polish scene 11 % faster than 277 (3054 s vs 3434 s, 1.98 vs 2.28 s of denoising per
   new frame, peak 53-57 GB vs 64 GB) at a cost: eight hand-overs instead of five, the woman's face 0.61 vs 0.69 mean,

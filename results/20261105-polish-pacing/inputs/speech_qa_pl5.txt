@@ -1,0 +1,133 @@
+{
+  "source": "/home/knapcio/h3-tp2-results/lalka60-pl5/d60_960x544_s20_seed3401_ref2va.mp4",
+  "source_sha256": "808053186f641f8e90fbd6328aae6ae8f1368fef89f7d6802a491f2758248142",
+  "model": "small",
+  "requested_language": "pl",
+  "detected_language": "pl",
+  "detected_language_probability": 1,
+  "transcript": "To list od pani Nowakowej. Jej córce odmówiono pracy w moim sklepie. Czy zna pan powód? Nie chciałabym nikogo osądzać pochopnie. Ja też nie. Dlatego pytam panią. Dziewczy napisze, że przyszła wczoraj i nikt jej nie wysłuchał. Więc ktoś tutaj zapomniał, po co jest ten sklep? Może byli zajęci. Może ona była nieśmiała. Jeśli to prawda, musimy to naprawić. Bez względu na powód. Łatwo jest dać komuś pieniądze. Trudniej zapytać, czego potrzebuje. Więc ją zapytamy, porządnie i osobiście. A jeśli przyjdzie tylko dlatego, że nie ma innego wyjścia? Wtedy niech sama zdecyduje. Najpierw zaprośmy ją na rozmowę. Mogłabym napisać odpowiedź jeszcze dziś. Proszę. Niech pani napisze, że sklep jest jej winiem przeprosiny. I że czekamy na nią w poniedziałek rano. Dobrze. A teraz proszę spojrzeć ze mną na ten rachunek. Widzę czynż. Zalegają dwa miesiące. jest pan lepsym człowiekiem niż pan udaje.",
+  "reference": "To list od pani Nowakowej. Jej córce odmówiono pracy w moim sklepie.\nCzy zna pan powód? Nie chciałabym nikogo osądzać pochopnie.\nJa też nie. Dlatego pytam panią.\nDziewczyna pisze, że przyszła wczoraj i nikt jej nie wysłuchał.\nWięc ktoś tutaj zapomniał, po co jest ten sklep.\nMoże byli zajęci. Może ona była nieśmiała.\nJeśli to prawda, musimy to naprawić, bez względu na powód.\nŁatwo jest dać komuś pieniądze. Trudniej zapytać, czego potrzebuje.\nWięc ją zapytamy. Porządnie i osobiście.\nA jeśli przyjdzie tylko dlatego, że nie ma innego wyjścia?\nWtedy niech sama zdecyduje. Najpierw zaprośmy ją na rozmowę.\nMogłabym napisać odpowiedź jeszcze dziś.\nProszę. Niech pani napisze, że sklep jest jej winien przeprosiny.\nI że czekamy na nią w poniedziałek rano.\nDobrze. A teraz proszę spojrzeć ze mną na ten rachunek.\nWidzę czynsz. Zalegają dwa miesiące.\nJest pan lepszym człowiekiem, niż pan udaje.",
+  "word_error_rate": 0.0352,
+  "segments": [
+    {
+      "start_s": 0.27,
+      "end_s": 4.77,
+      "text": "To list od pani Nowakowej. Jej córce odmówiono pracy w moim sklepie.",
+      "average_log_probability": -0.1259,
+      "no_speech_probability": 0.3091
+    },
+    {
+      "start_s": 5.27,
+      "end_s": 8.77,
+      "text": "Czy zna pan powód? Nie chciałabym nikogo osądzać pochopnie.",
+      "average_log_probability": -0.1259,
+      "no_speech_probability": 0.3091
+    },
+    {
+      "start_s": 8.77,
+      "end_s": 11.27,
+      "text": "Ja też nie. Dlatego pytam panią.",
+      "average_log_probability": -0.1259,
+      "no_speech_probability": 0.3091
+    },
+    {
+      "start_s": 11.77,
+      "end_s": 14.77,
+      "text": "Dziewczy napisze, że przyszła wczoraj i nikt jej nie wysłuchał.",
+      "average_log_probability": -0.1259,
+      "no_speech_probability": 0.3091
+    },
+    {
+      "start_s": 15.27,
+      "end_s": 17.77,
+      "text": "Więc ktoś tutaj zapomniał, po co jest ten sklep?",
+      "average_log_probability": -0.1259,
+      "no_speech_probability": 0.3091
+    },
+    {
+      "start_s": 18.27,
+      "end_s": 21.77,
+      "text": "Może byli zajęci. Może ona była nieśmiała.",
+      "average_log_probability": -0.1259,
+      "no_speech_probability": 0.3091
+    },
+    {
+      "start_s": 22.27,
+      "end_s": 25.27,
+      "text": "Jeśli to prawda, musimy to naprawić. Bez względu na powód.",
+      "average_log_probability": -0.1259,
+      "no_speech_probability": 0.3091
+    },
+    {
+      "start_s": 25.77,
+      "end_s": 29.77,
+      "text": "Łatwo jest dać komuś pieniądze. Trudniej zapytać, czego potrzebuje.",
+      "average_log_probability": -0.1259,
+      "no_speech_probability": 0.3091
+    },
+    {
+      "start_s": 29.77,
+      "end_s": 32.77,
+      "text": "Więc ją zapytamy, porządnie i osobiście.",
+      "average_log_probability": -0.0972,
+      "no_speech_probability": 0.3949
+    },
+    {
+      "start_s": 32.77,
+      "end_s": 36.77,
+      "text": "A jeśli przyjdzie tylko dlatego, że nie ma innego wyjścia?",
+      "average_log_probability": -0.0972,
+      "no_speech_probability": 0.3949
+    },
+    {
+      "start_s": 36.77,
+      "end_s": 40.77,
+      "text": "Wtedy niech sama zdecyduje. Najpierw zaprośmy ją na rozmowę.",
+      "average_log_probability": -0.0972,
+      "no_speech_probability": 0.3949
+    },
+    {
+      "start_s": 40.77,
+      "end_s": 43.77,
+      "text": "Mogłabym napisać odpowiedź jeszcze dziś.",
+      "average_log_probability": -0.0972,
+      "no_speech_probability": 0.3949
+    },
+    {
+      "start_s": 43.77,
+      "end_s": 47.77,
+      "text": "Proszę. Niech pani napisze, że sklep jest jej winiem przeprosiny.",
+      "average_log_probability": -0.0972,
+      "no_speech_probability": 0.3949
+    },
+    {
+      "start_s": 47.77,
+      "end_s": 49.77,
+      "text": "I że czekamy na nią w poniedziałek rano.",
+      "average_log_probability": -0.0972,
+      "no_speech_probability": 0.3949
+    },
+    {
+      "start_s": 49.77,
+      "end_s": 53.77,
+      "text": "Dobrze. A teraz proszę spojrzeć ze mną na ten rachunek.",
+      "average_log_probability": -0.0972,
+      "no_speech_probability": 0.3949
+    },
+    {
+      "start_s": 53.77,
+      "end_s": 57.77,
+      "text": "Widzę czynż. Zalegają dwa miesiące.",
+      "average_log_probability": -0.0972,
+      "no_speech_probability": 0.3949
+    },
+    {
+      "start_s": 57.77,
+      "end_s": 60.21,
+      "text": "jest pan lepsym człowiekiem niż pan udaje.",
+      "average_log_probability": -0.3639,
+      "no_speech_probability": 0.0296
+    }
+  ],
+  "limitations": "ASR can mishear or hallucinate; review speech, identity, delivery and lip sync separately."
+}

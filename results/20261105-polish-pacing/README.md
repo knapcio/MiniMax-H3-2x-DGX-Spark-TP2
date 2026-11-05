@@ -5,7 +5,7 @@ per 11.5 s window) was judged good, with two complaints: long pauses between the
 wrong Polish words. The English clip for X fixed its pauses by putting three short lines into every window
 (`results/20261103-xclip/`, v2). Does the same fix the Polish pacing, and does it also remove the foreign words?
 
-**Answer: yes to both.** With three short lines per window the 60 s Polish scene has no pause of 1.5 s or longer
+**Answer: yes to both**, and the remaining single-word slips on nasal vowels are fixed by respelling them in the prompt (PL5, below). With three short lines per window the 60 s Polish scene has no pause of 1.5 s or longer
 (the longest silence at any threshold is 1.4 s), the speech is Polish throughout, the word error rate halves, and the
 render costs the same time as the one-line arm. The remaining errors are single mispronounced Polish words (nasal
 vowels and `sz`/`rz` clusters), not foreign speech; one half-line was dropped in the short final window, which is a
@@ -85,14 +85,42 @@ cannot hold three lines whichever seed. Next arm (PL5): the same lines with the 
 they sound (`morze`, `pieniondze`, `porzondnie`) and the tail reduced to two lines; the word-error reference keeps the
 intended spellings, so a WER drop means the words were heard right. Clip: `~/Downloads/h3-prod-smoke/lalka-pl4/`.
 
+## Respelling (PL5, queue79, 2026-11-05 10:42-11:50): the nasal-vowel slips are fixed by the prompt text
+
+Same scene, reference, settings and seed as PL3 (3401, Ref2VA 1024, 960x544, 20 steps, the serving defaults of
+2026-11-05) with two changes in the prompts only: `może` -> `morze`, `pieniądze` -> `pieniondze`, `porządnie` ->
+`porzondnie` (`inputs/prompt_pl5.txt`, `inputs/extra_pl5.json`), and the tail window cut from three lines to two
+("Czynsz może poczekać. Dziewczyna nie." removed, 17 lines). The speech-QA reference (`inputs/dialogue_pl5.txt`) keeps
+the intended spellings, so a lower word error rate means the respelled words were heard as the real ones. Wall 3271.5 s,
+no seam retry.
+
+| | PL3 (seed 3401) | PL4 (seed 3501) | PL5 (seed 3401, respelled, two-line tail) |
+|---|---|---|---|
+| speech (faster-whisper small, pl) | WER 0.0816, 18/18 lines | WER 0.0816 | **WER 0.0352**, 17/17 lines |
+| `może` / `pieniądze` / `porządnie` | wrong / wrong / wrong | wrong / wrong / wrong | **right / right / right** |
+| tail window | half-line dropped | half-line dropped | both lines spoken, speech to 60.2 s |
+| pauses (raw, < -40 dB for >= 1.5 s) | 0 | 1 (1.5 s) | **0** |
+| cuts | 0 | 0 | 0 |
+| faces, mean man / woman (min) | 0.799 / 0.689 (0.54 / 0.43) | 0.801 / 0.710 (0.64 / 0.48) | 0.810 / 0.701 (0.54 / 0.44) |
+| remaining errors | 8 | 9 | 4: `dziewczyna pisze` -> `dziewczy napisze` (PL3 had it too), `winien` -> `winiem`, `czynsz` -> `czynż`, `lepszym` -> `lepsym` |
+
+PL5 per window, man / woman: 0.73/0.65, 0.85/0.74, 0.83/0.67, 0.85/0.72, 0.78/0.72, 0.82/0.71. Whisper wrote the
+respelled words with their real spellings (`Może byli zajęci`, `dać komuś pieniądze`, `porządnie i osobiście`): the
+model read `morze` as the sound of `może`, which is what a Polish ear needs. The remaining slips are `sz` clusters read
+as `ż` or `s` and one `n`/`m`; `czynsz` and `lepszym` are already phonetic, so a respelling for them is not obvious and
+has not been tried.
+
 ## What this means for the recipe
 
 Three short lines per 11.5 s window (and the composition restated in every window prompt) is now the dialogue
 pacing for both languages; one line per window produces pauses and, in Polish, foreign babble. The last, partial
-window gets as many lines as fit its length (two seeds dropped the same half-line in the 6 s tail). The pronunciation
-slips on nasal vowels and `sz`/`rz` are the open Polish quality item; they repeat across seeds (PL4), so a respelling arm is
-the next step.
+window gets as many lines as fit its length (two seeds dropped the same half-line in the 6 s tail; two lines were spoken
+in full). Polish words with nasal vowels or `rz`/`ż` that the model mispronounces on every seed are written phonetically
+in the prompt and kept in their real spelling in the script and the speech-QA reference (`morze`, `pieniondze`,
+`porzondnie`: WER 0.082 -> 0.035). The `sz` clusters are the open Polish quality item.
 
-Clip (private, the doll reference frame was prompted as a named actor, so not for X):
-`~/Downloads/h3-prod-smoke/lalka-pl3/lalka60_pl3_3linie_na_okno_960x544_ref2va1024_20261105.mp4`. Inputs and raw
-tool outputs in `inputs/` (`speech_qa_pl3.txt`, `speech_qa_pl120.txt`, `drift-pl3.txt`).
+Clips (private, the doll reference frame was prompted as a named actor, so not for X):
+`~/Downloads/h3-prod-smoke/lalka-pl3/lalka60_pl3_3linie_na_okno_960x544_ref2va1024_20261105.mp4`,
+`~/Downloads/h3-prod-smoke/lalka-pl4/`, `~/Downloads/h3-prod-smoke/lalka-pl5/`. Inputs and raw tool outputs in
+`inputs/` (`speech_qa_pl3.txt`, `speech_qa_pl120.txt`, `speech_qa_pl5.txt`, `drift-pl3.txt`, `drift-pl5.txt`,
+`prompt_pl5.txt`, `extra_pl5.json`, `dialogue_pl5.txt`).

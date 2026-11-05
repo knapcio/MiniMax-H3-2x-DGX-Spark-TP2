@@ -24,7 +24,10 @@ invented face is a must for anything public: do not prompt a real actor.
   warns outside that range.
 - Tag the language in every line: `<d>[English] ...</d>`, `<d>[Polish] ...</d>`; put the speaker in front
   (`Izabela, the woman: <d>[Polish] ...</d>`). Known Polish weakness: single words with nasal vowels or `sz`/`rz`
-  come out mispronounced (`może` -> `meże`, `pieniądze`); the language itself holds.
+  come out mispronounced (`może` -> `meże`, `pieniądze` -> `pienięże`, `porządnie` -> `pożądnie`), the same words
+  on every seed. Write those words phonetically in the prompt only (`morze`, `pieniondze`, `porzondnie`) and keep the
+  real spelling in the speech-QA reference: the 60 s Polish scene went from WER 0.082 to 0.035 with no other change
+  (`results/20261105-polish-pacing/`, PL5). `sz` clusters (`czynsz`, `lepszym`) still slip; the language itself holds.
 
 ## 3. One prompt per window, the composition in every one of them
 
@@ -103,6 +106,5 @@ mean), the speech (WER 0.14 against 0.08) and, with no line in the 2.4 s tail, a
 
 ## What is still open
 
-- Polish single-word mispronunciations repeat across seeds (PL3 and PL4 miss the same words: `może`, `pieniądze`,
-  `porządnie`, `czynsz`, `lepszym`), so they are text-driven; a respelling arm (`morze`, `pieniondze`, `porzondnie`
-  spoken, the intended spellings kept as the speech-QA reference) is being measured (PL5).
+- Polish `sz` clusters (`czynsz` -> `czynż`, `lepszym` -> `lepsym`) survive the respelling that fixed the nasal
+  vowels; no respelling for them has been tried (`czynsz` is already phonetic).
