@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-05 09:10: first serving boot on the flipped defaults (queue77, clean env): probe `bf6e85687a6a`, calibration
+  `4d6d69e4aad0` at 19.60 s/it, both ranks install mode 2 and the fused quant (qkv, fc1, fc2) from the code alone, every
+  self-check bit-identical. `results/20261105-levers-merge/`, "First serving boot".
 - 2026-11-05 08:55: Polish pacing, second seed (PL4, `results/20261105-polish-pacing/`): WER 0.0816 both seeds, 0 cuts,
   0-1 pauses, faces 0.80 / 0.71; seven of nine transcript errors identical across seeds (`może`, `pieniądze`, `porządnie`,
   `czynsz`, `lepszym`, the dropped tail half-line): text-driven, not sampling noise. Respelling arm next.
