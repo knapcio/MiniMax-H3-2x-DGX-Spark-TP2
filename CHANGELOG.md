@@ -378,6 +378,14 @@
   `H3_TP2_SAVE_LATENTS` files of a request (one per window and seam attempt, saved on both ranks, geometry-checked) in
   place of the denoising, so the identical request is decoded and muxed in minutes; `scripts/queue-lib.sh` strips the
   variable at the next restart. The CPU loader test reproduces the render journal's latents digests bit-exact.
+- 2026-11-05 06:10: the CPU test suite passes again (505 passed, 8 skipped; 57 failed since 2026-11-02). Two causes:
+  the render tests' stub `curl` lives in `$H3_VENV/bin`, but `scripts/env.sh` sources `~/.h3-tp2.env`, which on a serving
+  host sets `H3_VENV`, so the stub fell off PATH and the tests' requests reached the live API (one started a 60 s
+  continuation on 2026-11-05 03:04); the render tests now run with a private `HOME`. And the continuation checkpoint
+  prototype (`cont_checkpoint*`, the loop-extraction test helper, the inert `snapshot_state` / `restore_state`) did not
+  know the class-aware look-lock reference (`lock_classes`, default since 2026-11-02): `lock_classes` is a request option
+  and the A / B class statistics travel as `match.ref_A_*` / `match.ref_B_*`. Serving untouched. On a serving host run
+  the suite with `H3_API_PORT=1 HOME=<empty dir>` so nothing can reach the head.
 - 2026-11-04 15:55: `H3_TP2_FP8_GEMM=cutlass` is the default (`tensor32` = two-pass only). Gate queue69: two 16 s
   1344x768 FL2VA continuations on one cutlass boot bit-identical to both queue63 boots (digests 200e38721c9e
   4138eba5a964, framemd5 e46129c05cc6), window 1 82-87 vs 85-89 s/step; with queue67 five bit-identical requests
