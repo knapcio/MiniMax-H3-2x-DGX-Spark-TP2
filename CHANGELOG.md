@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-05 19:00: first serving boot with the cut check PASS (queue83): the 16 s 1344x768 gate bit-identical to every
+  default boot since 2026-11-03 (`200e38721c9e 4138eba5a964` / `e46129c05cc6`), cut check window 2 ratio 1.01, no retry.
+  `scripts/queue-lib.sh` gained the `rate` and `digs` helpers the gate queues used to carry privately.
 - 2026-11-05 18:15: the cut check scored an unseen cut: the repair render's window 11 (sampled before the check reached
   serving) cuts to a close-up at 114 s and measures 3.33 against 1.09-1.14 for the two clean windows next to it
   (`results/20261105-cut-check/`). The partial replay repaired windows 9-11 of the 118 s scene in 36 min (queue82).

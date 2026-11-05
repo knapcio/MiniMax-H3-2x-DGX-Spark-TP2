@@ -5,6 +5,10 @@ cd ~/h3-tp2-results
 IMG=~/h3-forest-20260920/source-4k.jpg
 PAINT=~/h3-tp2-results/koninck.png
 health() { curl -s -m 3 -o /dev/null -w "%{http_code}" http://127.0.0.1:18093/health; }
+# rate "<since>": the step rates the head logged since that time; digs "<since>": the 12-hex latents digests (probe, then
+# one per window). Both were private to the gate queues until 2026-11-05 (queue83 printed "FAIL" for want of them).
+rate() { journalctl --user -u h3-tp2-head.service -a --since "$1" --no-pager -o short | tr "\r" "\n" | grep -o -E "20/20 \[[0-9:]+<00:00, +[0-9.]+s/it\]" | tr "\n" " "; }
+digs() { journalctl --user -u h3-tp2-head.service --since "$1" --no-pager | grep -o -E "latents sha256 [0-9a-f]{12}" | awk '"'"'{print $3}'"'"' | tr "\n" " "; }
 STRIP='^export H3_TP2_(FP8_CUTLASS_VERIFY|ID_LOCK[A-Z_]*|ID_END_EXTEND|A2A_OVERLAP|A2A_STREAM_PRIORITY|WINDOW_SEED_STEP|REF_SHORT_EDGE|WINDOW_TEMPORAL_OFFSET|PROFILE_STEP|ANCHOR_FRAMES|ANCHOR_SOURCE|FP8_GEMM|VAE_STACK_TILES|VAE_TILE_BATCH|FP8_FUSE_SWIGLU|CONT_PROMPTS_EXTRA|CONT_PROMPTS_REST|CONT_MATCH|CONT_XFADE|CONT_EDIT|CONT_RETRY|CONT_SEAM_RATIO|CONT_LOCK|CONT_LOCK_STRENGTH|CONT_LOCK_RAMP|CONT_LOCK_AUDIO|CONT_LOCK_STD|CONT_LOCK_REF|CONT_LOCK_CLASSES|SAVE_LATENTS|REPLAY_LATENTS|REPLAY_PARTIAL|VAE_BLEND_TRACE|VAE_LEFT_CONTEXT|EMPTY_CACHE_BEFORE_DECODE|A2A_STREAM_PRIORITY|ULYSSES_OVERLAP|SEAM_POSTCHECK|ULYSSES_NOCOPY|ULYSSES_EXACT|FP8_CONSUMER_FUSE|STEP_CACHE|FP8_QUANT_FUSE|FP8_QUANT_FUSE_VERIFY|FP8_QUANT_FUSE_MODE)=|^export NCCL_MAX_CTAS='
 BASEENV='export H3_TP2_FP8_FUSE_SWIGLU=1
 export H3_TP2_REF_SHORT_EDGE=1024'

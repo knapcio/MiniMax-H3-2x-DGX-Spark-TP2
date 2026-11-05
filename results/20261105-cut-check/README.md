@@ -40,3 +40,9 @@ the limit holds there (every continued window logs its ratio whether or not it r
 re-sampled windows 9-11 with request seed 3601 (36 min instead of 2.3 h): faces to the end (man 0.80 / woman 0.69 mean),
 but window 11 cut away at 114 s (the 3.33 above). queue85 replays windows 1-10 and re-samples window 11 with seed 3701
 under the check; see `results/20261105-polish-pacing/`.
+
+**Serving gate (queue83, 2026-11-05 18:09-19:00).** First boot with the check: probe `bf6e85687a6a`, the 16 s 1344x768 FL2VA
+continuation gate (seed 1101) gave the digests of every default boot since 2026-11-03 (`200e38721c9e 4138eba5a964`,
+framemd5 `e46129c05cc6`), diffuse 1583.7 / 511.0 s, decode 87.1 s. The check only measured: `cut check window 2 attempt 1
+(seed 1102): peak 0.1872 at token 23 median 0.1858 ratio 1.01`, the first number at 1344x768 (the 960x544 clean windows
+1.07-1.30). Output-preserving by construction and in the gate.
