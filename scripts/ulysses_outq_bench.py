@@ -10,6 +10,9 @@ Per attention layer and rank, at M local rows (P = 2, 28 local heads x 128, K = 
   recv_quant   ulysses_outq.quant_from_recv on the receive buffer (what mode 2 runs instead of ``stock``), for a few
                num_warps
   contig_quant the same kernel on the contiguous tensor (the strided-vs-contiguous read cost)
+  v_pack       for reference, the forward-side copy that mode 1 still makes when the qkv GEMM is the CuTe-DSL one
+               (H3_TP2_FP8_GEMM=cutlass: no consumer-fused producer): stock's pack of v, the strided [M, 56, 128] view
+               of the bf16 qkv output (row stride 21504), into send_v [P, M, 28, 128]
 
 and checks that the FP8 tensor and the scales of ``recv_quant`` equal ``stock``'s bit for bit.  Timing: CUDA events,
 median over --iters after --warmup, one stream.  Before each row count the script checks that --require-file exists
@@ -124,6 +127,13 @@ def main() -> int:
         row["saved_per_layer_ms"] = row["stock_ms"] - dflt
         row["saved_per_forward_ms"] = row["saved_per_layer_ms"] * args.layers
         row["copy5_gbps"] = 2 * recv.numel() * 2 / row["copy5_ms"] / 1e6
+        from h3_tp2 import ulysses_exact as ux
+
+        qkv = torch.empty((m, 3 * WS * HL * D), dtype=torch.bfloat16, device="cuda").normal_()
+        v_view = qkv[:, 2 * K:].view(m, WS * HL, D)
+        send_v = torch.empty(ux.send_shape(m, WS * HL, D, WS), dtype=torch.bfloat16, device="cuda")
+        row["v_pack_ms"] = timed(lambda: ux.pack_into(send_v, v_view, WS), args.iters, args.warmup)
+        del qkv, v_view, send_v
         row["peak_mb_stock"] = peak_mb(stock)
         row["peak_mb_recv"] = peak_mb(lambda: oq.quant_from_recv(recv))
         print(json.dumps({k: (round(v, 4) if isinstance(v, float) else v) for k, v in row.items()}), flush=True)

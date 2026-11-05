@@ -49,7 +49,7 @@ MIN_SCALE = 1.0 / (FP8_MAX * 512.0)  # QuantFP8 _FP8_MIN_SCALING_FACTOR
 _WARPS = 8
 
 # sha256 (first 16 hex) of the stripped source lines (step_cache.fingerprint) of every function between the attention
-# output and the quant, vLLM 0.27 / vLLM-Omni v0.30.0 a8576ccb7 as installed in ~/h3-long/.venv on Spark_06 (2026-11-04)
+# output and the quant, vLLM 0.30.0 / vLLM-Omni v0.30.0 a8576ccb7 as installed in ~/h3-long/.venv on Spark_06 (2026-11-04)
 EXPECTED = {
     "attn_forward": "b2a25e0b45bea674",   # minimax_h3_transformer.py:630 MiniMaxH3Attention.forward
     "row_forward": "693d179dcadc13ff",    # linear.py:1757 RowParallelLinear.forward
