@@ -363,6 +363,10 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-05 12:15: the 192-frame window at 1344x768 measured directly (queue80, one-window 8 s FL2VA render): 43.0-43.3 s
+  per step, as the step model from the 124/141/277-frame points predicted (42.8); 5.1 s of denoising per new frame against
+  6.4 s for 277-frame windows, so shorter windows save about a fifth at the X-clip resolution, not a half
+  (`results/20261105-window-length/`).
 - 2026-11-05 12:00: Polish respelling proven (PL5, queue79, `results/20261105-polish-pacing/`): the same 60 s scene and
   seed with `może`, `pieniądze`, `porządnie` written phonetically in the prompt (`morze`, `pieniondze`, `porzondnie`;
   the speech-QA reference keeps the intended spellings) and a two-line tail: WER 0.035 against 0.082 (PL3/PL4), all

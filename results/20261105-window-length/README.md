@@ -56,9 +56,12 @@ use the time column), the render log and timing JSON on Spark_06.
   quadratic one; at 960x544 the quadratic part of a 277-frame window is small (29 s per step against 17 s for 192
   frames, 1.70x the time for 1.44x the frames), so the per-frame cost falls 13 % and the extra windows' fixed costs eat
   part of that. The S² share is larger at 1344x768: the three measured window lengths there (124 frames 20 s, 141 frames 26 s,
-  277 frames 82 s per step) fit t = 0.058·F + 0.00086·F², which predicts 43 s per step for 192 frames, 5.0 s of
-  denoising per new frame against 6.4 s for 277, a saving of about a fifth, not a half (queue80 measures the 192-frame
-  step directly). A 120 s clip is 17 windows of 192 frames (16 hand-overs) against 12 of 277.
+  277 frames 82 s per step) fit t = 0.058·F + 0.00086·F², which predicts 42.8 s per step for 192 frames; the direct
+  measurement (queue80, 12:12: a plain 8 s 1344x768 FL2VA render = one 192-frame window, seed 1101, the gate painting)
+  gave **43.0-43.3 s per step** (diffuse 859 s, decode 42 s, peak 63.4 GB, verify OK). So at 1344x768 a 192-frame window
+  costs 5.1 s of denoising per new frame against 6.4 s for 277: a saving of about a fifth, not a half. A 120 s clip is
+  17 windows of 192 frames (16 hand-overs) against 12 of 277; with the 16 s gate's rates that is about 14 400 s of
+  denoising against 18 300 s.
 - **Every hand-over costs identity and pacing.** The woman's face lost 0.13 of similarity over the clip (PL3 and PL4
   held her at 0.69-0.71 mean) and the word error rate rose with new single-word slips; eight hand-overs instead of five
   give the model eight occasions to re-settle the second face and the voices. One seed, so the size of the cost is
