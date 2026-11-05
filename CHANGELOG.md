@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-05 20:30: the 118 s Polish doll scene delivered clean (queue85): 0 cuts, 0 pauses >= 1.5 s, WER 0.085, faces
+  0.81 / 0.68 to the end, window 11 cut check 1.10; second partial replay (10 windows) 1038 s. Story and numbers in
+  `results/20261105-polish-pacing/`, "The 118 s version".
 - 2026-11-05 19:00: first serving boot with the cut check PASS (queue83): the 16 s 1344x768 gate bit-identical to every
   default boot since 2026-11-03 (`200e38721c9e 4138eba5a964` / `e46129c05cc6`), cut check window 2 ratio 1.01, no retry.
   `scripts/queue-lib.sh` gained the `rate` and `digs` helpers the gate queues used to carry privately.

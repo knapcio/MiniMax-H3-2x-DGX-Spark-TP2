@@ -110,6 +110,30 @@ model read `morze` as the sound of `może`, which is what a Polish ear needs. Th
 as `ż` or `s` and one `n`/`m`; `czynsz` and `lepszym` are already phonetic, so a respelling for them is not obvious and
 has not been tried.
 
+## The 118 s version (PL120v2, queue81/82/85, 2026-11-05 12:12-20:29)
+
+The owner's 120 s scene rebuilt with everything above: 117.8 s = 11 full 277-frame windows and no tail, 34 lines (3 per
+window, 1.9-2.6 words/s of new content, the planner silent), the composition in every window prompt, the three respelled
+words, Ref2VA 1024 reference, seed 3401 + `H3_TP2_WINDOW_SEED_STEP=1`, 960x544, 20 steps (`inputs/*pl120v2*`).
+
+| | 120 s, one line per window (2026-11-04) | 118 s v2, first render (queue81) | + windows 9-11 re-sampled (queue82) | + window 11 re-sampled again (queue85) |
+|---|---|---|---|---|
+| wall | - | 8108 s | 2168 s (8 windows replayed) | 1038 s (10 replayed) |
+| pauses >= 1.5 s | 13 | 0 | 1 (1.8 s) | **0** |
+| non-Polish babble | 2 windows | one 5 s line at 83.8 s (window 8) | same (replayed) | same (replayed) |
+| WER (34 lines) | 0.172 (12 lines) | 0.081 | 0.089 | 0.085 |
+| cuts | 0 | **1 at 88.7 s** (window 9: a close-up of the hands and the letter to the end) | **2 at 114-116 s** (window 11: a close-up of the woman) | **0** |
+| faces, mean man / woman | 0.82 / 0.78 (2048 px ref) | 0.82 / 0.70 while visible, none after 88.7 s | 0.80 / 0.69 | **0.81 / 0.68**, last 10 % 0.78 / 0.62 |
+| cut check ratio (`results/20261105-cut-check/`) | | window 9 1.96 | window 11 3.33 | window 11 **1.10** (windows 1-10 1.07-1.21) |
+
+Two of three samples of a late window cut away to a close-up, with the seam check at 1.0 each time: the cut-away is a
+mode of this scene (a letter on the counter, a face to look at), not of one seed. The interior cut check now catches it
+in serving and re-samples the window; the two repairs cost 36 and 17 minutes through the partial latents replay instead
+of 2.3 h each. What remains in the final clip: one invented half-line in window 8 (the planner's lower bound was added
+after this plan), `sz` slips, a stutter in window 11 ("dlaczego ... dlaczego nie pana nazwiskiem") and one dropped
+half-line. Clips (private): `~/Downloads/h3-prod-smoke/lalka-pl120v2-final/` (raw and with the shop bed), the cut
+versions in `lalka-pl120v2/` and `lalka-pl120v2r/`.
+
 ## What this means for the recipe
 
 Three short lines per 11.5 s window (and the composition restated in every window prompt) is now the dialogue

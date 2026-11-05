@@ -77,6 +77,11 @@ upstream 600 s) is 7200 s in `scripts/env.sh` since 2026-11-05, after one 7.9 h 
 dies after the diffusion, `H3_TP2_REPLAY_LATENTS` replays the saved window files through the unchanged stitch, decode and
 mux path (the 120 s clip was recovered that way in 21 min, bit-identical windows; `results/20261103-xclip/`).
 
+A long clip can cut away in a late window (two of three samples of the 118 s Polish scene did, with the seam check at
+1.0): the interior cut check (`H3_TP2_CONT_CUT_RATIO`, default 1.7) re-samples such a window during the render, and
+with `H3_TP2_SAVE_LATENTS` set a window that still goes wrong is re-sampled afterwards in minutes with
+`H3_TP2_REPLAY_LATENTS` + `H3_TP2_REPLAY_PARTIAL=1` and another request seed, instead of a full re-render.
+
 ## 5. Checks before anyone sees it
 
 ```bash
