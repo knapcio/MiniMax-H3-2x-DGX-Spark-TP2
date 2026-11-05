@@ -637,6 +637,10 @@ def _apply(role: str) -> None:
             # continued windows 0.81-1.16 (17 seams), so the default is 1.3.
             _retries = int(os.environ.get("H3_TP2_CONT_RETRY", "2") or 0)
             _max_ratio = float(os.environ.get("H3_TP2_CONT_SEAM_RATIO", "1.3") or 1.3)
+            # H3_TP2_CONT_CUT_RATIO=<float>: the interior cut check of every continued window (cont_match.cut_ratio), the
+            # same retries. Calibrated 2026-11-05 on the 118 s Polish scene: clean windows 1.07-1.30, a cut-away 2 s after
+            # the hand-over 1.96 (the seam check had passed it), a cut right after the prefix 2.72; default 1.7, 0 = off.
+            _max_cut = float(os.environ.get("H3_TP2_CONT_CUT_RATIO", "1.7") or 0)
             # H3_TP2_CONT_LOCK=first (+ H3_TP2_CONT_LOCK_STRENGTH, default 1.0): per-channel latent look-lock of every
             # later window's free frames to the first window's statistics, against the compounding drift.
             _lock = os.environ.get("H3_TP2_CONT_LOCK", "first").strip().lower()
@@ -702,7 +706,7 @@ def _apply(role: str) -> None:
                 from vllm_omni.diffusion.models.minimax_h3 import continuation as _ct
 
                 def _dc(diffuse, kwargs, *, window_frames, overlap_frames, text_conditioning=None):  # noqa: ANN001
-                    diffuse = _cm.wrap_diffuse(diffuse, apply=_apply_match, overlap_v_hint=_ct._video_t(overlap_frames),
+                    diffuse = _cm.wrap_diffuse(diffuse, apply=_apply_match, max_cut=_max_cut, overlap_v_hint=_ct._video_t(overlap_frames),
                                                retries=_retries, max_ratio=_max_ratio, lock=_lock, lock_strength=_lock_strength, lock_ramp=_lock_ramp, lock_audio=_lock_audio, lock_std=_lock_std, lock_ref=_lock_ref, lock_classes=_lock_classes)
                     windows = _ct.plan_continuation_windows(kwargs["num_frames"], window_frames, overlap_frames)
                     if (len(windows) > 1 and kwargs.get("task") == "fl2va"

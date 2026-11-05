@@ -82,6 +82,37 @@ def seam_ratio(video: torch.Tensor, overlap_v: int) -> tuple[float, float, float
     return boundary, median, boundary / max(median, 1e-6)
 
 
+def cut_ratio(video: torch.Tensor, overlap_v: int) -> tuple[float, float, float, int]:
+    """Interior cut check of one sampled window: every free transition's mean |v[t+1]-v[t]| against the median of the
+    free transitions of its own phase (t mod 5: the VAE's 17-frame blocks give the transitions into and out of a
+    block-start token 5k their own, larger level), the largest such ratio wins.  Returns (peak, median of the peak's
+    phase, ratio, token t of the peak's transition t -> t + 1).  Calibrated 2026-11-05 on the 118 s Polish scene
+    (960x544, 277-frame windows, 18 saved windows): clean windows 1.07-1.30, the window that cut to a close-up 2 s
+    after its hand-over 1.96 (the cut fell on a transition into a block start, where a pooled median hides it; the
+    boundary seam check had passed that window at 1.0), a window that cut right after the prefix 2.72, the re-sampled
+    window 11 that followed the cut-away 1.87.  Default limit 1.7 (H3_TP2_CONT_CUT_RATIO)."""
+    v = video.float()
+    d = (v[:, :, 1:] - v[:, :, :-1]).abs().mean(dim=(0, 1, 3, 4))   # per transition t: token t -> t + 1
+    n = d.numel()
+    lo = max(int(overlap_v), 0)
+    if n - lo < 3 * BLOCK_TOKENS:
+        return float("nan"), float("nan"), 0.0, -1
+    t = torch.arange(n, device=d.device)
+    best = (float("nan"), float("nan"), 0.0, -1)
+    for phase in range(BLOCK_TOKENS):
+        sel = (t >= lo) & (t % BLOCK_TOKENS == phase)
+        if int(sel.sum()) < 3:
+            continue
+        free = d[sel]
+        median = float(free.median().item())
+        i = int(free.argmax().item())
+        peak = float(free[i].item())
+        ratio = peak / max(median, 1e-6)
+        if ratio > best[2]:
+            best = (peak, median, ratio, int(t[sel][i].item()))
+    return best
+
+
 def _log_post_correction_seam(video: torch.Tensor, overlap_v: int, index: int) -> None:
     """Observe the returned window, independently of correction and retry selection."""
     try:
@@ -105,11 +136,13 @@ def _log_post_correction_seam(video: torch.Tensor, overlap_v: int, index: int) -
 
 def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, retries: int = 0, max_ratio: float = 2.0,
                  lock: str = "", lock_strength: float = 1.0, lock_ramp: float = 1.0, lock_audio: bool = False,
-                 lock_std: float | None = None, lock_ref: str = "window", lock_classes: bool = False):  # noqa: ANN001
+                 lock_std: float | None = None, lock_ref: str = "window", lock_classes: bool = False,
+                 max_cut: float = 0.0):  # noqa: ANN001
     """Return a ``diffuse`` replacement for one continuation request (state: the previous window's video latents).
 
-    With ``retries`` > 0 a window whose latent seam ratio exceeds ``max_ratio`` is sampled again with another seed
-    (up to ``retries`` times); the attempt with the lowest ratio is kept.
+    With ``retries`` > 0 a window whose latent seam ratio exceeds ``max_ratio``, or (``max_cut`` > 0) whose interior
+    cut ratio exceeds ``max_cut``, is sampled again with another seed (up to ``retries`` times); the attempt with the
+    lowest score (the larger of the two ratios relative to their limits) is kept.
     """
     state = {"prev": None, "index": 0, "ref": None, "ref_audio": None}
     # Read once per request wrapper, covering both plugin continuation routes.
@@ -151,15 +184,25 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
                 b, m, r = seam_ratio(video, ov)
                 logger.info("h3_tp2 seam check window %d attempt %d (seed %s): boundary %.4f median %.4f ratio %.2f",
                             state["index"], attempt + 1, a.get("seed"), b, m, r)
+                cr = 0.0
+                if max_cut > 0:
+                    cp, cm, cr, ct = cut_ratio(video, ov)
+                    logger.info("h3_tp2 cut check window %d attempt %d (seed %s): peak %.4f at token %d median %.4f ratio %.2f",
+                                state["index"], attempt + 1, a.get("seed"), cp, ct, cm, cr)
             except Exception as e:  # noqa: BLE001
                 logger.warning("h3_tp2 seam check skipped (%s)", e)
                 best = (video, audio, 0.0)
                 break
-            if best is None or r < best[2]:
-                best = (video, audio, r)
-            if r <= max_ratio:
+            score = max(r / max(max_ratio, 1e-9), cr / max_cut if max_cut > 0 else 0.0)
+            if best is None or score < best[2]:
+                best = (video, audio, score)
+            if r <= max_ratio and (max_cut <= 0 or cr <= max_cut):
                 break
-            logger.warning("h3_tp2 seam check window %d: ratio %.2f > %.2f, re-sampling with another seed", state["index"], r, max_ratio)
+            if r > max_ratio:
+                logger.warning("h3_tp2 seam check window %d: ratio %.2f > %.2f, re-sampling with another seed", state["index"], r, max_ratio)
+            else:
+                logger.warning("h3_tp2 cut check window %d: ratio %.2f > %.2f (a cut inside the window), re-sampling with another seed",
+                               state["index"], cr, max_cut)
         video, audio, _ = best
         if state["prev"] is not None and ov:
             try:

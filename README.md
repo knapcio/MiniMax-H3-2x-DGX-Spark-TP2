@@ -396,7 +396,9 @@ fits GPU or host memory; keep the API private and verify actual long-audio behav
 the first hand-over, the subject doubled, a wash-out and a looping walk at 60 s). The night's fixes, now the defaults
 (`results/20261029-seam-loop/`): the previous window's tail is pinned as target rows of the next window through
 upstream's latent-edit path instead of a guide block (`H3_TP2_CONT_EDIT=2`); a latent seam check re-samples a window
-that cuts right after the prefix (`H3_TP2_CONT_RETRY=2`); a per-channel latent look-lock pulls every window's free
+that cuts right after the prefix (`H3_TP2_CONT_RETRY=2`), and since 2026-11-05 an interior cut check re-samples a window
+that cuts away anywhere later in it (`H3_TP2_CONT_CUT_RATIO=1.7`, `0` disables; the 118 s Polish scene cut to a close-up
+2 s after a hand-over the seam check had passed, `results/20261105-cut-check/`); a per-channel latent look-lock pulls every window's free
 frames back to the first window's exposure and contrast, ramped over the window's first quarter
 (`H3_TP2_CONT_LOCK=first`, `H3_TP2_CONT_LOCK_RAMP=0.25`), and the same for generated audio latents
 (`H3_TP2_CONT_LOCK_AUDIO=1`; disabled for a locked source in the corrected wrapper).
