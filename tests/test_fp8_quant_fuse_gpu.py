@@ -188,7 +188,7 @@ def _gpu_module(quant_factory):
 
 
 @pytest.mark.parametrize("rows", [64, 333])
-def test_block_on_gpu_bit_identical(rows):
+def test_block_on_gpu_bit_identical(rows, monkeypatch):
     from vllm.config import CompilationConfig, DeviceConfig, VllmConfig, set_current_vllm_config
     from vllm.model_executor.layers.quantization.input_quant_fp8 import QuantFP8
     from vllm.model_executor.layers.quantization.utils.quant_utils import GroupShape
@@ -197,6 +197,7 @@ def test_block_on_gpu_bit_identical(rows):
     from h3_tp2 import fp8_gemm, ulysses_exact
 
     assert fp8_gemm.probe_triton("cuda")
+    monkeypatch.setitem(fp8_gemm._state, "level", "cutlass")   # fc2's precondition: fc1's bf16 output reaches SiluAndMul
     cfg = VllmConfig(compilation_config=CompilationConfig(), device_config=DeviceConfig(device="cuda"))
 
     def qf():  # noqa: ANN202

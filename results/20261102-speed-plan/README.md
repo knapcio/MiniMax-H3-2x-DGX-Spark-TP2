@@ -258,3 +258,11 @@ consumer-fused scale pass, batched tile decode, class-aware/tail/ramp-1.0 look-l
 
 A generated sm120 FP8 kernel carries the scale epilogue at 157-168 TF, bit-identical to the two-pass output; the stock
 CUTLASS kernels' 61 TF was the tile raster (no L2 swizzle). Worth ~1.5 s/step at 1344 against today's path.
+
+## 2026-11-05: item 6 built as `H3_TP2_FP8_QUANT_FUSE=1` (opt-in, branch quant-fuse), see `results/20261104-quant-fuse/`
+
+The per-token quant of all four DiT GEMM inputs (qkv: modulation 1, out: the Ulysses reverse unpack, fc1:
+modulation 2, fc2: SwiGLU) moves into the producing kernel, bit-identical on every GPU check (fp8 bytes and scales,
+exhaustive over the row maximum, whole block): -0.30 / -0.55 / -1.26 s/step at M = 10240 / 18880 / 42848 by kernel
+time. Level 2's divergent render was the first request of a boot (the cuBLASLt stale-scale hazard, fixed 11-03); its
+quant matches the serving op. Serving proof pending.
