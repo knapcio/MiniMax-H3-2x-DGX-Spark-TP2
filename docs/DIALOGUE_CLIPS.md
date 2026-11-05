@@ -50,7 +50,8 @@ main prompt. The report lists each window's lines, words and words per second; r
 
 Serve the v0.30.0 stack on the **Ref2VA** partition (`scripts/select-stack.sh long Ref2VA` on both Sparks, agent before
 head); the reference short edge is 1024 px by default since 2026-11-04 (faces held over 60 s in the doll arms at 1.06x
-the FL2VA time; the 2048 px setting the 1344x768 X clips used is markedly slower, `results/20261103-lalka-identity/`).
+the FL2VA time; the 2048 px setting the 1344x768 X clips used costs 1.8x the time for the last few points of identity,
+`results/20261103-lalka-identity/`).
 Keep `H3_TP2_SAVE_LATENTS=<dir>` set.
 
 ```bash
