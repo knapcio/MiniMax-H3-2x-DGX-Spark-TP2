@@ -26,12 +26,17 @@ Spark_06, CPU):
 | queue81 w11 attempt 1 (14:24) | **0.748** | 6 | 0.276 | **2.72** | the cut right after the prefix the seam check caught (its ratio 2.72) |
 | queue81 w11 attempt 2 (14:35) | 0.436 | 38 | 0.234 | 1.87 | the kept re-sample; something moves hard at 111 s inside the close-up |
 | queue82 w9 (17:27, seed 3609) | 0.227 | 8 | 0.199 | 1.14 | the repair's first new window: clean |
+| queue82 w10 (17:37) | 0.210 | 53 | 0.192 | 1.09 | clean |
+| queue82 w11 (17:46, seed 3611) | **0.713** | 53 | 0.214 | **3.33** | **an unseen cut**: the clip cuts to a close-up of the woman at 114 s (scene detector 114 and 116 s, frames checked), seam ratio 1.0; the window was sampled before the check was in serving |
 | 5 s probes and calibration (T2VA) | | | | 1.07-1.11 | clean |
 
-Clean windows sit at 1.07-1.30, the two certain cuts at 1.96 and 2.72; 1.7 leaves a margin to both and also flags the
-ambiguous 1.87. A false positive costs one re-sample of that window (about 10 min at 960x544, 28 min at 1344x768), a
+Clean windows sit at 1.07-1.30, the three certain cuts at 1.96, 2.72 and 3.33 (the third one a cut the check had not
+been tuned on: it was sampled an hour after the calibration and found by the frames first); 1.7 leaves a margin to all
+and also flags the ambiguous 1.87. A false positive costs one re-sample of that window (about 10 min at 960x544, 28 min at 1344x768), a
 missed cut costs the clip. One scene, one resolution: the first 1344x768 windows through this check will say whether
 the limit holds there (every continued window logs its ratio whether or not it retries).
 
-**Repair of the clip** (`H3_TP2_REPLAY_PARTIAL=1`, queue82): the saved latents of windows 1-8 replayed in seconds, windows
-9-11 re-sampled with request seed 3601; see `results/20261105-polish-pacing/`.
+**Repair of the clip** (`H3_TP2_REPLAY_PARTIAL=1`): queue82 replayed the saved latents of windows 1-8 in seconds and
+re-sampled windows 9-11 with request seed 3601 (36 min instead of 2.3 h): faces to the end (man 0.80 / woman 0.69 mean),
+but window 11 cut away at 114 s (the 3.33 above). queue85 replays windows 1-10 and re-samples window 11 with seed 3701
+under the check; see `results/20261105-polish-pacing/`.

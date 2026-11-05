@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-05 18:15: the cut check scored an unseen cut: the repair render's window 11 (sampled before the check reached
+  serving) cuts to a close-up at 114 s and measures 3.33 against 1.09-1.14 for the two clean windows next to it
+  (`results/20261105-cut-check/`). The partial replay repaired windows 9-11 of the 118 s scene in 36 min (queue82).
 - 2026-11-05 17:45: interior cut check of every continued window (`cont_match.cut_ratio`, `H3_TP2_CONT_CUT_RATIO`,
   default 1.7, `0` = off): the largest per-phase-normalised frame-to-frame latent difference of the window's free part;
   above the limit the window is re-sampled with another seed like a bad seam (same retries, same best-attempt rule).
