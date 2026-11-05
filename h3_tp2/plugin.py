@@ -799,6 +799,45 @@ def _apply(role: str) -> None:
         _pre.MINIMAX_H3_REFERENCE_IMAGE_SHORT_EDGE = int(edge)
         logger.warning("h3_tp2: EXPERIMENT reference image short edge %s px instead of 2048 (changes conditioning)", edge)
 
+    # 9f) H3_TP2_REF_KEY_SCALE=<s | s0,s1,...>: opt-in, NOT output-preserving: scale the attention keys of the reference
+    #     image rows of every Ref2VA sequence (one factor per image block in request order, the last repeats), so the
+    #     video tokens attend more to the reference images; against identity loss at re-entry (h3_tp2/ref_key_scale.py,
+    #     results/20261105-multiref). Needs the exact Ulysses exchange (the default) to reach the keys.
+    _rks = os.environ.get("H3_TP2_REF_KEY_SCALE", "").strip()
+    if _rks:
+        from h3_tp2 import ref_key_scale as _rk
+        from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _pp9f
+        from vllm_omni.diffusion.models.minimax_h3 import minimax_h3_transformer as _tr9f
+
+        if _rk.configure(_rks) is None:
+            logger.info("h3_tp2: H3_TP2_REF_KEY_SCALE=%s is a no-op", _rks)
+        else:
+            _orig_pack_ref = _pp9f.minimax_h3_packed_sequence_ref2va_blocks
+
+            def _pack_ref(*a, **kw):  # noqa: ANN001
+                packed = _orig_pack_ref(*a, **kw)
+                try:
+                    _rk.record_layout(int(kw["text_len"]), kw.get("ref_blocks"), int(packed["seq_len"]))
+                except Exception as e:  # noqa: BLE001
+                    logger.warning("h3_tp2 ref key scale: layout not recorded (%s)", e)
+                return packed
+
+            _pp9f.minimax_h3_packed_sequence_ref2va_blocks = _pack_ref
+            if os.environ.get("H3_TP2_ULYSSES_EXACT", "2").strip() in ("0", "verify"):
+                logger.warning("h3_tp2: H3_TP2_REF_KEY_SCALE needs the exact Ulysses exchange; nothing is scaled")
+            else:
+                from h3_tp2 import ulysses_exact as _ux9f
+
+                def _key_hook(send_k):  # noqa: ANN001
+                    seq_len = _rk._STATE["seq_len"]
+                    if seq_len is None:
+                        return
+                    span = _tr9f._sequence_parallel_local_span(int(seq_len), hooks_applied=True)
+                    _rk.scale_send_k(send_k, span)
+
+                _ux9f.set_key_hook(_key_hook)
+                logger.warning("h3_tp2: EXPERIMENT reference key scale %s installed (changes conditioning)", _rks)
+
     # 10) measurement only: H3_TP2_PROFILE_STEP=<n> profiles the n-th DiT forward of this process (one denoising step
     #     on this rank) with torch.profiler and logs the top CUDA kernels; CUPTI on GB10 can be fragile, so off by default.
     pstep = os.environ.get("H3_TP2_PROFILE_STEP", "").strip()

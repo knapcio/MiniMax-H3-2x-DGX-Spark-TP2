@@ -138,6 +138,16 @@ def exchange_fwd(send: torch.Tensor, a2a, pg=None) -> torch.Tensor:  # noqa: ANN
 _unpack_hook: dict = {"fn": None}   # fn(recv [P, M, hl, d], heads) -> [1, M, H, d] or None (fp8_quant_fuse's out site)
 
 
+_key_hook = None
+
+
+def set_key_hook(fn) -> None:  # noqa: ANN001
+    """``fn(send_k)`` runs on this rank's packed keys [P, M, hl, d] right before their exchange (h3_tp2.ref_key_scale,
+    opt-in; None = nothing runs, the default)."""
+    global _key_hook
+    _key_hook = fn
+
+
 def set_unpack_hook(fn) -> None:  # noqa: ANN001
     """Let a producer replace the reverse unpack copy (it must return stock's [1, M, H, d] layout, or None)."""
     _unpack_hook["fn"] = fn
@@ -194,6 +204,8 @@ def exact_forward(query, key, value, run_attn, *, ws, pg=None, a2a=None, sends=N
         pack_into(send_k, key[0], ws)
     q = exchange_fwd(send_q, a2a, pg)
     del send_q
+    if _key_hook is not None:
+        _key_hook(send_k)
     k = exchange_fwd(send_k, a2a, pg)
     del send_k
     if send_v is None:
