@@ -237,5 +237,7 @@ boot, so only the queue59 pair, 20.16/20.45 vs 21.21 s/step on compacted boots, 
 - DONE 15:08: the serving proof passed; DONE 11-04 02:19: the default gate passed (tables above); default since 02:25.
 - Copy 5 (reverse unpack) stays; removing it means the out-projection's activation quant reading the receive buffer
   [P, M, hl*d] directly (with the fp8 modules; per-tensor/per-token amax is order-independent, so it can be exact).
+  2026-11-05: implemented as `H3_TP2_ULYSSES_EXACT=2` (opt-in, bitwise offline, ~0.6 % per step at 1344x768; serving
+  proof pending): `results/20261104-ulysses-copy5`.
 - If B fails: the nocopy root cause is then in the live path too, and D's log says where.
 - `ulysses_nocopy.py` stays as the measured negative (its helpers `_vllm_strategy_info` / `_triton_launch` are reused).
