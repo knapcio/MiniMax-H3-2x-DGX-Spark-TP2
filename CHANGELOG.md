@@ -363,6 +363,10 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-05 02:30: the 120 s English clip for X is recovered by replay (`results/20261103-xclip/`, section 120 s):
+  `H3_TP2_REPLAY_LATENTS` on a fresh Ref2VA boot reproduced the 14 saved windows (seam ratios and digests identical to the
+  original journal), decode 632.9 s under the 7200 s wait, HTTP 200 after 21 minutes instead of an 8 h re-render; the
+  clip: no pause >= 1.5 s, no cut, WER 0.054 over 34 lines, composition held for two minutes.
 - 2026-11-05 01:50: Polish dialogue pacing (`results/20261105-polish-pacing/`): three short lines per 11.5 s window
   (queue71, 60 s 960x544 Ref2VA 1024 px, doll reference) against the 120 s one-line-per-window clip of 11-04: pauses
   >= 1.5 s 13 -> 0 (longest silence 1.4 s), non-Polish babble in 2 of 12 windows -> none, word error rate 0.172 -> 0.082,

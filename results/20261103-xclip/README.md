@@ -80,7 +80,44 @@ Lessons: the reference image fixes the faces, the prompt fixes the blocking (sta
 where in every window's prompt); three short lines per 11.5 s window keep the pauses under 2 s; name props instead of
 negating them; normalise beds by loudness.
 
+## 120 s (queue70 + queue72, 2026-11-04 16:01 - 2026-11-05 02:22)
+
+The same recipe as v2 for two minutes: 1344x768, Ref2VA with the 2048 px reference 2208, seed 2404 with a seed step per
+window, 12 windows of 277 frames, 34 English lines (`xclip/dialogue_en120.txt`, three per window, two in the last) with
+the composition restated in every window prompt (`xclip/extra_en120.json`).
+
+The render itself (queue70) diffused all 12 windows in 7.9 h (seam retries on windows 11 and 12, ratios 2.91 -> 1.05 and
+3.20 -> 1.06) and then **died in the decode**: the API server's per-step wait `VLLM_OMNI_ASYNC_OUTPUT_TIMEOUT` (upstream
+600 s, never set by this recipe) fired during the 642 s VAE decode of 2880 frames at 1344x768, HTTP 500, worker torn
+down. The saved window latents (`H3_TP2_SAVE_LATENTS`, 14 files per rank including the two retries) made the re-render
+unnecessary: `scripts/env.sh` now defaults the wait to 7200 s and `H3_TP2_REPLAY_LATENTS` (commit e1a4971) replays the
+files through the unchanged hand-over, stitch, decode and mux path. queue72 on a fresh Ref2VA 2048 boot: `REPLAY 14/14`,
+every seam-check ratio identical to the original journal, the window-12 latents digest identical, decode 632.9 s,
+HTTP 200 after 1263 s (prompt encodes 100 s, replay 0 s, decode 633 s, mux), peak 79.3 GB.
+
+| check | 120 s (replayed render) | v2 60 s for comparison |
+|---|---|---|
+| speech (faster-whisper small, 34-line script) | en (p = 1.0), **WER 0.054**, 34/34 lines in order; errors: "Nowak" -> "Novak", "shop" -> "sharp" once, and one invented English line at 84-88 s ("You're still mad over history, it's a waste for you to ask this") | en, WER 0.005, 18/18 |
+| pauses (raw, < -40 dB for >= 1.5 s) | **0** (longest 1.2 s) | 2 (1.5, 1.7 s) |
+| cuts (scene score > 0.1) | 0, one continuous take | 0 |
+| faces vs the reference, mean over the clip (position / embedding match) | man 0.54 / 0.55, woman 0.63 / 0.60; woman missing in 2-9 of 11 samples per window | man 0.64, woman 0.62 |
+| composition on a 12-frame grid (every 10 s) and the 104-119 s tail | camera at the counter end, man left, woman right, lamp and scales on the counter, customers moving in the background, same light for 120 s | same |
+| audio level | dialogue -13.2 LUFS, peak -0.1 dBFS (louder than v2's -21.1 LUFS) | -21.1 LUFS |
+
+The face numbers are lower than v2's because the woman spends much of the clip turned towards the man (profile =
+"missing" or a low similarity), not because the faces change: on the grid both faces are the reference faces in every
+window, and the man's number returns to 0.6 whenever he faces the camera. The invented line at 84-88 s is the English
+form of the window-filling seen in Polish (`results/20261105-polish-pacing/`): window 9 (85-96 s) had the shortest
+three lines of the script.
+
+Delivered (`~/Downloads/h3-prod-smoke/xclip/`): `xclip120_raw_1344x768_ref2va_20261105.mp4`,
+`xclip120_ambience_1344x768_20261105.mp4` (bed at -37 LUFS), `xclip120_piano_1344x768_20261105.mp4` (bed at -40 LUFS);
+with the hot dialogue the beds sit about 24 dB under the speech and are audible only in the pauses (no pause in either
+mix is below -40 dB for 1 s). Lower the dialogue (or raise the beds to about -27 / -30 LUFS) if a fuller bed is wanted.
+
 ## Files on Spark_06 (`~/h3-tp2-results/`)
 
 `xclip60/` (render, timing, memory CSVs), `xclip/` (prompts, references 2201-2208, `dialogue_en*.txt`, `drift*.txt`,
-`speech_qa*.txt`, `mix_v2.sh`, mixes), `xclip-ambience/`, `xclip-music/`, `queue60b-xclip.sh`, `queue68-xclip2.sh`.
+`speech_qa*.txt`, `mix_v2.sh`, mixes), `xclip120/` (the failed render), `xclip120r/` (the replayed clip), `latents/`
+(the saved window latents), `xclip-ambience/`, `xclip-music/`, `queue60b-xclip.sh`, `queue68-xclip2.sh`,
+`queue70-xclip120.sh`, `queue72-xclip120-replay.sh`.

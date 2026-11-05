@@ -198,7 +198,8 @@ seam-retry attempt) is written on both ranks, and a request that died after its 
 re-rendered. `H3_TP2_REPLAY_LATENTS='<globs of that request's files, in order>'` on a boot of the same partition makes
 `diffuse` return the saved latents (geometry checked per file; a mismatching request fails rather than consuming a
 file, so do not run the boot probe first) and the identical request then goes through the same hand-over, stitch,
-decode and mux in minutes. The queue library strips the variable at the next restart. Increasing the executor timeout also delays detection of a genuinely stuck request;
+decode and mux in minutes (the 120 s clip above came back this way in 21 minutes, with every seam check and latents
+digest identical to the original journal, `results/20261103-xclip/`). The queue library strips the variable at the next restart. Increasing the executor timeout also delays detection of a genuinely stuck request;
 these values are an example, not a guarantee that an arbitrarily long render will finish. External clients must use
 their own matching timeout. In the workspace, `clients/h3-generate.py --long --first-frame --image painting.png ...`
 sends this FL2VA request; without `--first-frame` the long client retains Ref2VA behaviour.
