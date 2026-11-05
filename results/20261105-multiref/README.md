@@ -64,3 +64,22 @@ the mechanism itself: a multiplicative factor on the keys scales the attention l
 magnitudes of this model 1.4x already pins every video token to the references. Closed; a smaller factor would be a
 weaker version of the same distortion. The lever that remains for re-entry is on the reference side (what the images
 show), not in the attention.
+
+**Identity guard, prototype (2026-11-06 00:15, `H3_TP2_IDENTITY_GUARD`).** The generic answer to "a figure went behind
+something and someone else came out": after every window (the first one too) the plugin decodes the window's latents,
+scores eight frames spread over it against a bank of face embeddings built from the request's own reference images
+(`scripts/face_bank.py`, facenet-pytorch in `~/facenv`, rank 0 judges and broadcasts), and re-samples the window with
+another seed, like the seam and cut checks, when more than the given fraction of the frames show a principal face
+(at least 5 % of the frame wide) that matches nobody in the bank (cosine below 0.4). Calibration on the probes above,
+eight frames each, bank = the scene frame + the two crops (4 faces):
+
+| probe | principal faces | unknown frames | note |
+|---|---|---|---|
+| occlusion A, A2 (scene only) | leads 6-7 % wide, woman after re-entry matches her crop at 0.48-0.63 | 0 / 8 | the double detections next to her (3-4 % wide) are filtered |
+| occlusion B, B2 (+ crops) | woman after re-entry 0.45-0.74 | 1 / 8 | the one unknown frame is her blurred pass-by in front of the camera (15 % wide, 0.01-0.11) |
+| turn B | 0.42-0.95 | 0 / 8 | |
+
+So at the default limit (`H3_TP2_IDENTITY_GUARD=0.2`, two of eight frames) none of these windows would be re-sampled:
+the guard is for a replaced character, not for the 0.1-0.2 of similarity the crops recover. The first live run
+(queue91, limit 0.1 so that B's pass-by frame trips it) measures the plumbing and the cost of a decode plus scoring
+per attempt.

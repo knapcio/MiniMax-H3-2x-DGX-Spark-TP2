@@ -137,12 +137,15 @@ def _log_post_correction_seam(video: torch.Tensor, overlap_v: int, index: int) -
 def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, retries: int = 0, max_ratio: float = 2.0,
                  lock: str = "", lock_strength: float = 1.0, lock_ramp: float = 1.0, lock_audio: bool = False,
                  lock_std: float | None = None, lock_ref: str = "window", lock_classes: bool = False,
-                 max_cut: float = 0.0):  # noqa: ANN001
+                 max_cut: float = 0.0, identity_fn=None, max_unknown: float = 0.0):  # noqa: ANN001
     """Return a ``diffuse`` replacement for one continuation request (state: the previous window's video latents).
 
     With ``retries`` > 0 a window whose latent seam ratio exceeds ``max_ratio``, or (``max_cut`` > 0) whose interior
     cut ratio exceeds ``max_cut``, is sampled again with another seed (up to ``retries`` times); the attempt with the
-    lowest score (the larger of the two ratios relative to their limits) is kept.
+    lowest score (the larger of the two ratios relative to their limits) is kept.  ``identity_fn(video, skip_frames)``
+    (with ``max_unknown`` > 0) adds the identity guard, which also judges the first window: it returns
+    ``(score, faces, unknown_frac)`` for the window's decoded frames after ``skip_frames`` (``h3_tp2.identity_guard``);
+    a score >= 1.0 means more faces than tolerated match no reference face, and the window is re-sampled.
     """
     state = {"prev": None, "index": 0, "ref": None, "ref_audio": None}
     # Read once per request wrapper, covering both plugin continuation routes.
@@ -168,41 +171,57 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
             return overlap_v_hint
         return None
 
+    guard = identity_fn is not None and max_unknown > 0
+
     def _diffuse(**args):  # noqa: ANN003
         state["index"] += 1
         ov = _overlap(args) if state["prev"] is not None else None
         best = None
-        for attempt in range(1 + (retries if ov else 0)):
+        for attempt in range(1 + (retries if (ov or guard) else 0)):
             a = dict(args)
             if attempt and "seed" in a and a["seed"] is not None:
                 a["seed"] = int(a["seed"]) + 7919 * attempt
             video, audio = diffuse(**a)
-            if not ov or not (isinstance(video, torch.Tensor) and video.dim() == 5):
+            if not (ov or guard) or not (isinstance(video, torch.Tensor) and video.dim() == 5):
                 best = (video, audio, 0.0)
                 break
-            try:
-                b, m, r = seam_ratio(video, ov)
-                logger.info("h3_tp2 seam check window %d attempt %d (seed %s): boundary %.4f median %.4f ratio %.2f",
-                            state["index"], attempt + 1, a.get("seed"), b, m, r)
-                cr = 0.0
-                if max_cut > 0:
-                    cp, cm, cr, ct = cut_ratio(video, ov)
-                    logger.info("h3_tp2 cut check window %d attempt %d (seed %s): peak %.4f at token %d median %.4f ratio %.2f",
-                                state["index"], attempt + 1, a.get("seed"), cp, ct, cm, cr)
-            except Exception as e:  # noqa: BLE001
-                logger.warning("h3_tp2 seam check skipped (%s)", e)
-                best = (video, audio, 0.0)
-                break
-            score = max(r / max(max_ratio, 1e-9), cr / max_cut if max_cut > 0 else 0.0)
+            r = cr = 0.0
+            if ov:
+                try:
+                    b, m, r = seam_ratio(video, ov)
+                    logger.info("h3_tp2 seam check window %d attempt %d (seed %s): boundary %.4f median %.4f ratio %.2f",
+                                state["index"], attempt + 1, a.get("seed"), b, m, r)
+                    if max_cut > 0:
+                        cp, cm, cr, ct = cut_ratio(video, ov)
+                        logger.info("h3_tp2 cut check window %d attempt %d (seed %s): peak %.4f at token %d median %.4f ratio %.2f",
+                                    state["index"], attempt + 1, a.get("seed"), cp, ct, cm, cr)
+                except Exception as e:  # noqa: BLE001
+                    logger.warning("h3_tp2 seam check skipped (%s)", e)
+                    best = (video, audio, 0.0)
+                    break
+            iscore = 0.0
+            if guard:
+                try:
+                    # the first window is judged whole; a continued one from its first free frame (4 frames per token)
+                    iscore, faces, unknown = identity_fn(video, 4 * int(ov) if ov else 0)
+                    logger.info("h3_tp2 identity check window %d attempt %d (seed %s): %d face(s), %.0f %% unknown, score %.2f",
+                                state["index"], attempt + 1, a.get("seed"), int(faces), 100.0 * unknown, iscore)
+                except Exception as e:  # noqa: BLE001  (the guard never breaks a render)
+                    logger.warning("h3_tp2 identity check skipped (%s)", e)
+                    iscore = 0.0
+            score = max(r / max(max_ratio, 1e-9) if ov else 0.0, cr / max_cut if max_cut > 0 else 0.0, iscore)
             if best is None or score < best[2]:
                 best = (video, audio, score)
-            if r <= max_ratio and (max_cut <= 0 or cr <= max_cut):
+            if (not ov or (r <= max_ratio and (max_cut <= 0 or cr <= max_cut))) and iscore <= 1.0:
                 break
-            if r > max_ratio:
+            if ov and r > max_ratio:
                 logger.warning("h3_tp2 seam check window %d: ratio %.2f > %.2f, re-sampling with another seed", state["index"], r, max_ratio)
-            else:
+            elif max_cut > 0 and cr > max_cut:
                 logger.warning("h3_tp2 cut check window %d: ratio %.2f > %.2f (a cut inside the window), re-sampling with another seed",
                                state["index"], cr, max_cut)
+            else:
+                logger.warning("h3_tp2 identity check window %d: more than %.0f %% of the faces match no reference face (score %.2f), re-sampling with another seed",
+                               state["index"], 100.0 * max_unknown, iscore)
         video, audio, _ = best
         if state["prev"] is not None and ov:
             try:

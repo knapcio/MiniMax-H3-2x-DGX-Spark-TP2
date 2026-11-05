@@ -82,6 +82,15 @@ A long clip can cut away in a late window (two of three samples of the 118 s Pol
 with `H3_TP2_SAVE_LATENTS` set a window that still goes wrong is re-sampled afterwards in minutes with
 `H3_TP2_REPLAY_LATENTS` + `H3_TP2_REPLAY_PARTIAL=1` and another request seed, instead of a full re-render.
 
+Identity through an occlusion or a turn-away: give the request the scene frame **and a head-and-shoulders crop per
+character** (`scripts/make_character_cards.py scene.png --out-dir refs` prints the `H3_REF_IMAGES=` line;
+`TASK=ref2va H3_REF_IMAGES=scene.png,refs/face0.png,refs/face1.png bash scripts/render.sh ...`). On the 11 s occlusion
+probes the crops raised the returning character's face similarity by 0.1-0.2 on two seeds, with no cut
+(`results/20261105-multiref/`); the model's own rendered close-ups do not help, so cut the crops from the scene frame
+itself. The crops cost a quarter of the window time at 1024 px; `H3_TP2_REF_NO_UPSCALE=600` keeps them at their 512 px
+(measurement pending). A character replaced by someone else after an occlusion is what the opt-in identity guard
+(`H3_TP2_IDENTITY_GUARD=0.2`, prototype) re-samples on.
+
 ## 5. Checks before anyone sees it
 
 ```bash

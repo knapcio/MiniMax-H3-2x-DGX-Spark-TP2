@@ -363,6 +363,15 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-06 00:15: identity guard prototype, opt-in `H3_TP2_IDENTITY_GUARD=<fraction>` (`h3_tp2/identity_guard.py`,
+  `scripts/face_bank.py`): every window of a continuation request (the first one too) is decoded after the denoising,
+  eight frames are scored against a bank of face embeddings built from the request's reference images in a separate
+  facenet-pytorch Python (`H3_TP2_IDENTITY_PY`, default `~/facenv/bin/python`), and a window where more than the
+  fraction of the frames show a principal face (`H3_TP2_IDENTITY_MIN_FACE` 0.05 of the width) matching no reference
+  face (`H3_TP2_IDENTITY_MIN_SIM` 0.4) is re-sampled with another seed like a seam or cut failure; rank 0 judges, the
+  verdict is broadcast. `cont_match.wrap_diffuse(identity_fn=, max_unknown=)`; 9 CPU tests. Calibrated on the
+  occlusion probes (`results/20261105-multiref/`): a stranger who stays trips it, a blurred pass-by frame or a double
+  detection does not. First live run queued (queue91).
 - 2026-11-05 23:55: reference key scaling closed (queue88, `results/20261105-multiref/`): `H3_TP2_REF_KEY_SCALE`
   1.6 on the two crops smears the picture into a drifting close-up (no face found, 5 cuts), 1.4 on all three images
   freezes and washes out the shot; the lever distorts the attention itself, not just its weighting. Stays opt-in,

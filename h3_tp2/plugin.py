@@ -641,6 +641,82 @@ def _apply(role: str) -> None:
             # same retries. Calibrated 2026-11-05 on the 118 s Polish scene: clean windows 1.07-1.30, a cut-away 2 s after
             # the hand-over 1.96 (the seam check had passed it), a cut right after the prefix 2.72; default 1.7, 0 = off.
             _max_cut = float(os.environ.get("H3_TP2_CONT_CUT_RATIO", "1.7") or 0)
+            # H3_TP2_IDENTITY_GUARD=<fraction>: opt-in identity guard of every continued window (h3_tp2/identity_guard.py):
+            # the window's latents are decoded, frames spread over it are scored against a bank of face embeddings built
+            # from the request's reference images (scripts/face_bank.py in H3_TP2_IDENTITY_PY, default ~/facenv/bin/python),
+            # and a window where more than the fraction of the detected faces match no reference face (cosine below
+            # H3_TP2_IDENTITY_MIN_SIM, default 0.5) is re-sampled like a seam or cut failure. Rank 0 judges, the verdict is
+            # broadcast; costs one window decode per attempt. Prototype 2026-11-06 against identity loss after occlusions.
+            _ig_cfg = None
+            _ig_state = {"guard": None}
+            try:
+                from h3_tp2 import identity_guard as _ig
+
+                _ig_cfg = _ig.config_from_env()
+            except Exception as e:  # noqa: BLE001
+                logger.warning("h3_tp2: identity guard not configured (%s)", e)
+            if _ig_cfg is not None:
+                from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _ppig
+
+                _orig_media_ig = _ppig.MiniMaxH3Pipeline._encode_local_media
+
+                def _media_ig(self, media, *a, **kw):  # noqa: ANN001
+                    try:
+                        _, rank, _ = _ppig._dit_rank_world()
+                        if rank == 0:
+                            images = list(getattr(media, "images", None) or ()) if media is not None else []
+                            if images:
+                                from PIL import Image as _Image
+
+                                g = _ig.Guard(_ig_cfg)
+                                g.set_references([_Image.fromarray(t.detach().cpu().numpy()) for t in images])
+                                _ig_state["guard"] = g
+                            else:
+                                _ig_state["guard"] = None
+                    except Exception as e:  # noqa: BLE001
+                        logger.warning("h3_tp2 identity guard: reference bank not built (%s)", e)
+                        _ig_state["guard"] = None
+                    return _orig_media_ig(self, media, *a, **kw)
+
+                _ppig.MiniMaxH3Pipeline._encode_local_media = _media_ig
+
+                def _make_identity_fn(diffuse, overlap_frames):  # noqa: ANN001
+                    pipe = getattr(diffuse, "__self__", None)
+                    if pipe is None or not hasattr(pipe, "video_vae"):
+                        logger.warning("h3_tp2 identity guard: no pipeline behind diffuse, guard off for this request")
+                        return None
+                    import torch.distributed as _dist
+
+                    from h3_tp2 import h3_output as _ho
+
+                    def _fn(video, skip_frames=0):  # noqa: ANN001
+                        group, rank, world = _ppig._dit_rank_world()
+                        pipe._release_stage_cache()
+                        with pipe._component_on_device(pipe.video_vae.decoder_component):
+                            with _ppig.current_omni_platform.create_autocast_context(device_type=pipe.device.type, dtype=torch.float16, enabled=True):
+                                frames = pipe.video_vae.decode_latent(video)
+                        u8 = _ho.to_uint8_frames(frames)[0].cpu().numpy()
+                        del frames
+                        out = torch.zeros(3, dtype=torch.float32, device=video.device)
+                        if rank == 0:
+                            g = _ig_state["guard"]
+                            summary = g.score(u8, skip_first=int(skip_frames)) if g is not None else {}
+                            _ok, sc = _ig.verdict(summary, _ig_cfg.max_unknown)
+                            out[0] = float(sc)
+                            out[1] = float(summary.get("faces") or 0)
+                            out[2] = float(summary.get("unknown_frac") or 0.0)
+                        if world > 1:
+                            _dist.broadcast(out, src=0, group=group)
+                        pipe._release_stage_cache()
+                        return [float(x) for x in out.tolist()]
+
+                    return _fn
+
+                logger.warning("h3_tp2: EXPERIMENT identity guard on (re-sample above %.0f %% unknown faces, min similarity %.2f, %d frames per window)",
+                               100.0 * _ig_cfg.max_unknown, _ig_cfg.min_sim, _ig_cfg.frames)
+            else:
+                def _make_identity_fn(diffuse, overlap_frames):  # noqa: ANN001
+                    return None
             # H3_TP2_CONT_LOCK=first (+ H3_TP2_CONT_LOCK_STRENGTH, default 1.0): per-channel latent look-lock of every
             # later window's free frames to the first window's statistics, against the compounding drift.
             _lock = os.environ.get("H3_TP2_CONT_LOCK", "first").strip().lower()
@@ -707,6 +783,8 @@ def _apply(role: str) -> None:
 
                 def _dc(diffuse, kwargs, *, window_frames, overlap_frames, text_conditioning=None):  # noqa: ANN001
                     diffuse = _cm.wrap_diffuse(diffuse, apply=_apply_match, max_cut=_max_cut, overlap_v_hint=_ct._video_t(overlap_frames),
+                                               identity_fn=_make_identity_fn(diffuse, overlap_frames),
+                                               max_unknown=(_ig_cfg.max_unknown if _ig_cfg is not None else 0.0),
                                                retries=_retries, max_ratio=_max_ratio, lock=_lock, lock_strength=_lock_strength, lock_ramp=_lock_ramp, lock_audio=_lock_audio, lock_std=_lock_std, lock_ref=_lock_ref, lock_classes=_lock_classes)
                     windows = _ct.plan_continuation_windows(kwargs["num_frames"], window_frames, overlap_frames)
                     if (len(windows) > 1 and kwargs.get("task") == "fl2va"
