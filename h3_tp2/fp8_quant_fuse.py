@@ -53,7 +53,9 @@ the block ending), it is "materialised" first -- the stock producer is run into 
 ran on the placeholder is run again, so the fallback is the stock path bit for bit.
 
 Sites (``H3_TP2_FP8_QUANT_FUSE``): ``1``/``all`` = qkv,out,fc1,fc2; a comma list selects (for bisecting); ``0`` off.
-qkv needs nothing else; out needs ``H3_TP2_ULYSSES_EXACT=1`` (its reverse unpack is the producer); fc1 needs the
+qkv needs nothing else; out needs ``H3_TP2_ULYSSES_EXACT=1`` (its reverse unpack is the producer; with ``=2`` there is
+no unpack copy, ``h3_tp2/ulysses_outq.py`` serves the out-projection quant from the receive buffer and the out site is
+skipped automatically, logged once, also when it was listed explicitly); fc1 needs the
 stock ``indexed_gate_rms_norm_scale_shift`` (not fp8_consumers' ``out`` site, i.e. the cutlass level); fc2 needs
 fc1's bf16 output to reach the MLP's ``SiluAndMul`` (the cutlass level; at tensor32 fused SwiGLU level 1 owns it).
 """
@@ -62,6 +64,7 @@ from __future__ import annotations
 import functools
 import logging
 import os
+import sys
 import threading
 from typing import Any, Callable
 
@@ -531,10 +534,29 @@ def _verify(p: Pending) -> None:
                     _stats["verify_mismatch"])
 
 
+def _outq_placeholder(x: torch.Tensor) -> bool:
+    """True for ulysses_outq's deferred placeholder or a view of it (only loaded with H3_TP2_ULYSSES_EXACT=2)."""
+    oq = sys.modules.get(__package__ + ".ulysses_outq")
+    if oq is None or torch.compiler.is_compiling():     # placeholders exist only in eager forwards
+        return False
+    return oq.is_placeholder(x)
+
+
+def pending_placeholder(x: torch.Tensor) -> bool:
+    """True when ``x`` is this thread's pending stash placeholder (for ulysses_outq's guard: a placeholder of this
+    module must never reach its out-projection quant)."""
+    ctx = getattr(_tls, "ctx", None)
+    p = ctx.pending if ctx is not None else None
+    return p is not None and x.data_ptr() == p.ph.data_ptr()
+
+
 def make_quant_forward(orig):  # noqa: ANN001,ANN201
     """Wrap ``QuantFP8.forward``: the pending stash's (fp8, scale) for exactly its planned instance and placeholder.
     Every other call goes to ``orig`` with its arguments untouched."""
     def forward(self, x, *args, **kwargs):  # noqa: ANN001,ANN202
+        if isinstance(x, torch.Tensor) and _outq_placeholder(x):
+            raise RuntimeError("h3_tp2 fp8 quant fuse: an H3_TP2_ULYSSES_EXACT=2 placeholder (stride 0, no data) "
+                               "reached QuantFP8 outside ulysses_outq's out-projection quant")
         ctx = getattr(_tls, "ctx", None)
         p = ctx.pending if ctx is not None else None
         if p is not None:
@@ -822,6 +844,16 @@ def parse_sites(value: str | None) -> tuple[str, ...]:
     return tuple(s for s in SITES if s in sel)
 
 
+def is_explicit(value: str | None) -> bool:
+    """True when ``H3_TP2_FP8_QUANT_FUSE`` names its sites (a comma list) rather than "1"/"all"."""
+    v = (value or "").strip().lower()
+    return v not in ("", "0", "off", "false", "1", "all", "on", "true")
+
+
+OUT_MODE2 = ("H3_TP2_ULYSSES_EXACT=2 makes no reverse unpack copy to fuse into: the out-projection quant reads the "
+             "a2a receive buffer there (h3_tp2/ulysses_outq.py); the other sites are unaffected")
+
+
 # the upstream code between each producer and its quant (fp8_consumers.EXPECTED names plus the ones below)
 SITE_SOURCES = {
     "qkv": ("block_forward", "attn_forward", "rms_kernel", "rms", "launch_row_chunks", "col_forward",
@@ -889,10 +921,11 @@ def _expected(name: str) -> str | None:
 
 
 def install(sites: tuple[str, ...] = SITES, tr=None, *, quant_cls=None, act_cls=None, check_source: bool = True,  # noqa: ANN001
-            lora_types=None, ulysses_mode: str | None = None) -> list[str]:
+            lora_types=None, ulysses_mode: str | None = None, explicit: bool = False) -> list[str]:
     """Patch the transformer module ``tr`` (default: vLLM-Omni's MiniMax H3), ``QuantFP8.forward`` and
     ``SiluAndMul.forward`` for the given sites.  Returns the installed sites; a site whose preconditions or upstream
-    sources do not hold is skipped with a warning (the stock path stays)."""
+    sources do not hold is skipped with a warning (the stock path stays).  ``explicit``: the sites were named (a comma
+    list), only changes the wording of the out site's mode-2 line."""
     sites = tuple(s for s in SITES if s in sites)
     if not sites:
         return []
@@ -922,7 +955,13 @@ def install(sites: tuple[str, ...] = SITES, tr=None, *, quant_cls=None, act_cls=
                 mode = getattr(layer_mod.Attention, "_h3_tp2_exact", None)
             except ImportError:
                 mode = None
-        if mode != "1":
+        if mode == "2":
+            logger.warning("h3_tp2 fp8 quant fuse: site out %s: %s",
+                           "requested but ignored" if explicit else "skipped automatically", OUT_MODE2)
+            sites = tuple(s for s in sites if s != "out")
+            if not sites:
+                return []
+        elif mode != "1":
             skip["out"] = f"needs H3_TP2_ULYSSES_EXACT=1 (installed: {mode})"
     if "fc1" in sites and ("out" in fp8_consumers._state.get("sites", ()) or
                            getattr(tr.indexed_gate_rms_norm_scale_shift, "_h3_tp2_consumer_fuse", False)):

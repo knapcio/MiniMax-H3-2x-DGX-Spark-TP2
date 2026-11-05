@@ -94,8 +94,11 @@ def _clean():
         fq._stats[k] = 0
     fq._tls.ctx = None
     gstate = dict(fp8_gemm._state)
+    csites = fc._state.get("sites", ())
+    fc._state["sites"] = ()      # an fp8_consumers install of an earlier test module would skip fc1 here
     fake.CALLS.clear()
     yield
+    fc._state["sites"] = csites
     fq._tls.ctx = None
     fq._state.update(cpu_mirror=False, checked={}, disabled=set(), sites=(), verify=False, orig_quant=None,
                      quant_cls=None, act_cls=None)

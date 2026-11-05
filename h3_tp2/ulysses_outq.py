@@ -32,10 +32,16 @@ mode, and the reviewed source of every function on the path (``EXPECTED``).  The
 placeholder of the stock shape; that layer's ``quant_fp8`` is replaced (on the kernel instance) by ``_OutQuant``,
 which recognises the placeholder by pointer and shape and quantises from the receive buffer.  A placeholder that
 reaches any other quant, or a deferred receive that the forward never consumed, raises instead of computing on garbage.
+
+With ``H3_TP2_FP8_QUANT_FUSE`` (``h3_tp2/fp8_quant_fuse.py``) its qkv / fc1 / fc2 sites combine with this mode; its out
+site (the fused unpack + quant of mode 1) is skipped, since there is no unpack copy here.  The two placeholders are
+kept apart: one of this module reaching the fuse's ``QuantFP8.forward`` wrapper raises there (``is_placeholder``), and
+a pending stash placeholder of the fuse reaching ``_OutQuant`` raises here.
 """
 from __future__ import annotations
 
 import logging
+import sys
 import threading
 from typing import Any
 
@@ -182,6 +188,23 @@ def _is_placeholder(t: torch.Tensor) -> bool:
     return t.numel() > 1 and all(s == 0 for s in t.stride())
 
 
+def is_placeholder(t: torch.Tensor) -> bool:
+    """True for a placeholder made by ``defer`` or a view of it: stride 0 everywhere and either the pending deferral's
+    pointer or a one-element storage (for fp8_quant_fuse's guard: it must never reach another quant)."""
+    if not _is_placeholder(t):
+        return False
+    pend = getattr(_tls, "pending", None)
+    if pend is not None and t.data_ptr() == pend.ph.data_ptr():
+        return True
+    return t.untyped_storage().nbytes() <= t.element_size()
+
+
+def _fuse_placeholder(x: torch.Tensor) -> bool:
+    """True when ``x`` is H3_TP2_FP8_QUANT_FUSE's pending stash placeholder (an uninitialised bf16 tensor)."""
+    fq = sys.modules.get(__package__ + ".fp8_quant_fuse")
+    return fq is not None and fq.pending_placeholder(x)
+
+
 class _Deferred:
     __slots__ = ("recv", "ph", "m", "k")
 
@@ -258,6 +281,9 @@ class _OutQuant:
         return getattr(self._orig, name)
 
     def __call__(self, x, scale=None, scale_ub=None, *args, **kwargs):  # noqa: ANN001,ANN204
+        if isinstance(x, torch.Tensor) and _fuse_placeholder(x):
+            raise RuntimeError("h3_tp2 ulysses exact copy5: an H3_TP2_FP8_QUANT_FUSE placeholder (uninitialised) "
+                               "reached the out-projection quant")
         pend = take(x) if isinstance(x, torch.Tensor) else None
         if pend is None:
             return self._orig(x, scale, scale_ub, *args, **kwargs)

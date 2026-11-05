@@ -479,12 +479,14 @@ def _apply(role: str) -> None:
     #      bf16 row and the layer's QuantFP8 returns them.  Bit-for-bit self-check per site on the first call (stock
     #      producer + the layer's own QuantFP8), a mismatch disables the site.  "qkv,out,fc1,fc2" (any subset)
     #      selects sites; H3_TP2_FP8_QUANT_FUSE_VERIFY=1 compares every call (slow).  See h3_tp2/fp8_quant_fuse.py.
+    #      With H3_TP2_ULYSSES_EXACT=2 (6e) the out site is skipped automatically (no unpack copy there; ulysses_outq
+    #      serves the out-projection quant), logged once; qkv / fc1 / fc2 stay fused.
     _qfuse = os.environ.get("H3_TP2_FP8_QUANT_FUSE", "0")
     if _qfuse.strip() not in ("", "0"):
         from . import fp8_quant_fuse as _fq
 
         try:
-            _qdone = _fq.install(_fq.parse_sites(_qfuse))
+            _qdone = _fq.install(_fq.parse_sites(_qfuse), explicit=_fq.is_explicit(_qfuse))
         except Exception:  # noqa: BLE001  (an opt-in experiment must not take the rank down)
             logger.warning("h3_tp2: FP8 quant fuse install failed; stock quant", exc_info=True)
             _qdone = []
