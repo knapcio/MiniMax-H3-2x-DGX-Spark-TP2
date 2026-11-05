@@ -363,6 +363,10 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-05 07:45: `scripts/plan_dialogue_windows.py` counts the words each window must speak in its new content
+  and warns above `--max-words-per-second` (default 2.75, between the Polish pacing arm's observations: 2.26-2.64 words/s
+  spoken, the 6 s tail at 2.85 dropped half a line); the report carries `words_approx` / `words_per_new_second_approx` per window and `warnings`.
+  `docs/DIALOGUE_PLAN_MEASUREMENT.md`.
 - 2026-11-05 07:20: defaults flipped: `H3_TP2_ULYSSES_EXACT` `1` -> `2` (copy 5 of the exact Ulysses exchange
   not made, the out-projection quant reads the receive buffer) and `H3_TP2_FP8_QUANT_FUSE` `0` -> `1` (the per-token FP8
   quant fused into the qkv / fc1 / fc2 producers; the out site is skipped automatically under mode 2). Gate (queue75,

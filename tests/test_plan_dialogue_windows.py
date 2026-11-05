@@ -53,6 +53,27 @@ class DialogueWindowTests(unittest.TestCase):
             with self.subTest(line=line), self.assertRaises(ValueError):
                 module.plan(10, 'A scene.', line)
 
+    def test_dense_tail_window_is_flagged_and_a_full_window_is_not(self):
+        # 2026-11-05 Polish arm: 2.26-2.64 words/s of new content were spoken, 2.85 in the 6 s tail dropped a line.
+        texts = ['Widzę czynsz, zalegają już dwa pełne miesiące.', 'Czynsz może poczekać, dziewczyna nie może czekać.',
+                 'Jest pan lepszym człowiekiem, niż pan udaje, panie.']
+        tail = [{'start': 54.2 + 1.9 * i, 'end': 55.9 + 1.9 * i, 'text': t} for i, t in enumerate(texts)]
+        result = module.plan(60, 'The same steady shot.', tail)
+        self.assertEqual(len(result['warnings']), 1)
+        self.assertIn('window 6:', result['warnings'][0])
+        self.assertIn('partial window', result['warnings'][0])
+        self.assertEqual(result['windows'][5]['words_approx'], 22)
+        self.assertGreater(result['windows'][5]['words_per_new_second_approx'], module.DEFAULT_MAX_WORDS_PER_SECOND)
+        self.assertEqual(result['windows'][0]['words_approx'], 0)
+        full = [{'start': 12 + 3.5 * i, 'end': 14.5 + 3.5 * i, 'text': t} for i, t in enumerate(texts)]
+        result = module.plan(60, 'The same steady shot.', full)
+        self.assertEqual(result['warnings'], [])
+        self.assertEqual(result['windows'][1]['words_approx'], 22)
+        self.assertEqual(module.plan(60, 'The same steady shot.', tail, max_words_per_second=None)['warnings'], [])
+        for bad in (0, -1, float('nan'), '2'):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                module.plan(60, 'The same steady shot.', tail, max_words_per_second=bad)
+
     def test_cli_writes_the_explicit_extra_params(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory); source = root / 'lines.json'; report = root / 'plan.json'; extra = root / 'extra.json'

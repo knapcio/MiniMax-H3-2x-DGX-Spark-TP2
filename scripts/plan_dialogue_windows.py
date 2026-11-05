@@ -3,6 +3,12 @@
 
 This is a planning aid, not a guarantee that the model speaks on schedule.
 Supply a separate time-aligned audio reference when exact audio timing matters.
+
+The report also counts the words each window has to speak in its new content
+and warns when a window is denser than --max-words-per-second (default 2.75):
+on 2026-11-05 (results/20261105-polish-pacing) three Polish lines per window
+were all spoken at 2.26-2.64 words/s of new content, but the 6 s tail window,
+three short lines at 2.85 words/s, dropped half a line.
 """
 from __future__ import annotations
 
@@ -10,9 +16,14 @@ import argparse
 import json
 import math
 from pathlib import Path
+import re
 import sys
+import unicodedata
 
 import estimate_continuation as geometry
+
+WORD = re.compile(r"[^\W_]+(?:['’\-][^\W_]+)*", re.UNICODE)
+DEFAULT_MAX_WORDS_PER_SECOND = 2.75
 
 
 def phrase(value, name, *, required=True):
@@ -26,8 +37,12 @@ def phrase(value, name, *, required=True):
     return value
 
 
-def plan(seconds, scene, dialogue, *, window=277, overlap=22, lock_source=False):
+def plan(seconds, scene, dialogue, *, window=277, overlap=22, lock_source=False,
+         max_words_per_second=DEFAULT_MAX_WORDS_PER_SECOND):
     scene = phrase(scene, 'scene')
+    if max_words_per_second is not None and (type(max_words_per_second) not in (int, float) or
+                                             not math.isfinite(max_words_per_second) or max_words_per_second <= 0):
+        raise ValueError('max_words_per_second must be a positive finite number or None')
     if not isinstance(dialogue, list) or len(dialogue) > 1000:
         raise ValueError('dialogue must be a list with at most 1000 items')
     if type(lock_source) is not bool:
@@ -55,7 +70,8 @@ def plan(seconds, scene, dialogue, *, window=277, overlap=22, lock_source=False)
         if len(owners) != 1:
             raise ValueError(f'dialogue at {start:g}–{end:g} s crosses a generated-window boundary; move or split it')
         items.append({'start': start, 'end': end, 'text': text, 'speaker': speaker,
-                      'language': language, 'window': owners[0]})
+                      'language': language, 'window': owners[0],
+                      'words': len(WORD.findall(unicodedata.normalize('NFC', text)))})
     items.sort(key=lambda x: (x['start'], x['end']))
     if any(a['end'] > b['start'] for a, b in zip(items, items[1:])):
         raise ValueError('overlapping dialogue is not supported by this planner')
@@ -67,6 +83,22 @@ def plan(seconds, scene, dialogue, *, window=277, overlap=22, lock_source=False)
             sentences.append(f"{who}<d>[{item['language']}] {item['text']}</d>")
         direction = (' '.join(sentences) if sentences else 'No new dialogue is spoken in this part.')
         prompts.append(scene + ' ' + direction)
+    # Words per second of each window's NEW content: the model has only that
+    # span to speak the window's lines. A short tail window needs fewer lines.
+    densities = []
+    for i, (a, b) in enumerate(boundaries):
+        words = sum(x['words'] for x in items if x['window'] == i)
+        new_seconds = (b - a) / 24
+        densities.append((words, round(words / new_seconds, 3) if new_seconds > 0 else None))
+    warnings = []
+    if max_words_per_second is not None:
+        for i, (words, density) in enumerate(densities):
+            if density is not None and density > max_words_per_second:
+                a, b = boundaries[i]
+                tail = (' (the last, partial window: give it fewer lines or make the clip a whole number of windows)'
+                        if i == len(boundaries) - 1 and b - a < boundaries[0][1] - boundaries[0][0] else '')
+                warnings.append(f'window {i + 1}: {words} words in {(b - a) / 24:.1f} s of new content = {density:g} '
+                                f'words/s, above {max_words_per_second:g}{tail}')
     extra = {'long_video': True, 'long_video_mode': 'continuation', 'preencode_mp4': True,
              # The prompt assignments and the server must use the same frame
              # boundaries, even when their window counts happen to match.
@@ -78,8 +110,10 @@ def plan(seconds, scene, dialogue, *, window=277, overlap=22, lock_source=False)
             'requested_frames': requested, 'aligned_internal_frames': aligned,
             'windows': [{'index': i + 1, 'frames': [start, end], 'new_frames': list(boundaries[i]),
                          'new_seconds': [round(boundaries[i][0] / 24, 4), round(boundaries[i][1] / 24, 4)],
-                         'dialogue_items': [j + 1 for j, x in enumerate(items) if x['window'] == i]}
+                         'dialogue_items': [j + 1 for j, x in enumerate(items) if x['window'] == i],
+                         'words_approx': densities[i][0], 'words_per_new_second_approx': densities[i][1]}
                         for i, (start, end) in enumerate(windows)],
+            'max_words_per_second': max_words_per_second, 'warnings': warnings,
             'dialogue': [{**x, 'window': x['window'] + 1} for x in items], 'extra_params': extra,
             'limitations': ('Text assignment prevents accidental prompt repetition, not generated speech repetition '
                             'or exact timing. Audio conditioning, visuals, speech and lip synchronization need testing.')}
@@ -93,12 +127,18 @@ def main() -> int:
     parser.add_argument('--window', type=int, default=277)
     parser.add_argument('--overlap', type=int, default=22)
     parser.add_argument('--lock-source', action='store_true', help='include audio_mode=lock_source in extra_params')
+    parser.add_argument('--max-words-per-second', type=float, default=DEFAULT_MAX_WORDS_PER_SECOND,
+                        help='warn (stderr and the report) when a window must speak more words per second of its new '
+                             'content than this; 0 disables the check')
     parser.add_argument('--report', type=Path, required=True, help='write full plan to a new JSON file')
     parser.add_argument('--extra-output', type=Path, required=True, help='write just extra_params to a new JSON file')
     args = parser.parse_args()
     try:
         result = plan(args.seconds, args.scene, json.loads(args.dialogue.read_text()), window=args.window,
-                      overlap=args.overlap, lock_source=args.lock_source)
+                      overlap=args.overlap, lock_source=args.lock_source,
+                      max_words_per_second=args.max_words_per_second or None)
+        for warning in result['warnings']:
+            print('plan-dialogue-windows: warning:', warning, file=sys.stderr)
         # Publish neither output if either path already exists. Neither file
         # is used by a running request automatically.
         if args.report.exists() or args.extra_output.exists() or args.report == args.extra_output:

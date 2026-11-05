@@ -57,6 +57,8 @@ the gaps between consecutive lines 0.0-0.5 s, speech until the last frame.
   165-frame tail window (6.9 s, 6.0 s of new content), and the tail got the same three lines as a full window: the model
   spoke two of them and dropped the half-line "Czynsz może poczekać." The lines for the last window must fit its length
   (one line for a 6 s tail), or the clip length should be a whole number of windows (54.0 s for 5, 64.7 s for 6).
+  `scripts/plan_dialogue_windows.py` now reports each window's words per second of new content and warns above
+  2.75 words/s (this tail: 17 words in 6.0 s = 2.85; the full windows 2.26-2.64), see `docs/DIALOGUE_PLAN_MEASUREMENT.md`.
 - **Cost: none.** 3434 s against 3384 s for arm D with the same geometry and reference; three lines per window is free.
 - **Faces.** The woman's mean is lower than in arm D (0.69 against 0.74) and the man's equal; the per-window numbers sit
   inside the spread of the 60 s arms B-D (woman 0.56-0.81 per window there), and the speakers turn towards each other
