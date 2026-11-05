@@ -19,7 +19,9 @@ invented face is a must for anything public: do not prompt a real actor.
   the model 7-8 s to fill, and it filled them with 2-4 s pauses or, in Polish, with invented non-Polish speech; three
   lines removed both at the same render cost (`results/20261105-polish-pacing/`).
 - Keep each window under about **2.75 words per second of new content**: in the Polish arm 2.26-2.64 words/s were all
-  spoken and the 6 s tail at 2.85 dropped half a line. `scripts/plan_dialogue_windows.py` warns above that density.
+  spoken and the 6 s tail at 2.85 dropped half a line, and above **1.0 words per second** in every window, including a
+  short tail: a window with no line or one short line gets pauses or an invented line. `scripts/plan_dialogue_windows.py`
+  warns outside that range.
 - Tag the language in every line: `<d>[English] ...</d>`, `<d>[Polish] ...</d>`; put the speaker in front
   (`Izabela, the woman: <d>[Polish] ...</d>`). Known Polish weakness: single words with nasal vowels or `sz`/`rz`
   come out mispronounced (`może` -> `meże`, `pieniądze`); the language itself holds.
@@ -93,10 +95,14 @@ normalises the bed by loudness first because H3 beds come out anywhere between -
 speech (sidechain, ratio 4) and copies the video stream. Deliver the raw clip too: the dialogue clips sit at -21 to -24
 LUFS, the 120 s one at -13 LUFS (lower it by 8 dB for the same balance as the 60 s ones).
 
+Window length: the default 277-frame windows are the right choice for a clip people will watch. 192-frame windows
+(`"continuation_window_frames": 192`, lines planned with `--window 192`) rendered the 60 s 960x544 Polish scene 11 %
+faster with 53-57 GB instead of 64 GB peak, but eight hand-overs instead of five cost the second face (0.61 against 0.69
+mean), the speech (WER 0.14 against 0.08) and, with no line in the 2.4 s tail, an invented line
+(`results/20261105-window-length/`). A draft option; at 1344x768 the saving should be larger (not measured).
+
 ## What is still open
 
-- Shorter continuation windows (192 frames instead of 277) are being measured on the Polish scene: the step time has an
-  S² term, so a 2 min clip could render in roughly half the time at the price of more hand-overs
-  (`results/20261105-polish-pacing/`, W192 when done).
-- Polish single-word mispronunciations; whether they repeat across seeds (PL3 vs PL4) decides if a respelling arm is
-  worth a render.
+- Polish single-word mispronunciations repeat across seeds (PL3 and PL4 miss the same words: `może`, `pieniądze`,
+  `porządnie`, `czynsz`, `lepszym`), so they are text-driven; a respelling arm (`morze`, `pieniondze`, `porzondnie`
+  spoken, the intended spellings kept as the speech-QA reference) is being measured (PL5).

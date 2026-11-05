@@ -24,6 +24,10 @@ import estimate_continuation as geometry
 
 WORD = re.compile(r"[^\W_]+(?:['’\-][^\W_]+)*", re.UNICODE)
 DEFAULT_MAX_WORDS_PER_SECOND = 2.75
+# Below this the model has spare time in the window and fills it with pauses or invented speech: the one-line-per-
+# window arms (about 0.7-1.0 words/s) babbled in 2 of 12 windows; a window with no lines at all babbled in the 2.4 s
+# tail of the 192-frame arm (2026-11-05). 1.7 words/s was spoken cleanly.
+DEFAULT_MIN_WORDS_PER_SECOND = 1.0
 
 
 def phrase(value, name, *, required=True):
@@ -38,11 +42,14 @@ def phrase(value, name, *, required=True):
 
 
 def plan(seconds, scene, dialogue, *, window=277, overlap=22, lock_source=False,
-         max_words_per_second=DEFAULT_MAX_WORDS_PER_SECOND):
+         max_words_per_second=DEFAULT_MAX_WORDS_PER_SECOND, min_words_per_second=DEFAULT_MIN_WORDS_PER_SECOND):
     scene = phrase(scene, 'scene')
     if max_words_per_second is not None and (type(max_words_per_second) not in (int, float) or
                                              not math.isfinite(max_words_per_second) or max_words_per_second <= 0):
         raise ValueError('max_words_per_second must be a positive finite number or None')
+    if min_words_per_second is not None and (type(min_words_per_second) not in (int, float) or
+                                             not math.isfinite(min_words_per_second) or min_words_per_second <= 0):
+        raise ValueError('min_words_per_second must be a positive finite number or None')
     if not isinstance(dialogue, list) or len(dialogue) > 1000:
         raise ValueError('dialogue must be a list with at most 1000 items')
     if type(lock_source) is not bool:
@@ -99,6 +106,13 @@ def plan(seconds, scene, dialogue, *, window=277, overlap=22, lock_source=False,
                         if i == len(boundaries) - 1 and b - a < boundaries[0][1] - boundaries[0][0] else '')
                 warnings.append(f'window {i + 1}: {words} words in {(b - a) / 24:.1f} s of new content = {density:g} '
                                 f'words/s, above {max_words_per_second:g}{tail}')
+    if min_words_per_second is not None:
+        for i, (words, density) in enumerate(densities):
+            if density is not None and density < min_words_per_second:
+                a, b = boundaries[i]
+                warnings.append(f'window {i + 1}: {words} words in {(b - a) / 24:.1f} s of new content = {density:g} '
+                                f'words/s, below {min_words_per_second:g}: the model fills spare time with pauses or '
+                                f'invented speech; give the window a line or shorten the clip to end with the previous one')
     extra = {'long_video': True, 'long_video_mode': 'continuation', 'preencode_mp4': True,
              # The prompt assignments and the server must use the same frame
              # boundaries, even when their window counts happen to match.
@@ -113,7 +127,8 @@ def plan(seconds, scene, dialogue, *, window=277, overlap=22, lock_source=False,
                          'dialogue_items': [j + 1 for j, x in enumerate(items) if x['window'] == i],
                          'words_approx': densities[i][0], 'words_per_new_second_approx': densities[i][1]}
                         for i, (start, end) in enumerate(windows)],
-            'max_words_per_second': max_words_per_second, 'warnings': warnings,
+            'max_words_per_second': max_words_per_second, 'min_words_per_second': min_words_per_second,
+            'warnings': warnings,
             'dialogue': [{**x, 'window': x['window'] + 1} for x in items], 'extra_params': extra,
             'limitations': ('Text assignment prevents accidental prompt repetition, not generated speech repetition '
                             'or exact timing. Audio conditioning, visuals, speech and lip synchronization need testing.')}
@@ -130,13 +145,17 @@ def main() -> int:
     parser.add_argument('--max-words-per-second', type=float, default=DEFAULT_MAX_WORDS_PER_SECOND,
                         help='warn (stderr and the report) when a window must speak more words per second of its new '
                              'content than this; 0 disables the check')
+    parser.add_argument('--min-words-per-second', type=float, default=DEFAULT_MIN_WORDS_PER_SECOND,
+                        help='warn when a window has fewer words per second of its new content than this (spare time '
+                             'becomes pauses or invented speech); 0 disables the check')
     parser.add_argument('--report', type=Path, required=True, help='write full plan to a new JSON file')
     parser.add_argument('--extra-output', type=Path, required=True, help='write just extra_params to a new JSON file')
     args = parser.parse_args()
     try:
         result = plan(args.seconds, args.scene, json.loads(args.dialogue.read_text()), window=args.window,
                       overlap=args.overlap, lock_source=args.lock_source,
-                      max_words_per_second=args.max_words_per_second or None)
+                      max_words_per_second=args.max_words_per_second or None,
+                      min_words_per_second=args.min_words_per_second or None)
         for warning in result['warnings']:
             print('plan-dialogue-windows: warning:', warning, file=sys.stderr)
         # Publish neither output if either path already exists. Neither file

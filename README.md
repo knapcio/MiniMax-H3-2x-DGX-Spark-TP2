@@ -264,7 +264,9 @@ tested and has not yet been established as a fix.
 Pacing: put about three short lines into every 11.5 s window (277 frames at 24 fps) and fewer into a partial last
 window. One line per window leaves the model 7-8 s to fill, and it fills them with 2-4 s pauses or, in Polish, with
 invented non-Polish speech; three lines per window removed both at no render cost (`results/20261105-polish-pacing/`,
-`results/20261103-xclip/`).
+`results/20261103-xclip/`). Keep the 277-frame windows: 192-frame windows render the same 60 s scene 11 % faster at
+960x544 but the extra hand-overs cost the second face and the speech, and a window left without a line gets an invented
+one (`results/20261105-window-length/`).
 
 The whole path from the reference frame to the mixed clip, with the costs and checks of the delivered 60-120 s scenes, is
 in `docs/DIALOGUE_CLIPS.md`. `scripts/plan_dialogue_windows.py` can prepare that explicit list from a JSON array such as

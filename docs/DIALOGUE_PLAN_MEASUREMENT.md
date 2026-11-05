@@ -26,6 +26,11 @@ were all spoken at 2.26-2.64 words/s of new content, while the 6 s tail
 window, three short lines at 2.85 words/s, dropped half a line. One arm, one
 language: treat the number as a first estimate, not a measured limit. The last window of a clip that is not a whole number of
 windows is the usual offender; give it fewer lines or round the duration.
+It also warns below `--min-words-per-second` (default 1.0, `0` disables): a
+window with spare time gets pauses or invented speech. The one-line-per-window
+arms (0.7-1.0 words/s) babbled in two of twelve windows and the 2.4 s tail
+window of the 192-frame arm, planned without a line, got an invented line
+(`results/20261105-window-length/`); 1.7 words/s was spoken cleanly.
 
 This is a description of a plan, not a quality score. A line's time slot may
 include pauses; an unscheduled interval may contain music or other sound.

@@ -58,21 +58,52 @@ class DialogueWindowTests(unittest.TestCase):
         texts = ['Widzę czynsz, zalegają już dwa pełne miesiące.', 'Czynsz może poczekać, dziewczyna nie może czekać.',
                  'Jest pan lepszym człowiekiem, niż pan udaje, panie.']
         tail = [{'start': 54.2 + 1.9 * i, 'end': 55.9 + 1.9 * i, 'text': t} for i, t in enumerate(texts)]
-        result = module.plan(60, 'The same steady shot.', tail)
+        result = module.plan(60, 'The same steady shot.', tail, min_words_per_second=None)
         self.assertEqual(len(result['warnings']), 1)
         self.assertIn('window 6:', result['warnings'][0])
         self.assertIn('partial window', result['warnings'][0])
         self.assertEqual(result['windows'][5]['words_approx'], 22)
         self.assertGreater(result['windows'][5]['words_per_new_second_approx'], module.DEFAULT_MAX_WORDS_PER_SECOND)
         self.assertEqual(result['windows'][0]['words_approx'], 0)
+        # With the default minimum the five empty windows are flagged too (one warning each, the dense tail last).
+        result = module.plan(60, 'The same steady shot.', tail)
+        self.assertEqual(len(result['warnings']), 6)
+        self.assertEqual(sum('below' in w for w in result['warnings']), 5)
         full = [{'start': 12 + 3.5 * i, 'end': 14.5 + 3.5 * i, 'text': t} for i, t in enumerate(texts)]
-        result = module.plan(60, 'The same steady shot.', full)
+        result = module.plan(60, 'The same steady shot.', full, min_words_per_second=None)
         self.assertEqual(result['warnings'], [])
         self.assertEqual(result['windows'][1]['words_approx'], 22)
-        self.assertEqual(module.plan(60, 'The same steady shot.', tail, max_words_per_second=None)['warnings'], [])
+        self.assertEqual(module.plan(60, 'The same steady shot.', tail, max_words_per_second=None,
+                                     min_words_per_second=None)['warnings'], [])
         for bad in (0, -1, float('nan'), '2'):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 module.plan(60, 'The same steady shot.', tail, max_words_per_second=bad)
+
+    def test_an_empty_or_sparse_window_is_flagged(self):
+        # 2026-11-05 W192 arm: the 2.4 s tail window had no lines and the model invented a Polish-sounding line in it;
+        # the one-line-per-window arms (0.7-1.0 words/s) babbled in 2 of 12 windows, 1.7 words/s was spoken cleanly.
+        texts = ['Widzę czynsz, zalegają już dwa pełne miesiące.', 'Czynsz może poczekać, dziewczyna nie może czekać.',
+                 'Jest pan lepszym człowiekiem, niż pan udaje, panie.']
+        lines = [{'start': 0.5 + 2.5 * i, 'end': 2.5 + 2.5 * i, 'text': t} for i, t in enumerate(texts)]
+        result = module.plan(60, 'The same steady shot.', lines, window=192)
+        self.assertEqual(len(result['windows']), 9)
+        self.assertEqual(result['windows'][0]['words_approx'], 22)
+        self.assertEqual([w[:9] for w in result['warnings']], ['window %d:' % i for i in range(2, 10)])
+        self.assertIn('0 words in 2.4 s of new content = 0 words/s, below 1', result['warnings'][-1])
+        self.assertIn('invented speech', result['warnings'][-1])
+        one_line = [{'start': 8.5 + 7.0833 * i, 'end': 11 + 7.0833 * i, 'text': 'Czynsz może poczekać, dziewczyna nie.'}
+                    for i in range(7)]
+        result = module.plan(60, 'The same steady shot.', lines + one_line, window=192)
+        self.assertEqual(result['windows'][1]['words_approx'], 5)
+        self.assertEqual(len(result['warnings']), 8)
+        self.assertTrue(all('below 1' in w for w in result['warnings']))
+        self.assertEqual(result['warnings'][-1][:9], 'window 9:')
+        self.assertEqual(module.plan(60, 'The same steady shot.', lines, window=192, min_words_per_second=None)['warnings'], [])
+        self.assertEqual(module.plan(60, 'The same steady shot.', lines, window=192, min_words_per_second=None,
+                                     max_words_per_second=None)['min_words_per_second'], None)
+        for bad in (0, -1, float('nan'), '1'):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                module.plan(60, 'The same steady shot.', lines, min_words_per_second=bad)
 
     def test_cli_writes_the_explicit_extra_params(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -363,6 +363,12 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-05 10:45: continuation window length measured (`results/20261105-window-length/`, W192, queue78): 192-frame
+  windows render the 60 s 960x544 Polish scene 11 % faster than 277 (3054 s vs 3434 s, 1.98 vs 2.28 s of denoising per
+  new frame, peak 53-57 GB vs 64 GB) at a cost: eight hand-overs instead of five, the woman's face 0.61 vs 0.69 mean,
+  WER 0.14 vs 0.08, and the 2.4 s tail window that had no line got an invented one. 277 stays the default; 192 is a
+  documented draft option. `scripts/plan_dialogue_windows.py` now also warns below `--min-words-per-second` (default
+  1.0 words per second of new content; a window with no line is the usual case) with a test.
 - 2026-11-05 09:10: first serving boot on the flipped defaults (queue77, clean env): probe `bf6e85687a6a`, calibration
   `4d6d69e4aad0` at 19.60 s/it, both ranks install mode 2 and the fused quant (qkv, fc1, fc2) from the code alone, every
   self-check bit-identical. `results/20261105-levers-merge/`, "First serving boot".

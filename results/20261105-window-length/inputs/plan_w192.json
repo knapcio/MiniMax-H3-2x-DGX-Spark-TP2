@@ -1,0 +1,363 @@
+{
+  "requested_seconds": 60.0,
+  "fps": 24,
+  "window_frames": 192,
+  "overlap_frames": 22,
+  "requested_frames": 1440,
+  "aligned_internal_frames": 1450,
+  "windows": [
+    {
+      "index": 1,
+      "frames": [
+        0,
+        192
+      ],
+      "new_frames": [
+        0,
+        192
+      ],
+      "new_seconds": [
+        0.0,
+        8.0
+      ],
+      "dialogue_items": [
+        1,
+        2
+      ],
+      "words_approx": 21,
+      "words_per_new_second_approx": 2.625
+    },
+    {
+      "index": 2,
+      "frames": [
+        170,
+        362
+      ],
+      "new_frames": [
+        192,
+        362
+      ],
+      "new_seconds": [
+        8.0,
+        15.0833
+      ],
+      "dialogue_items": [
+        3,
+        4
+      ],
+      "words_approx": 16,
+      "words_per_new_second_approx": 2.259
+    },
+    {
+      "index": 3,
+      "frames": [
+        340,
+        532
+      ],
+      "new_frames": [
+        362,
+        532
+      ],
+      "new_seconds": [
+        15.0833,
+        22.1667
+      ],
+      "dialogue_items": [
+        5,
+        6
+      ],
+      "words_approx": 16,
+      "words_per_new_second_approx": 2.259
+    },
+    {
+      "index": 4,
+      "frames": [
+        510,
+        702
+      ],
+      "new_frames": [
+        532,
+        702
+      ],
+      "new_seconds": [
+        22.1667,
+        29.25
+      ],
+      "dialogue_items": [
+        7,
+        8
+      ],
+      "words_approx": 19,
+      "words_per_new_second_approx": 2.682
+    },
+    {
+      "index": 5,
+      "frames": [
+        680,
+        872
+      ],
+      "new_frames": [
+        702,
+        872
+      ],
+      "new_seconds": [
+        29.25,
+        36.3333
+      ],
+      "dialogue_items": [
+        9,
+        10
+      ],
+      "words_approx": 19,
+      "words_per_new_second_approx": 2.682
+    },
+    {
+      "index": 6,
+      "frames": [
+        850,
+        1042
+      ],
+      "new_frames": [
+        872,
+        1042
+      ],
+      "new_seconds": [
+        36.3333,
+        43.4167
+      ],
+      "dialogue_items": [
+        11,
+        12
+      ],
+      "words_approx": 15,
+      "words_per_new_second_approx": 2.118
+    },
+    {
+      "index": 7,
+      "frames": [
+        1020,
+        1212
+      ],
+      "new_frames": [
+        1042,
+        1212
+      ],
+      "new_seconds": [
+        43.4167,
+        50.5
+      ],
+      "dialogue_items": [
+        13,
+        14
+      ],
+      "words_approx": 15,
+      "words_per_new_second_approx": 2.118
+    },
+    {
+      "index": 8,
+      "frames": [
+        1190,
+        1382
+      ],
+      "new_frames": [
+        1212,
+        1382
+      ],
+      "new_seconds": [
+        50.5,
+        57.5833
+      ],
+      "dialogue_items": [
+        15,
+        16
+      ],
+      "words_approx": 12,
+      "words_per_new_second_approx": 1.694
+    },
+    {
+      "index": 9,
+      "frames": [
+        1360,
+        1450
+      ],
+      "new_frames": [
+        1382,
+        1440
+      ],
+      "new_seconds": [
+        57.5833,
+        60.0
+      ],
+      "dialogue_items": [],
+      "words_approx": 0,
+      "words_per_new_second_approx": 0.0
+    }
+  ],
+  "max_words_per_second": 2.75,
+  "warnings": [],
+  "dialogue": [
+    {
+      "start": 0.3,
+      "end": 3.4,
+      "text": "To list od pani Nowakowej. Jej córce odmówiono pracy w moim sklepie.",
+      "speaker": "Wokulski, the man",
+      "language": "Polish",
+      "window": 1,
+      "words": 12
+    },
+    {
+      "start": 3.6,
+      "end": 6.7,
+      "text": "Czy zna pan powód? Nie chciałabym nikogo osądzać pochopnie.",
+      "speaker": "Izabela, the woman",
+      "language": "Polish",
+      "window": 1,
+      "words": 9
+    },
+    {
+      "start": 8.3,
+      "end": 11.4,
+      "text": "Ja też nie. Dlatego pytam panią.",
+      "speaker": "Wokulski, the man",
+      "language": "Polish",
+      "window": 2,
+      "words": 6
+    },
+    {
+      "start": 11.6,
+      "end": 14.7,
+      "text": "Dziewczyna pisze, że przyszła wczoraj i nikt jej nie wysłuchał.",
+      "speaker": "Izabela, the woman",
+      "language": "Polish",
+      "window": 2,
+      "words": 10
+    },
+    {
+      "start": 15.383,
+      "end": 18.483,
+      "text": "Więc ktoś tutaj zapomniał, po co jest ten sklep.",
+      "speaker": "Wokulski, the man",
+      "language": "Polish",
+      "window": 3,
+      "words": 9
+    },
+    {
+      "start": 18.683,
+      "end": 21.783,
+      "text": "Może byli zajęci. Może ona była nieśmiała.",
+      "speaker": "Izabela, the woman",
+      "language": "Polish",
+      "window": 3,
+      "words": 7
+    },
+    {
+      "start": 22.467,
+      "end": 25.567,
+      "text": "Jeśli to prawda, musimy to naprawić, bez względu na powód.",
+      "speaker": "Wokulski, the man",
+      "language": "Polish",
+      "window": 4,
+      "words": 10
+    },
+    {
+      "start": 25.767,
+      "end": 28.867,
+      "text": "Łatwo jest dać komuś pieniądze. Trudniej zapytać, czego potrzebuje.",
+      "speaker": "Izabela, the woman",
+      "language": "Polish",
+      "window": 4,
+      "words": 9
+    },
+    {
+      "start": 29.55,
+      "end": 32.65,
+      "text": "A jeśli przyjdzie tylko dlatego, że nie ma innego wyjścia?",
+      "speaker": "Izabela, the woman",
+      "language": "Polish",
+      "window": 5,
+      "words": 10
+    },
+    {
+      "start": 32.85,
+      "end": 35.95,
+      "text": "Wtedy niech sama zdecyduje. Najpierw zaprośmy ją na rozmowę.",
+      "speaker": "Wokulski, the man",
+      "language": "Polish",
+      "window": 5,
+      "words": 9
+    },
+    {
+      "start": 36.633,
+      "end": 39.733,
+      "text": "Mogłabym napisać odpowiedź jeszcze dziś.",
+      "speaker": "Izabela, the woman",
+      "language": "Polish",
+      "window": 6,
+      "words": 5
+    },
+    {
+      "start": 39.933,
+      "end": 43.033,
+      "text": "Proszę. Niech pani napisze, że sklep jest jej winien przeprosiny.",
+      "speaker": "Wokulski, the man",
+      "language": "Polish",
+      "window": 6,
+      "words": 10
+    },
+    {
+      "start": 43.717,
+      "end": 46.817,
+      "text": "Dobrze. A teraz proszę spojrzeć ze mną na ten rachunek.",
+      "speaker": "Wokulski, the man",
+      "language": "Polish",
+      "window": 7,
+      "words": 10
+    },
+    {
+      "start": 47.017,
+      "end": 50.117,
+      "text": "Widzę czynsz. Zalegają dwa miesiące.",
+      "speaker": "Izabela, the woman",
+      "language": "Polish",
+      "window": 7,
+      "words": 5
+    },
+    {
+      "start": 50.8,
+      "end": 53.9,
+      "text": "Czynsz może poczekać. Dziewczyna nie.",
+      "speaker": "Wokulski, the man",
+      "language": "Polish",
+      "window": 8,
+      "words": 5
+    },
+    {
+      "start": 54.1,
+      "end": 57.2,
+      "text": "Jest pan lepszym człowiekiem, niż pan udaje.",
+      "speaker": "Izabela, the woman",
+      "language": "Polish",
+      "window": 8,
+      "words": 7
+    }
+  ],
+  "extra_params": {
+    "long_video": true,
+    "long_video_mode": "continuation",
+    "preencode_mp4": true,
+    "continuation_window_frames": 192,
+    "continuation_overlap_frames": 22,
+    "continuation_prompts": [
+      "A realistic cinematic Polish historical drama inside a Warsaw shop in the 1880s. The camera stands at the end of a polished wooden counter. On the left a middle-aged man in a dark coat and top hat, Wokulski, the shop owner; on the right a young woman in a dark green dress and a feathered hat, Izabela. Both have turned toward the camera so that their two faces are fully visible in three-quarter view, heads up, eyes open, softly lit from the shop window, while they talk quietly about a letter lying on the counter. Keep the same two faces, the same positions, clothing, counter, letter and lighting throughout. Steady eye-level camera, one continuous take, no cuts, no new prominent people. The two characters take turns speaking natural, clearly pronounced Polish in a calm, intimate tone, answering each other promptly with small natural head, eye and hand movements and realistic expressions; the listener reacts quietly. Soft shop ambience under the voices: the low murmur of customers further back, footsteps on wooden floors, a clock ticking. No subtitles, no text, no music. Wokulski, the man: <d>[Polish] To list od pani Nowakowej. Jej córce odmówiono pracy w moim sklepie.</d> Izabela, the woman: <d>[Polish] Czy zna pan powód? Nie chciałabym nikogo osądzać pochopnie.</d>",
+      "A realistic cinematic Polish historical drama inside a Warsaw shop in the 1880s. The camera stands at the end of a polished wooden counter. On the left a middle-aged man in a dark coat and top hat, Wokulski, the shop owner; on the right a young woman in a dark green dress and a feathered hat, Izabela. Both have turned toward the camera so that their two faces are fully visible in three-quarter view, heads up, eyes open, softly lit from the shop window, while they talk quietly about a letter lying on the counter. Keep the same two faces, the same positions, clothing, counter, letter and lighting throughout. Steady eye-level camera, one continuous take, no cuts, no new prominent people. The two characters take turns speaking natural, clearly pronounced Polish in a calm, intimate tone, answering each other promptly with small natural head, eye and hand movements and realistic expressions; the listener reacts quietly. Soft shop ambience under the voices: the low murmur of customers further back, footsteps on wooden floors, a clock ticking. No subtitles, no text, no music. Wokulski, the man: <d>[Polish] Ja też nie. Dlatego pytam panią.</d> Izabela, the woman: <d>[Polish] Dziewczyna pisze, że przyszła wczoraj i nikt jej nie wysłuchał.</d>",
+      "A realistic cinematic Polish historical drama inside a Warsaw shop in the 1880s. The camera stands at the end of a polished wooden counter. On the left a middle-aged man in a dark coat and top hat, Wokulski, the shop owner; on the right a young woman in a dark green dress and a feathered hat, Izabela. Both have turned toward the camera so that their two faces are fully visible in three-quarter view, heads up, eyes open, softly lit from the shop window, while they talk quietly about a letter lying on the counter. Keep the same two faces, the same positions, clothing, counter, letter and lighting throughout. Steady eye-level camera, one continuous take, no cuts, no new prominent people. The two characters take turns speaking natural, clearly pronounced Polish in a calm, intimate tone, answering each other promptly with small natural head, eye and hand movements and realistic expressions; the listener reacts quietly. Soft shop ambience under the voices: the low murmur of customers further back, footsteps on wooden floors, a clock ticking. No subtitles, no text, no music. Wokulski, the man: <d>[Polish] Więc ktoś tutaj zapomniał, po co jest ten sklep.</d> Izabela, the woman: <d>[Polish] Może byli zajęci. Może ona była nieśmiała.</d>",
+      "A realistic cinematic Polish historical drama inside a Warsaw shop in the 1880s. The camera stands at the end of a polished wooden counter. On the left a middle-aged man in a dark coat and top hat, Wokulski, the shop owner; on the right a young woman in a dark green dress and a feathered hat, Izabela. Both have turned toward the camera so that their two faces are fully visible in three-quarter view, heads up, eyes open, softly lit from the shop window, while they talk quietly about a letter lying on the counter. Keep the same two faces, the same positions, clothing, counter, letter and lighting throughout. Steady eye-level camera, one continuous take, no cuts, no new prominent people. The two characters take turns speaking natural, clearly pronounced Polish in a calm, intimate tone, answering each other promptly with small natural head, eye and hand movements and realistic expressions; the listener reacts quietly. Soft shop ambience under the voices: the low murmur of customers further back, footsteps on wooden floors, a clock ticking. No subtitles, no text, no music. Wokulski, the man: <d>[Polish] Jeśli to prawda, musimy to naprawić, bez względu na powód.</d> Izabela, the woman: <d>[Polish] Łatwo jest dać komuś pieniądze. Trudniej zapytać, czego potrzebuje.</d>",
+      "A realistic cinematic Polish historical drama inside a Warsaw shop in the 1880s. The camera stands at the end of a polished wooden counter. On the left a middle-aged man in a dark coat and top hat, Wokulski, the shop owner; on the right a young woman in a dark green dress and a feathered hat, Izabela. Both have turned toward the camera so that their two faces are fully visible in three-quarter view, heads up, eyes open, softly lit from the shop window, while they talk quietly about a letter lying on the counter. Keep the same two faces, the same positions, clothing, counter, letter and lighting throughout. Steady eye-level camera, one continuous take, no cuts, no new prominent people. The two characters take turns speaking natural, clearly pronounced Polish in a calm, intimate tone, answering each other promptly with small natural head, eye and hand movements and realistic expressions; the listener reacts quietly. Soft shop ambience under the voices: the low murmur of customers further back, footsteps on wooden floors, a clock ticking. No subtitles, no text, no music. Izabela, the woman: <d>[Polish] A jeśli przyjdzie tylko dlatego, że nie ma innego wyjścia?</d> Wokulski, the man: <d>[Polish] Wtedy niech sama zdecyduje. Najpierw zaprośmy ją na rozmowę.</d>",
+      "A realistic cinematic Polish historical drama inside a Warsaw shop in the 1880s. The camera stands at the end of a polished wooden counter. On the left a middle-aged man in a dark coat and top hat, Wokulski, the shop owner; on the right a young woman in a dark green dress and a feathered hat, Izabela. Both have turned toward the camera so that their two faces are fully visible in three-quarter view, heads up, eyes open, softly lit from the shop window, while they talk quietly about a letter lying on the counter. Keep the same two faces, the same positions, clothing, counter, letter and lighting throughout. Steady eye-level camera, one continuous take, no cuts, no new prominent people. The two characters take turns speaking natural, clearly pronounced Polish in a calm, intimate tone, answering each other promptly with small natural head, eye and hand movements and realistic expressions; the listener reacts quietly. Soft shop ambience under the voices: the low murmur of customers further back, footsteps on wooden floors, a clock ticking. No subtitles, no text, no music. Izabela, the woman: <d>[Polish] Mogłabym napisać odpowiedź jeszcze dziś.</d> Wokulski, the man: <d>[Polish] Proszę. Niech pani napisze, że sklep jest jej winien przeprosiny.</d>",
+      "A realistic cinematic Polish historical drama inside a Warsaw shop in the 1880s. The camera stands at the end of a polished wooden counter. On the left a middle-aged man in a dark coat and top hat, Wokulski, the shop owner; on the right a young woman in a dark green dress and a feathered hat, Izabela. Both have turned toward the camera so that their two faces are fully visible in three-quarter view, heads up, eyes open, softly lit from the shop window, while they talk quietly about a letter lying on the counter. Keep the same two faces, the same positions, clothing, counter, letter and lighting throughout. Steady eye-level camera, one continuous take, no cuts, no new prominent people. The two characters take turns speaking natural, clearly pronounced Polish in a calm, intimate tone, answering each other promptly with small natural head, eye and hand movements and realistic expressions; the listener reacts quietly. Soft shop ambience under the voices: the low murmur of customers further back, footsteps on wooden floors, a clock ticking. No subtitles, no text, no music. Wokulski, the man: <d>[Polish] Dobrze. A teraz proszę spojrzeć ze mną na ten rachunek.</d> Izabela, the woman: <d>[Polish] Widzę czynsz. Zalegają dwa miesiące.</d>",
+      "A realistic cinematic Polish historical drama inside a Warsaw shop in the 1880s. The camera stands at the end of a polished wooden counter. On the left a middle-aged man in a dark coat and top hat, Wokulski, the shop owner; on the right a young woman in a dark green dress and a feathered hat, Izabela. Both have turned toward the camera so that their two faces are fully visible in three-quarter view, heads up, eyes open, softly lit from the shop window, while they talk quietly about a letter lying on the counter. Keep the same two faces, the same positions, clothing, counter, letter and lighting throughout. Steady eye-level camera, one continuous take, no cuts, no new prominent people. The two characters take turns speaking natural, clearly pronounced Polish in a calm, intimate tone, answering each other promptly with small natural head, eye and hand movements and realistic expressions; the listener reacts quietly. Soft shop ambience under the voices: the low murmur of customers further back, footsteps on wooden floors, a clock ticking. No subtitles, no text, no music. Wokulski, the man: <d>[Polish] Czynsz może poczekać. Dziewczyna nie.</d> Izabela, the woman: <d>[Polish] Jest pan lepszym człowiekiem, niż pan udaje.</d>",
+      "A realistic cinematic Polish historical drama inside a Warsaw shop in the 1880s. The camera stands at the end of a polished wooden counter. On the left a middle-aged man in a dark coat and top hat, Wokulski, the shop owner; on the right a young woman in a dark green dress and a feathered hat, Izabela. Both have turned toward the camera so that their two faces are fully visible in three-quarter view, heads up, eyes open, softly lit from the shop window, while they talk quietly about a letter lying on the counter. Keep the same two faces, the same positions, clothing, counter, letter and lighting throughout. Steady eye-level camera, one continuous take, no cuts, no new prominent people. The two characters take turns speaking natural, clearly pronounced Polish in a calm, intimate tone, answering each other promptly with small natural head, eye and hand movements and realistic expressions; the listener reacts quietly. Soft shop ambience under the voices: the low murmur of customers further back, footsteps on wooden floors, a clock ticking. No subtitles, no text, no music. No new dialogue is spoken in this part."
+    ]
+  },
+  "limitations": "Text assignment prevents accidental prompt repetition, not generated speech repetition or exact timing. Audio conditioning, visuals, speech and lip synchronization need testing."
+}
