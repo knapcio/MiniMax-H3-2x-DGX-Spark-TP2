@@ -3,7 +3,7 @@
 Branch `levers` from main 50b5a9d: `quant-fuse` (db53042, `results/20261104-quant-fuse/`) merged first, then `copy5`
 (4a1962c, `results/20261104-ulysses-copy5/`). Both are opt-in; defaults unchanged. **Status: merged, combination rule
 implemented, CPU tests pass (13 new, both levers' suites unchanged); no GPU run (the `gpu-free` marker on Spark_06 was
-absent); serving proof not run.**
+absent); serving proof PASS (queue74, below).**
 
 ## The conflict
 
@@ -60,9 +60,18 @@ fallback of both branches is unchanged.
   fc2 with the line above; `qkv,fc1,fc2` -> the same, no out line; `out,qkv` -> qkv, `requested but ignored`; mode 1 +
   `1` -> all four and the hook; `ulysses_outq.check_sources` passes after the fuse install.
 
-## Serving proof (to run)
+## Serving proof: PASS (queue74, 2026-11-05 03:51-05:34)
 
-As in both levers' READMEs (`restart_head_gated`, queue-lib on the `levers` tree): A defaults; B
+Result (full table in `results/20261104-quant-fuse/README.md`, "Serving proof"): A defaults `4d6d69e4aad0` (21.24
+s/it); B `H3_TP2_FP8_QUANT_FUSE=1` alone `4d6d69e4aad0` three times, latents bit-equal to A (21.75 / 21.02 / 21.87
+s/it), `installed sites: qkv, out, fc1, fc2`, four self-checks bit-identical on both ranks; C both levers
+`4d6d69e4aad0` twice, latents bit-equal to A (20.47 / 19.82 s/it), `site out skipped automatically ...`, `installed
+sites: qkv, fc1, fc2`, `Ulysses exact exchange installed (mode 2)`, three fuse self-checks and copy5's self-check
+bit-identical, nothing `NOT bit-identical` or `materialised`; E defaults restored, probe PASS, no lever line left in
+the env. Speed is inside the boot-to-boot spread (see the quant-fuse README); the digests are the proof. Next: the
+16 s continuation gate (queue75) on a boot with both levers, then the flip of both defaults.
+
+The plan as run: as in both levers' READMEs (`restart_head_gated`, queue-lib on the `levers` tree): A defaults; B
 `export H3_TP2_ULYSSES_EXACT=2` + `export H3_TP2_FP8_QUANT_FUSE=1` on both ranks: boot probe `bf6e85687a6a`,
 calibration digests `4d6d69e4aad0`, latents max abs diff 0 against A. Journal: the out line above, `installed sites:
 qkv, fc1, fc2`, three fuse `self-check ... bit-identical` lines (qkv, fc1, fc2), `copy5: self-check ...

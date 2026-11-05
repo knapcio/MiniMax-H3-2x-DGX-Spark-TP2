@@ -7,7 +7,7 @@ Can the kernel that produces that input write the fp8 row and its scale directly
 exhaustive row-maximum sweep, the whole DiT block on the GPU).** The producers' copies take over the quant: -0.30
 s/step at M = 10240 (960 probe, ~3.7 % of ~8 s/step), -0.55 s/step at M = 18880 (5 s 1344 calibration, ~2.6 % of ~21
 s/step), -1.26 s/step at M = 42848 (277-frame 1344 windows, ~1.6 % of ~80 s/step), from per-call timings x 50 layers.
-Opt-in `H3_TP2_FP8_QUANT_FUSE=1`; serving proof not run yet (owner's queue). Fused SwiGLU level 2's divergent render
+Opt-in `H3_TP2_FP8_QUANT_FUSE=1`; **serving proof PASS 2026-11-05 (queue74, below): bit-equal latents, all four sites installed and self-checked on both ranks.** Fused SwiGLU level 2's divergent render
 is explained by the cuBLASLt stale-scale hazard fixed on 11-03, not by its quant (which matches the serving op bit for
 bit).
 
@@ -190,9 +190,38 @@ Recipe (queue67 pattern, `calib` = 5 s 1344x768 T2VA, seed 0, 20 steps, forest-s
 Default gate afterwards, as for cutlass (queue69): the 16 s 1344x768 FL2VA continuation twice on a quant-fuse boot,
 digests `200e38721c9e 4138eba5a964`, framemd5 `e46129c05cc6`.
 
+## Serving proof: PASS (queue74, 2026-11-05 03:51-05:34, `levers` 706f2e6 synced to both Sparks)
+
+Gated compacted boots through `queue-lib.sh` (`~/h3-tp2-results/queue74-levers-proof.sh` on Spark_06), the 5 s
+1344x768 T2VA calibration (seed 0, 20 steps, the forest stream prompt, expected latents digest `4d6d69e4aad0`):
+
+| arm | boot probe (warm s/step, latents) | calibration digests | `latents_diff.py` vs A | s/it |
+|---|---|---|---|---|
+| A: defaults | PASS 7.75 `bf6e85687a6a` | `4d6d69e4aad0` | | 21.24 |
+| B: `H3_TP2_FP8_QUANT_FUSE=1`, three runs | PASS 7.91 `bf6e85687a6a` | `4d6d69e4aad0` x3 | B1: video `(1, 24, 37, 48, 84)` and audio `(2, 32, 207)` bit-equal, max abs diff 0 | 21.75 / 21.02 / 21.87 |
+| C: `H3_TP2_ULYSSES_EXACT=2` + `H3_TP2_FP8_QUANT_FUSE=1`, two runs | PASS 7.44 `bf6e85687a6a` | `4d6d69e4aad0` x2 | C1: bit-equal, max abs diff 0 | 20.47 / 19.82 |
+| E: defaults restored | PASS 8.29 `bf6e85687a6a`, health 200 | | | |
+
+Head journal and rank 1's worker log in B (both ranks): `installed sites: qkv, out, fc1, fc2`, `fp8 quant fuse:
+self-check ('qkv', 5376, ...) bit-identical`, `self-check ('out', 2, 3584) bit-identical`, `self-check ('fc1', 5376,
+...) bit-identical`, `self-check ('fc2', 28672) bit-identical`, `first fused_qkv / fused_out / fused_fc1 / fused_fc2`,
+and at the end of the boot `fused_qkv=5000 fused_out=5000 fused_fc1=5000 fused_fc2=5000 consumed=20000 selfcheck_pass=4`
+(the probe + three calibrations = 100 steps x 50 layers per rank, every call fused). In C: `site out skipped
+automatically: H3_TP2_ULYSSES_EXACT=2 makes no reverse unpack copy to fuse into ...`, `installed sites: qkv, fc1, fc2`,
+`Ulysses exact exchange installed (mode 2)`, three fuse self-checks + copy5's self-check bit-identical. Absent in both:
+`NOT bit-identical`, `materialised`, `requested but ignored`. `Q74 lever lines left in env: 0` after E.
+
+Speed: the calibration cannot resolve this lever. The boot-to-boot spread of the A arm alone is 20.44 (queue73) to
+21.24 (queue74) s/it, and the three B runs in one boot span 21.02-21.87, so the projected -0.55 s/step (2.6 %) at M =
+18880 sits inside the noise; B's mean 21.55 vs A 21.24 is not a regression that this measurement could show either.
+The combined boot C gave the two fastest calibrations recorded (20.47 / 19.82 s/it), but with one boot per arm that
+is a hint, not a measurement. The proof here is the digest and the bit-equal latents; the default gate (queue75: the
+16 s 1344x768 FL2VA continuation twice on a boot with both levers, digests `200e38721c9e 4138eba5a964`, framemd5
+`e46129c05cc6`) decides the flip.
+
 ## What is left
 
-- The serving proof above (owner's queue), then the default gate; nothing is default-on.
+- The default gate (queue75), then the flip of both levers' defaults together (`results/20261105-levers-merge/`).
 - Mode 0's PTX schedules the RMS reduction's instructions in another order than upstream (same TTGIR, same layouts,
   LLVM does not reassociate float ops), so its exactness rests on the GPU checks (unit tests, probe on full M, the
   serving self-check) rather than on identical machine code; mode 1 has upstream's PTX reduction sequence and is the
