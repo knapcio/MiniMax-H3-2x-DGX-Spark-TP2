@@ -363,6 +363,17 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-05 01:50: Polish dialogue pacing (`results/20261105-polish-pacing/`): three short lines per 11.5 s window
+  (queue71, 60 s 960x544 Ref2VA 1024 px, doll reference) against the 120 s one-line-per-window clip of 11-04: pauses
+  >= 1.5 s 13 -> 0 (longest silence 1.4 s), non-Polish babble in 2 of 12 windows -> none, word error rate 0.172 -> 0.082,
+  same render time (3434 vs 3384 s). Remaining errors are single mispronounced words with nasal vowels or `sz`/`rz`; the
+  short final window must get fewer lines (one half-line was dropped there).
+- 2026-11-05 00:45: `VLLM_OMNI_ASYNC_OUTPUT_TIMEOUT` defaults to 7200 s in `scripts/env.sh` (upstream 600 s is a wait
+  per engine step; the VAE decode of a clip is one step and took 642 s for 120 s at 1344x768, which killed the finished
+  7.9 h render of the English X clip at 23:56). `H3_TP2_REPLAY_LATENTS=<globs>` (`h3_tp2/h3_output.py`) replays the
+  `H3_TP2_SAVE_LATENTS` files of a request (one per window and seam attempt, saved on both ranks, geometry-checked) in
+  place of the denoising, so the identical request is decoded and muxed in minutes; `scripts/queue-lib.sh` strips the
+  variable at the next restart. The CPU loader test reproduces the render journal's latents digests bit-exact.
 - 2026-11-04 15:55: `H3_TP2_FP8_GEMM=cutlass` is the default (`tensor32` = two-pass only). Gate queue69: two 16 s
   1344x768 FL2VA continuations on one cutlass boot bit-identical to both queue63 boots (digests 200e38721c9e
   4138eba5a964, framemd5 e46129c05cc6), window 1 82-87 vs 85-89 s/step; with queue67 five bit-identical requests

@@ -1,0 +1,168 @@
+{
+  "source": "/home/knapcio/h3-tp2-results/lalka120-ref2va/d120_960x544_s20_seed3301_ref2va.mp4",
+  "source_sha256": "33a1eefcec936e030e24045755354aaff7dd813e15b3d36499b841fa4c75870c",
+  "model": "small",
+  "requested_language": "pl",
+  "detected_language": "pl",
+  "detected_language_probability": 1,
+  "transcript": "To list od pani Nowakowej. Jej córce odmówiono pracy w moim sklepie. Czy zna pan powód? Nie chciałabym osądzać nikiego pochopnie. Właśnie chcę go poznać. Zapytam o to mojego przyjaciela. Dziewczyna pisze, że przysławczoraj i nikt jej nie wysłuchał. Jeśli tak było, musimy to naprawić, niezależnie od powodów. Łatwo dać komuś pienięgę. i od niej zapytać, czego potrzebuje. Pójdę tam jutro sam. Chcę usłyszeć, co ma do powiedzenia. A jeśli powie, że to Pana ludzie ją odprawili? Jebra śluciewcu. Diemere Gruzdra Stiewsmu Terefo. Wtedy przeproszę. Sklep nosi moje nazwisko, więc i moje błędy. Adzieno mięsło się Moriowie siantyskotro. Rzadko słyszę, by ktoś tak mówił o własnych protunikach. Każdy z nich kiedyś wstał tam, gdzie ona teraz. Ja też. Więc proszę mi powiedzieć, jak to się skończy. Chciałabym wiedzieć.",
+  "reference": "To list od pani Nowakowej. Jej córce odmówiono pracy w moim sklepie.\nCzy zna pan powód? Nie chciałabym osądzać nikogo pochopnie.\nWłaśnie chcę go poznać. Zapytam o to mojego przyjaciela.\nDziewczyna pisze, że przyszła wczoraj i nikt jej nie wysłuchał.\nJeśli tak było, musimy to naprawić, niezależnie od powodów.\nŁatwo dać komuś pieniądze. Trudniej zapytać, czego potrzebuje.\nPójdę tam jutro sam. Chcę usłyszeć, co ma do powiedzenia.\nA jeśli powie, że to pana ludzie ją odprawili?\nWtedy przeproszę. Sklep nosi moje nazwisko, więc i moje błędy.\nRzadko słyszę, by ktoś tak mówił o własnych pracownikach.\nKażdy z nich kiedyś stał tam, gdzie ona teraz. Ja też.\nWięc proszę mi powiedzieć, jak to się skończy. Chciałabym wiedzieć.",
+  "word_error_rate": 0.1724,
+  "segments": [
+    {
+      "start_s": 3.25,
+      "end_s": 7.5,
+      "text": "To list od pani Nowakowej.",
+      "average_log_probability": -0.1008,
+      "no_speech_probability": 0.0314
+    },
+    {
+      "start_s": 7.5,
+      "end_s": 11.5,
+      "text": "Jej córce odmówiono pracy w moim sklepie.",
+      "average_log_probability": -0.1008,
+      "no_speech_probability": 0.0314
+    },
+    {
+      "start_s": 11.5,
+      "end_s": 17.98,
+      "text": "Czy zna pan powód?",
+      "average_log_probability": -0.1008,
+      "no_speech_probability": 0.0314
+    },
+    {
+      "start_s": 17.98,
+      "end_s": 23.6,
+      "text": "Nie chciałabym osądzać nikiego pochopnie.",
+      "average_log_probability": -0.1008,
+      "no_speech_probability": 0.0314
+    },
+    {
+      "start_s": 23.6,
+      "end_s": 30.34,
+      "text": "Właśnie chcę go poznać.",
+      "average_log_probability": -0.1008,
+      "no_speech_probability": 0.0314
+    },
+    {
+      "start_s": 30.34,
+      "end_s": 37.33,
+      "text": "Zapytam o to mojego przyjaciela.",
+      "average_log_probability": -0.1008,
+      "no_speech_probability": 0.0314
+    },
+    {
+      "start_s": 37.33,
+      "end_s": 47.26,
+      "text": "Dziewczyna pisze, że przysławczoraj i nikt jej nie wysłuchał.",
+      "average_log_probability": -0.1008,
+      "no_speech_probability": 0.0314
+    },
+    {
+      "start_s": 47.26,
+      "end_s": 51.26,
+      "text": "Jeśli tak było, musimy to naprawić, niezależnie od powodów.",
+      "average_log_probability": -0.1008,
+      "no_speech_probability": 0.0314
+    },
+    {
+      "start_s": 51.26,
+      "end_s": 59.45,
+      "text": "Łatwo dać komuś pienięgę.",
+      "average_log_probability": -0.1008,
+      "no_speech_probability": 0.0314
+    },
+    {
+      "start_s": 59.45,
+      "end_s": 66.03,
+      "text": "i od niej zapytać, czego potrzebuje.",
+      "average_log_probability": -0.2988,
+      "no_speech_probability": 0.4895
+    },
+    {
+      "start_s": 66.03,
+      "end_s": 68.03,
+      "text": "Pójdę tam jutro sam.",
+      "average_log_probability": -0.2988,
+      "no_speech_probability": 0.4895
+    },
+    {
+      "start_s": 68.03,
+      "end_s": 76.31,
+      "text": "Chcę usłyszeć, co ma do powiedzenia.",
+      "average_log_probability": -0.2988,
+      "no_speech_probability": 0.4895
+    },
+    {
+      "start_s": 76.31,
+      "end_s": 80.31,
+      "text": "A jeśli powie, że to Pana ludzie ją odprawili?",
+      "average_log_probability": -0.2988,
+      "no_speech_probability": 0.4895
+    },
+    {
+      "start_s": 80.31,
+      "end_s": 83.31,
+      "text": "Jebra śluciewcu.",
+      "average_log_probability": -0.2988,
+      "no_speech_probability": 0.4895
+    },
+    {
+      "start_s": 83.31,
+      "end_s": 90.6,
+      "text": "Diemere Gruzdra Stiewsmu Terefo.",
+      "average_log_probability": -0.2988,
+      "no_speech_probability": 0.4895
+    },
+    {
+      "start_s": 90.6,
+      "end_s": 92.6,
+      "text": "Wtedy przeproszę.",
+      "average_log_probability": -0.2988,
+      "no_speech_probability": 0.4895
+    },
+    {
+      "start_s": 92.6,
+      "end_s": 96.6,
+      "text": "Sklep nosi moje nazwisko, więc i moje błędy.",
+      "average_log_probability": -0.2988,
+      "no_speech_probability": 0.4895
+    },
+    {
+      "start_s": 96.6,
+      "end_s": 103.57,
+      "text": "Adzieno mięsło się Moriowie siantyskotro.",
+      "average_log_probability": -0.2988,
+      "no_speech_probability": 0.4895
+    },
+    {
+      "start_s": 103.57,
+      "end_s": 106.95,
+      "text": "Rzadko słyszę, by ktoś tak mówił o własnych protunikach.",
+      "average_log_probability": -0.2972,
+      "no_speech_probability": 0.0136
+    },
+    {
+      "start_s": 113.45,
+      "end_s": 115.69,
+      "text": "Każdy z nich kiedyś wstał tam, gdzie ona teraz.",
+      "average_log_probability": -0.2972,
+      "no_speech_probability": 0.0136
+    },
+    {
+      "start_s": 116.69,
+      "end_s": 117.37,
+      "text": "Ja też.",
+      "average_log_probability": -0.2972,
+      "no_speech_probability": 0.0136
+    },
+    {
+      "start_s": 118.15,
+      "end_s": 120.65,
+      "text": "Więc proszę mi powiedzieć, jak to się skończy. Chciałabym wiedzieć.",
+      "average_log_probability": -0.2972,
+      "no_speech_probability": 0.0136
+    }
+  ],
+  "limitations": "ASR can mishear or hallucinate; review speech, identity, delivery and lip sync separately."
+}

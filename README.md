@@ -189,7 +189,16 @@ export H3_RENDER_TIMEOUT_S=30000
 ```
 
 The first two bounds allow eight hours for the executor/wave, the API and client have time to report a failure, and
-the memory guards remain active. Increasing the executor timeout also delays detection of a genuinely stuck request;
+the memory guards remain active. A fifth limit is per engine step, not per request: the API server waits at most
+`VLLM_OMNI_ASYNC_OUTPUT_TIMEOUT` (upstream default 600 s) for one step's output, and the VAE decode of a whole clip is
+one step. That wait killed a 120 s 1344x768 render after 7.9 h of finished diffusion, during its 642 s decode
+(2026-11-04; a 120 s clip at 960x544 decodes in 360 s and fitted). `scripts/env.sh` defaults it to 7200 s since
+2026-11-05. Keep `H3_TP2_SAVE_LATENTS=<dir>` set for long renders: the diffusion output of every window (and every
+seam-retry attempt) is written on both ranks, and a request that died after its diffusion can be replayed instead of
+re-rendered. `H3_TP2_REPLAY_LATENTS='<globs of that request's files, in order>'` on a boot of the same partition makes
+`diffuse` return the saved latents (geometry checked per file; a mismatching request fails rather than consuming a
+file, so do not run the boot probe first) and the identical request then goes through the same hand-over, stitch,
+decode and mux in minutes. The queue library strips the variable at the next restart. Increasing the executor timeout also delays detection of a genuinely stuck request;
 these values are an example, not a guarantee that an arbitrarily long render will finish. External clients must use
 their own matching timeout. In the workspace, `clients/h3-generate.py --long --first-frame --image painting.png ...`
 sends this FL2VA request; without `--first-frame` the long client retains Ref2VA behaviour.
@@ -247,6 +256,11 @@ continues; the speaker rests, with quiet room ambience.'`. The rest wording appl
 in it explicitly inserts the entire original prompt, including dialogue. For dialogue that must continue or change
 across windows, supply an explicit `continuation_prompts` list instead. The dialogue-free continuation is being
 tested and has not yet been established as a fix.
+
+Pacing: put about three short lines into every 11.5 s window (277 frames at 24 fps) and fewer into a partial last
+window. One line per window leaves the model 7-8 s to fill, and it fills them with 2-4 s pauses or, in Polish, with
+invented non-Polish speech; three lines per window removed both at no render cost (`results/20261105-polish-pacing/`,
+`results/20261103-xclip/`).
 
 `scripts/plan_dialogue_windows.py` can prepare that explicit list from a JSON array such as
 `[{"start": 0.3, "end": 3.3, "speaker": "S1", "text": "Dzień dobry."}, {"start": 12, "end": 14.8,
