@@ -363,6 +363,10 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-05 03:50: `H3_TP2_ULYSSES_EXACT=2` (copy 5 of the exact Ulysses exchange dropped: the out-projection per-token
+  FP8 quant reads the all-to-all receive buffer, `h3_tp2/ulysses_outq.py`, `results/20261104-ulysses-copy5/`) passes the
+  serving proof: probe `bf6e85687a6a`, two 1344 calibrations `4d6d69e4aad0` bit-equal to the defaults boot, self-check
+  bit-identical on both ranks. Opt-in until the combined gate with the fused quant (below) passes.
 - 2026-11-05 02:30: the 120 s English clip for X is recovered by replay (`results/20261103-xclip/`, section 120 s):
   `H3_TP2_REPLAY_LATENTS` on a fresh Ref2VA boot reproduced the 14 saved windows (seam ratios and digests identical to the
   original journal), decode 632.9 s under the 7200 s wait, HTTP 200 after 21 minutes instead of an 8 h re-render; the

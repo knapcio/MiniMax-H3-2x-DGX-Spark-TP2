@@ -155,7 +155,32 @@ destination (mode 1 removes copy 3 there).
     # GPU (marker present, env as above)
     ~/h3-long/.venv/bin/python -m pytest tests/test_ulysses_exact_gpu.py tests/test_ulysses_outq_gpu.py -q -p no:logging
 
-## Serving proof (to run; nothing was restarted for this work)
+## Serving proof: PASS (queue73, 2026-11-05 02:31-03:49)
+
+Branch rebased on main (4a1962c) and synced to both Sparks; gated compacted boots through `queue-lib.sh`
+(`~/h3-tp2-results/queue73-copy5-proof.sh`):
+
+| arm | boot probe | 5 s 1344x768 T2VA calibration (seed 0, 20 steps) | s/it |
+|---|---|---|---|
+| A: defaults | PASS | latents `4d6d69e4aad0` | 20.44 |
+| B: `H3_TP2_ULYSSES_EXACT=2`, run 1 | `bf6e85687a6a` (PASS) | `4d6d69e4aad0`, `latents_diff.py` A vs B1: video and audio bit-equal (max abs diff 0) | 20.81 |
+| B, run 2 | | `4d6d69e4aad0` | 20.40 |
+| E: defaults restored | PASS 8.22 / 7.78 s/step `bf6e85687a6a` | | |
+
+Journal of both ranks in B: `Ulysses exact exchange installed (mode 2)`, `copy 5 left to the out-projection quant
+(self-check on the first call)`, `copy5: first deferred`, `copy5: self-check M=10240 K=7168 bit-identical to copy 5 +
+QuantFP8; the out-projection quant reads the receive buffer`, `copy5: first quant_recv`, and at the end of the boot
+`calls so far deferred=2001 quant_recv=2000 selfcheck_pass=1` (the probe + two calibrations: 1000 attention calls
+each on each rank; the one extra deferral is the self-check's own call). Absent: `NOT bit-identical`, `not_prepared`,
+`upstream source changed`, `out-projection not eligible`. Speed: 20.81 / 20.40 against 20.44 s/it, i.e. inside the
+boot-to-boot spread, as expected for a 0.6 % lever; the digest and the bit-equal latents are the proof. One stray 60 s
+render from a test suite hit the head during the boot-B restart (03:04-03:08, the head was SIGKILLed by the stop
+timeout and rebooted by the gate); it started after calibration A had finished and before boot B's probe, so no arm
+was affected.
+
+The default flip is gated with `H3_TP2_FP8_QUANT_FUSE` together (`results/20261105-levers-merge/`, queue74/75).
+
+### The recipe as planned
 
 Like queue59: sync the reviewed tree to both Sparks while nothing renders (`H3_VENV=/home/knapcio/h3-long/.venv
 scripts/sync-to-nodes.sh Spark_06 Spark_05`), then gated compacted boots via `queue-lib.sh` (`H3_TP2_ULYSSES_EXACT` is
