@@ -25,10 +25,28 @@ reference face; "missing" = no face found at that second).
 | woman after return | 0.34-0.59 (mean of the last 10 % 0.49) | **0.42-0.67 (0.57)** | 0.54-0.78 (0.70) | **0.46-0.87 (0.84)** |
 | man, whole clip | 0.84-0.91 | **0.87-0.94** | 0.24-0.91 (he turns with her) | 0.29-0.94 |
 
+**Second seed and model-rendered cards (queue87, 22:00-22:38).** Seed 2302 of the occlusion scene, and arm **C** = the
+scene + two "cards" the model rendered itself (a 5 s Ref2VA close-up of each character from the scene frame + its crop,
+`inputs/prompt_card_*.txt`, frame at 1 s; the cards resemble the scene faces at 0.75 / 0.72 and look right by eye).
+
+| occlusion, woman | before (first 10 %) | after re-entry (last 10 %) | man, mean |
+|---|---|---|---|
+| A seed 2301 (scene only) | 0.685 | 0.494 | 0.881 |
+| A2 seed 2302 | 0.738 | 0.366 | 0.851 |
+| B seed 2301 (+2 crops) | 0.829 | 0.572 | 0.905 |
+| B2 seed 2302 | 0.869 | 0.575 | 0.875 |
+| C seed 2301 (+2 rendered cards) | 0.781 | 0.424 | 0.866 |
+
+Two seeds agree: the crops add about +0.15 before and +0.1-0.2 after the occlusion (0.57 both seeds against 0.49 / 0.37),
+the man gains too, no cut in any arm. The model's own close-up cards, although sharper and recognisably the same
+people, do not help the re-entry (0.42): the identity signal the model follows is the scene's own pixels, not a
+re-imagined face. Title the result "crops, not cards".
+
 **Reading so far.** The extra references work mechanically: no error, no cut (the 10-28 experiment with an extra *video*
 reference block made the model cut; image blocks do not), and every identity measure is 0.1-0.2 higher with the crops,
 before and after the event. The loss at re-appearance is not removed: after the occlusion the woman comes back at
-0.57 against 0.83 before it (A: 0.49 against 0.69). The crops are 100 px faces upscaled; sharper identity references
-(cards the model renders itself) and a second seed are the next arms (queue87). Cost: the two crops add a quarter of the
+0.57 against 0.83 before it (A: 0.49 against 0.69). Sharper references do not change that (cards, above), and the second seed confirms the crops' gain. Next arm:
+`H3_TP2_REF_KEY_SCALE` (queue88), scaling the attention keys of the reference rows so the re-entering character attends
+to its crop more strongly. Cost: the two crops add a quarter of the
 window time at this size, because `H3_TP2_REF_SHORT_EDGE` upscales them to 1024 px like the scene; a per-image cap is
 the obvious saving.

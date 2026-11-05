@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-05 22:40: multi-reference, second seed and rendered cards (queue87): the crops' gain repeats (woman after the
+  occlusion 0.57 on both seeds against 0.49 / 0.37 scene-only); model-rendered close-up cards do not help (0.42):
+  crops, not cards. `scripts/make_character_cards.py` cuts the crops from a scene frame.
 - 2026-11-05 21:30: several reference images per Ref2VA request measured (`results/20261105-multiref/`, queue84/86):
   the scene frame + a crop per character raises every face-similarity measure by 0.1-0.2 and causes no cut, but the
   woman still comes back weaker after an occlusion (0.57 against 0.83 before; scene-only 0.49 against 0.69). +25 %
