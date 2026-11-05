@@ -363,7 +363,7 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
-- 2026-11-06 00:15: identity guard prototype, opt-in `H3_TP2_IDENTITY_GUARD=<fraction>` (`h3_tp2/identity_guard.py`,
+- 2026-11-06 00:06: identity guard prototype, opt-in `H3_TP2_IDENTITY_GUARD=<fraction>` (`h3_tp2/identity_guard.py`,
   `scripts/face_bank.py`): every window of a continuation request (the first one too) is decoded after the denoising,
   eight frames are scored against a bank of face embeddings built from the request's reference images in a separate
   facenet-pytorch Python (`H3_TP2_IDENTITY_PY`, default `~/facenv/bin/python`), and a window where more than the

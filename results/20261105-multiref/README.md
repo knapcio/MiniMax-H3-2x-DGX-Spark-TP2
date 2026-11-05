@@ -65,7 +65,7 @@ magnitudes of this model 1.4x already pins every video token to the references. 
 weaker version of the same distortion. The lever that remains for re-entry is on the reference side (what the images
 show), not in the attention.
 
-**Identity guard, prototype (2026-11-06 00:15, `H3_TP2_IDENTITY_GUARD`).** The generic answer to "a figure went behind
+**Identity guard, prototype (2026-11-06 00:06, `H3_TP2_IDENTITY_GUARD`).** The generic answer to "a figure went behind
 something and someone else came out": after every window (the first one too) the plugin decodes the window's latents,
 scores eight frames spread over it against a bank of face embeddings built from the request's own reference images
 (`scripts/face_bank.py`, facenet-pytorch in `~/facenv`, rank 0 judges and broadcasts), and re-samples the window with
