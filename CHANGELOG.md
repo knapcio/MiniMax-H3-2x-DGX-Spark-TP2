@@ -366,7 +366,8 @@
 - 2026-11-05 07:45: `scripts/plan_dialogue_windows.py` counts the words each window must speak in its new content
   and warns above `--max-words-per-second` (default 2.75, between the Polish pacing arm's observations: 2.26-2.64 words/s
   spoken, the 6 s tail at 2.85 dropped half a line); the report carries `words_approx` / `words_per_new_second_approx` per window and `warnings`.
-  `docs/DIALOGUE_PLAN_MEASUREMENT.md`.
+  `docs/DIALOGUE_PLAN_MEASUREMENT.md`. `tests/test_plan_dialogue_geometry.py` imports its sibling tests as `tests.…`
+  like the other files, so it runs by file name from the repository root (whole suite: 506 passed, 8 skipped).
 - 2026-11-05 07:20: defaults flipped: `H3_TP2_ULYSSES_EXACT` `1` -> `2` (copy 5 of the exact Ulysses exchange
   not made, the out-projection quant reads the receive buffer) and `H3_TP2_FP8_QUANT_FUSE` `0` -> `1` (the per-token FP8
   quant fused into the qkv / fc1 / fc2 producers; the out site is skipped automatically under mode 2). Gate (queue75,

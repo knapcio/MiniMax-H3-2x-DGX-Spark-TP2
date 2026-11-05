@@ -7,8 +7,8 @@ accept these requests with incorrect dialogue timing before the fix.
 import json
 import unittest
 
-import test_plan_dialogue_windows as planner_tests
-import test_render_duration as render_tests
+from tests import test_plan_dialogue_windows as planner_tests
+from tests import test_render_duration as render_tests
 from h3_tp2 import cont_prompts
 
 
