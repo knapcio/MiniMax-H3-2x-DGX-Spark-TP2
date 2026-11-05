@@ -106,6 +106,14 @@ args=(-F "prompt=<$(curl_form_path "$request_tmp/prompt.txt")" --form-string "wi
 [ -n "$lora_json" ] && args+=(--form-string "lora=$lora_json")
 if [ -n "$end_img" ]; then
   args+=(-F "input_references=@$(curl_form_path "$first_snapshot")" -F "input_references=@$(curl_form_path "$last_snapshot")")
+elif [ -n "${H3_REF_IMAGES:-}" ]; then
+  # H3_REF_IMAGES=a.png,b.png,...: several reference images for one Ref2VA request (TASK=ref2va). The API's
+  # input_references list reaches the pipeline as an image list and every image becomes its own reference block in the
+  # packed sequence (upstream encodes each with the VAE and lists each shape), so a scene frame plus a head-and-shoulders
+  # crop per character gives the model every identity in every window, visible or not. Experiment of 2026-11-05.
+  [ "${TASK:-}" = ref2va ] || { echo "render.sh: H3_REF_IMAGES needs TASK=ref2va (FL2VA reads several images as keyframes)" >&2; exit 2; }
+  IFS=, read -r -a _refs <<< "$H3_REF_IMAGES"
+  for _r in "${_refs[@]}"; do [ -f "$_r" ] || { echo "render.sh: H3_REF_IMAGES: $_r is not a file" >&2; exit 2; }; args+=(-F "input_references=@$(curl_form_path "$_r")"); done
 elif [ -n "$img" ]; then
   args+=(-F "input_reference=@$(curl_form_path "$img")")
 fi
@@ -156,7 +164,7 @@ code=$(curl -q -sS --max-time "${H3_RENDER_TIMEOUT_S:-14400}" -X POST "http://$H
 t1=$(date +%s.%N)
 el=$(python3 -c "print(round($t1-$t0,1))")
 python3 - "$out" "$code" "$crc" "$el" "$dur" "$w" "$h" "$steps" "$seed" "$img" "$where" "$request_tmp/extra.json" "$request_tmp/prompt.txt" "${AUDIO_URL:-}" "$video_shift" "$lora_json" "$audio_meta" "$request_tmp/text-meta.json" "$image_meta" <<'PY' > "$out.timing.json" || { echo "render.sh: timing.json failed" >&2; exit 3; }
-import json, sys
+import json, os, sys
 from pathlib import Path
 o, code, crc, el, dur, w, h, steps, seed, img, where, extra_file, prompt_file, audio, video_shift, lora_json, audio_meta, text_meta, image_meta = sys.argv[1:]
 e = json.loads(Path(extra_file).read_bytes())
@@ -172,7 +180,8 @@ if target is not None and not isinstance(target, dict):
 eff = (target if target is not None else {}).get("duration_seconds", e.get("duration_seconds", e.get("duration", dur)))
 record = {"out": o, "http": code, "curl_rc": int(crc), "elapsed_s": float(el), "duration": float(dur),
                   "effective_duration": None if eff is None else float(eff), "size": f"{w}x{h}", "steps": int(steps), "seed": int(seed),
-                  "task": e.get("task"), "image": img, "frame_indices": where if (img and e.get("task") == "fl2va") else None,
+                  "task": e.get("task"), "image": img, "ref_images": os.environ.get("H3_REF_IMAGES") or None,
+                  "frame_indices": where if (img and e.get("task") == "fl2va") else None,
                   "video_flow_shift_form": float(video_shift),
                   "video_flow_shift_after_extra_merge": e.get("flow_shift", float(video_shift)), "lora": lora,
                   "extra_params": e, "text_fields": json.loads(Path(text_meta).read_bytes()), "audio_reference": audio or None,
