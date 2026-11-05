@@ -50,7 +50,9 @@ def _replay_files() -> list[str] | None:
     during the VAE decode (642 s); replaying its 14 window files through the same hand-over, stitch, decode and mux
     gave the clip in 15 minutes.  Every rank replays its own copies (the save hook writes on both hosts), the geometry
     of every file is checked against the diffuse call and a mismatch (a probe, another request) fails that request
-    instead of consuming a file.  Set it for one boot only; the queue library strips it at the next restart."""
+    instead of consuming a file.  Set it for one boot only; the queue library strips it at the next restart.
+    ``H3_TP2_REPLAY_PARTIAL=1`` lets the request continue with real denoising once the files are used up (repair of a
+    late window: replay the good windows, re-sample the rest with another seed)."""
     spec = os.environ.get("H3_TP2_REPLAY_LATENTS", "").strip()
     if not spec:
         return None
@@ -77,6 +79,17 @@ def _replay_take(kw: dict):  # noqa: ANN001
         return None
     i = _REPLAY["next"]
     if i >= len(files):
+        # H3_TP2_REPLAY_PARTIAL=1: the saved files cover only the first windows of the request; the rest is denoised
+        # (and saved) as usual. Repairs a long continuation whose late window went wrong (a cut-away, babble) at the
+        # cost of the windows after it: replay windows 1..k from the original request, give the request another seed
+        # so that windows k+1.. sample differently, keep everything else identical. Added 2026-11-05 after the 118 s
+        # Polish scene cut to a close-up in window 9 of 11.
+        if os.environ.get("H3_TP2_REPLAY_PARTIAL", "").strip() == "1":
+            if i == len(files):
+                logger.warning("h3_tp2 REPLAY: the %d saved latents files are used up; this and the later windows are "
+                               "denoised (H3_TP2_REPLAY_PARTIAL=1)", len(files))
+            _REPLAY["next"] = i + 1
+            return None
         raise RuntimeError(f"h3_tp2 REPLAY: diffuse call {i + 1} but only {len(files)} saved latents files were given")
     obj = torch.load(files[i], map_location="cpu")
     if not (isinstance(obj, (tuple, list)) and len(obj) == 2 and all(torch.is_tensor(t) for t in obj)):

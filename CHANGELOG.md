@@ -363,6 +363,11 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-05 17:30: `H3_TP2_REPLAY_PARTIAL=1`: a latents replay may cover only the first windows of a request, the rest is
+  denoised and saved as usual (`h3_tp2/h3_output.py`, 3 CPU tests). Repair of a long continuation whose late window went
+  wrong without re-rendering the good windows; first use: the 118 s Polish doll scene of 12:12-14:57 (11 windows,
+  WER 0.081, no pause >= 1.5 s) cut to a close-up of the letter at 88.7 s and stayed there, so windows 9-11 are
+  re-sampled from the saved windows 1-8 with another request seed.
 - 2026-11-05 12:15: the 192-frame window at 1344x768 measured directly (queue80, one-window 8 s FL2VA render): 43.0-43.3 s
   per step, as the step model from the 124/141/277-frame points predicted (42.8); 5.1 s of denoising per new frame against
   6.4 s for 277-frame windows, so shorter windows save about a fifth at the X-clip resolution, not a half
