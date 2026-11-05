@@ -128,7 +128,9 @@ same-seed frame digest (`h3_tp2 frames sha256` in the head journal, framemd5 in 
   [VAE_SCOPED_TILE_EXPERIMENT.md](VAE_SCOPED_TILE_EXPERIMENT.md).
 - Continuation experiments (vLLM-Omni >= 0.30, all change the output): `H3_TP2_WINDOW_SEED_STEP=<n>` (seed + k*n in
   window k), `H3_TP2_WINDOW_TEMPORAL_OFFSET=<x|cap:x>` (the per-window RoPE time origin), `H3_TP2_REF_SHORT_EDGE=<px>`
-  (reference image resized to this short edge instead of 2048), `H3_TP2_ANCHOR_FRAMES=<17n+5>` (the first window's
+  (reference image resized to this short edge instead of 2048), `H3_TP2_REF_NO_UPSCALE=<px>` (a reference whose
+  short edge is below px keeps its own size instead of being upscaled: small character crops next to a scene frame,
+  `h3_tp2/ref_shape.py`), `H3_TP2_ANCHOR_FRAMES=<17n+5>` (the first window's
   opening frames join every later window as a Ref2VA video reference, placed before the latent guide; see
   `insert_anchor_block`; `H3_TP2_ANCHOR_SOURCE=tail` uses the previous window's last frames instead, the same-shaped
   control). Note that any extra reference block also shifts the reference clock and the size of the condition-noise draw. The seed step and the temporal offset were measured to change nothing (results/); the

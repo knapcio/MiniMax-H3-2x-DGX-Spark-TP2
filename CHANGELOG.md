@@ -363,6 +363,13 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-05 23:55: reference key scaling closed (queue88, `results/20261105-multiref/`): `H3_TP2_REF_KEY_SCALE`
+  1.6 on the two crops smears the picture into a drifting close-up (no face found, 5 cuts), 1.4 on all three images
+  freezes and washes out the shot; the lever distorts the attention itself, not just its weighting. Stays opt-in,
+  documented as a negative result. New opt-in `H3_TP2_REF_NO_UPSCALE=1` (`h3_tp2/ref_shape.py`): a reference image
+  whose short edge is below `H3_TP2_REF_SHORT_EDGE` keeps its own size instead of being upscaled to it (a 512 px crop
+  costs a quarter of the rows); 3 CPU tests; identity effect measured next (queue90). The 60 s Polish doll scene is
+  rendering with scene + two crops (queue89) against the PL5 baseline.
 - 2026-11-05 22:40: multi-reference, second seed and rendered cards (queue87): the crops' gain repeats (woman after the
   occlusion 0.57 on both seeds against 0.49 / 0.37 scene-only); model-rendered close-up cards do not help (0.42):
   crops, not cards. `scripts/make_character_cards.py` cuts the crops from a scene frame.

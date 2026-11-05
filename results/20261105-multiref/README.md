@@ -1,4 +1,4 @@
-# Several reference images per Ref2VA request: identity through occlusion (2026-11-05, in progress)
+# Several reference images per Ref2VA request: identity through occlusion (2026-11-05)
 
 **Question.** In the published 120 s shop clip a background figure that walked behind something came back as someone
 else, and the woman's face after a turn was not quite hers (owner, 2026-11-05). The model has no object permanence: a
@@ -45,8 +45,22 @@ re-imagined face. Title the result "crops, not cards".
 **Reading so far.** The extra references work mechanically: no error, no cut (the 10-28 experiment with an extra *video*
 reference block made the model cut; image blocks do not), and every identity measure is 0.1-0.2 higher with the crops,
 before and after the event. The loss at re-appearance is not removed: after the occlusion the woman comes back at
-0.57 against 0.83 before it (A: 0.49 against 0.69). Sharper references do not change that (cards, above), and the second seed confirms the crops' gain. Next arm:
-`H3_TP2_REF_KEY_SCALE` (queue88), scaling the attention keys of the reference rows so the re-entering character attends
-to its crop more strongly. Cost: the two crops add a quarter of the
-window time at this size, because `H3_TP2_REF_SHORT_EDGE` upscales them to 1024 px like the scene; a per-image cap is
-the obvious saving.
+0.57 against 0.83 before it (A: 0.49 against 0.69). Sharper references do not change that (cards, above), and the second seed confirms the crops' gain. Cost: the two
+crops add a quarter of the window time at this size, because `H3_TP2_REF_SHORT_EDGE` upscales them to 1024 px like the
+scene; `H3_TP2_REF_NO_UPSCALE=1` (queue90) keeps a reference below the setting at its own size.
+
+**Reference key scaling: closed (queue88, 22:38-23:46).** `H3_TP2_REF_KEY_SCALE` multiplies the attention keys of the
+reference-image rows (one factor per image block, applied to the local rows before the exact Ulysses exchange), the
+idea being that a re-entering character attends more to its crop. Occlusion scene, seed 2301, scene + 2 crops as in B:
+
+| arm | factors (scene, crop, crop) | wall | result |
+|---|---|---|---|
+| V1 | 1.0, 1.6, 1.6 | 736 s | the picture collapses into a smeared, drifting close-up of the crops; no face found in 23 samples; 5 scene cuts |
+| V2 | 1.4, 1.4, 1.4 | 728 s | a frozen, washed-out wide shot (motion 0.6-1.1 against 3-8 in B); one face found once (0.43) |
+
+`key_scale_V1_V2.png` (top V1, bottom V2, one frame per second). The layout was right (three image blocks of
+1792/1632/1536 rows after 5191 text rows in a 52928-row sequence) and the probes ran at the normal speed, so this is
+the mechanism itself: a multiplicative factor on the keys scales the attention logits of those rows, and at the logit
+magnitudes of this model 1.4x already pins every video token to the references. Closed; a smaller factor would be a
+weaker version of the same distortion. The lever that remains for re-entry is on the reference side (what the images
+show), not in the attention.

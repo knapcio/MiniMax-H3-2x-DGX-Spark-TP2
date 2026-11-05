@@ -799,6 +799,34 @@ def _apply(role: str) -> None:
         _pre.MINIMAX_H3_REFERENCE_IMAGE_SHORT_EDGE = int(edge)
         logger.warning("h3_tp2: EXPERIMENT reference image short edge %s px instead of 2048 (changes conditioning)", edge)
 
+    # 9e) H3_TP2_REF_NO_UPSCALE=<px>: opt-in, NOT output-preserving: a reference image whose short edge is below <px>
+    #     keeps its own size (aligned to 32 px) instead of being upscaled to the short-edge setting, so 512 px character
+    #     crops next to a scene frame cost a quarter of the rows while the frame is normalised as before
+    #     (h3_tp2/ref_shape.py, results/20261105-multiref).
+    _noup = os.environ.get("H3_TP2_REF_NO_UPSCALE", "").strip()
+    if _noup and int(_noup) > 0:
+        from h3_tp2 import ref_shape as _rs
+        from vllm_omni.model_executor.models.minimax_h3 import encoder_processing as _enc9e
+        from vllm_omni.model_executor.models.minimax_h3 import preprocessing as _pre9e
+
+        _keep_below = int(_noup)
+        _orig_ref_shape = _pre9e.resolve_minimax_h3_reference_image_shape
+
+        def _ref_shape(image):  # noqa: ANN001
+            _orig_ref_shape(image)  # upstream's aspect-ratio and size checks, unchanged
+            shape = _rs.native_or_resized(
+                tuple(image.size),
+                int(_pre9e.MINIMAX_H3_REFERENCE_IMAGE_SHORT_EDGE),
+                _keep_below,
+                int(_pre9e.MINIMAX_H3_REFERENCE_IMAGE_MULTIPLE),
+            )
+            logger.info("h3_tp2 reference image %dx%d -> %dx%d (no upscale below %d px)", image.size[0], image.size[1], shape[0], shape[1], _keep_below)
+            return shape
+
+        _pre9e.resolve_minimax_h3_reference_image_shape = _ref_shape
+        _enc9e.resolve_minimax_h3_reference_image_shape = _ref_shape  # the encoder imported the name
+        logger.warning("h3_tp2: EXPERIMENT reference images with a short edge below %d px keep their own size (H3_TP2_REF_NO_UPSCALE; changes conditioning)", _keep_below)
+
     # 9f) H3_TP2_REF_KEY_SCALE=<s | s0,s1,...>: opt-in, NOT output-preserving: scale the attention keys of the reference
     #     image rows of every Ref2VA sequence (one factor per image block in request order, the last repeats), so the
     #     video tokens attend more to the reference images; against identity loss at re-entry (h3_tp2/ref_key_scale.py,
