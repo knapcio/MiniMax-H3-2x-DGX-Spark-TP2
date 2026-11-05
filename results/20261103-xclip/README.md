@@ -115,6 +115,8 @@ Delivered (`~/Downloads/h3-prod-smoke/xclip/`): `xclip120_raw_1344x768_ref2va_20
 with the hot dialogue the beds sit about 24 dB under the speech and are audible only in the pauses (no pause in either
 mix is below -40 dB for 1 s). Lower the dialogue (or raise the beds to about -27 / -30 LUFS) if a fuller bed is wanted.
 
+06:20: the quieter set, dialogue -8 dB (a plain gain, no limiter or loudness processing; video stream copied): `xclip120_raw_-21LUFS_1344x768_ref2va_20261105.mp4` (-21.2 LUFS, like v2), `xclip120_ambience_-21LUFS_1344x768_20261105.mp4` (bed -37 LUFS, -21.3 LUFS mix) and `xclip120_piano_-21LUFS_1344x768_20261105.mp4` (bed -40 LUFS, -21.2 LUFS mix): the beds now sit 16 / 19 dB under the speech, the v2 balance. Pick either set for X; the frames are identical.
+
 ## Files on Spark_06 (`~/h3-tp2-results/`)
 
 `xclip60/` (render, timing, memory CSVs), `xclip/` (prompts, references 2201-2208, `dialogue_en*.txt`, `drift*.txt`,
