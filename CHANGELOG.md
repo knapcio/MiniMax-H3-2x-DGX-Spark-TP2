@@ -363,17 +363,6 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
-- 2026-11-05 03:50: `H3_TP2_ULYSSES_EXACT=2` (copy 5 of the exact Ulysses exchange dropped: the out-projection per-token
-  FP8 quant reads the all-to-all receive buffer, `h3_tp2/ulysses_outq.py`, `results/20261104-ulysses-copy5/`) passes the
-  serving proof: probe `bf6e85687a6a`, two 1344 calibrations `4d6d69e4aad0` bit-equal to the defaults boot, self-check
-  bit-identical on both ranks. Opt-in until the combined gate with the fused quant (below) passes.
-- 2026-11-05 05:35: serving proof of `H3_TP2_FP8_QUANT_FUSE=1` alone and together with `H3_TP2_ULYSSES_EXACT=2`
-  (queue74, gated compacted boots): the 5 s 1344x768 calibration digest `4d6d69e4aad0` in all five lever runs, latents
-  bit-equal to the defaults (max abs diff 0), all sites installed and self-checked bit-identical on both ranks (B: qkv,
-  out, fc1, fc2, 20 000 fused calls; C: qkv, fc1, fc2 with the out site skipped automatically, copy 5 on the receive
-  buffer), env clean after the restore. Speed inside the boot-to-boot spread (A 21.24, B 21.75 / 21.02 / 21.87, C 20.47
-  / 19.82 s/it); the 16 s continuation gate (queue75) decides the default flip. `results/20261104-quant-fuse/` and
-  `results/20261105-levers-merge/`, "Serving proof".
 - 2026-11-05 06:10: the CPU test suite passes again (505 passed, 8 skipped; 57 failed since 2026-11-02). Two causes:
   the render tests' stub `curl` lives in `$H3_VENV/bin`, but `scripts/env.sh` sources `~/.h3-tp2.env`, which on a serving
   host sets `H3_VENV`, so the stub fell off PATH and the tests' requests reached the live API (one started a 60 s
@@ -382,6 +371,17 @@
   know the class-aware look-lock reference (`lock_classes`, default since 2026-11-02): `lock_classes` is a request option
   and the A / B class statistics travel as `match.ref_A_*` / `match.ref_B_*`. Serving untouched. On a serving host run
   the suite with `H3_API_PORT=1 HOME=<empty dir>` so nothing can reach the head.
+- 2026-11-05 05:35: serving proof of `H3_TP2_FP8_QUANT_FUSE=1` alone and together with `H3_TP2_ULYSSES_EXACT=2`
+  (queue74, gated compacted boots): the 5 s 1344x768 calibration digest `4d6d69e4aad0` in all five lever runs, latents
+  bit-equal to the defaults (max abs diff 0), all sites installed and self-checked bit-identical on both ranks (B: qkv,
+  out, fc1, fc2, 20 000 fused calls; C: qkv, fc1, fc2 with the out site skipped automatically, copy 5 on the receive
+  buffer), env clean after the restore. Speed inside the boot-to-boot spread (A 21.24, B 21.75 / 21.02 / 21.87, C 20.47
+  / 19.82 s/it); the 16 s continuation gate (queue75) decides the default flip. `results/20261104-quant-fuse/` and
+  `results/20261105-levers-merge/`, "Serving proof".
+- 2026-11-05 03:50: `H3_TP2_ULYSSES_EXACT=2` (copy 5 of the exact Ulysses exchange dropped: the out-projection per-token
+  FP8 quant reads the all-to-all receive buffer, `h3_tp2/ulysses_outq.py`, `results/20261104-ulysses-copy5/`) passes the
+  serving proof: probe `bf6e85687a6a`, two 1344 calibrations `4d6d69e4aad0` bit-equal to the defaults boot, self-check
+  bit-identical on both ranks. Opt-in until the combined gate with the fused quant (below) passes.
 - 2026-11-05 02:30: the 120 s English clip for X is recovered by replay (`results/20261103-xclip/`, section 120 s):
   `H3_TP2_REPLAY_LATENTS` on a fresh Ref2VA boot reproduced the 14 saved windows (seam ratios and digests identical to the
   original journal), decode 632.9 s under the 7200 s wait, HTTP 200 after 21 minutes instead of an 8 h re-render; the
@@ -397,14 +397,6 @@
   `H3_TP2_SAVE_LATENTS` files of a request (one per window and seam attempt, saved on both ranks, geometry-checked) in
   place of the denoising, so the identical request is decoded and muxed in minutes; `scripts/queue-lib.sh` strips the
   variable at the next restart. The CPU loader test reproduces the render journal's latents digests bit-exact.
-- 2026-11-05 06:10: the CPU test suite passes again (505 passed, 8 skipped; 57 failed since 2026-11-02). Two causes:
-  the render tests' stub `curl` lives in `$H3_VENV/bin`, but `scripts/env.sh` sources `~/.h3-tp2.env`, which on a serving
-  host sets `H3_VENV`, so the stub fell off PATH and the tests' requests reached the live API (one started a 60 s
-  continuation on 2026-11-05 03:04); the render tests now run with a private `HOME`. And the continuation checkpoint
-  prototype (`cont_checkpoint*`, the loop-extraction test helper, the inert `snapshot_state` / `restore_state`) did not
-  know the class-aware look-lock reference (`lock_classes`, default since 2026-11-02): `lock_classes` is a request option
-  and the A / B class statistics travel as `match.ref_A_*` / `match.ref_B_*`. Serving untouched. On a serving host run
-  the suite with `H3_API_PORT=1 HOME=<empty dir>` so nothing can reach the head.
 - 2026-11-04 15:55: `H3_TP2_FP8_GEMM=cutlass` is the default (`tensor32` = two-pass only). Gate queue69: two 16 s
   1344x768 FL2VA continuations on one cutlass boot bit-identical to both queue63 boots (digests 200e38721c9e
   4138eba5a964, framemd5 e46129c05cc6), window 1 82-87 vs 85-89 s/step; with queue67 five bit-identical requests
