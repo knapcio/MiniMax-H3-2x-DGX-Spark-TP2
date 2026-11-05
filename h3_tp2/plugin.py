@@ -272,16 +272,16 @@ def _apply(role: str) -> None:
 
         ulysses_nocopy.install(ov_groups)
         logger.warning("h3_tp2: EXPERIMENT Ulysses nocopy exchange (groups=%d; not yet measured on the GPU)", ov_groups)
-    # 6e) default since 2026-11-04: H3_TP2_ULYSSES_EXACT=1|fwd|verify (0 = stock exchange), the copy-free exchange that
+    # 6e) default since 2026-11-04 (mode 2 since 2026-11-05): H3_TP2_ULYSSES_EXACT=2|1|fwd|verify (0 = stock exchange), the copy-free exchange that
     #     keeps stock's cuDNN/NCCL layouts (h3_tp2/ulysses_exact.py, results/20261103-ulysses-exact: bit-identical
     #     digests and frames on the 1344 calibration and a 16 s continuation on both boots, -3.6..-5 % per step).
-    #     Replaces the overlap when both are set.  =2 (opt-in, 2026-11-04): also without copy 5, the reverse unpack;
+    #     Replaces the overlap when both are set.  =2 (default since 2026-11-05; =1 keeps copy 5): also without copy 5, the reverse unpack;
     #     the out-projection's per-token FP8 quant reads the receive buffer (h3_tp2/ulysses_outq.py, bit-for-bit
-    #     self-check on the first call; results/20261104-ulysses-copy5).
-    elif os.environ.get("H3_TP2_ULYSSES_EXACT", "1").strip().lower() not in ("", "0"):
+    #     self-check on the first call; results/20261104-ulysses-copy5, serving proof queue73/74, 16 s gate queue75).
+    elif os.environ.get("H3_TP2_ULYSSES_EXACT", "2").strip().lower() not in ("", "0"):
         from h3_tp2 import ulysses_exact
 
-        mode = os.environ.get("H3_TP2_ULYSSES_EXACT", "1").strip()
+        mode = os.environ.get("H3_TP2_ULYSSES_EXACT", "2").strip()
         ulysses_exact.install(mode)
         logger.info("h3_tp2: Ulysses exact exchange mode %s%s", mode,
                     f" (H3_TP2_A2A_OVERLAP={ov_groups} not installed)" if ov_groups > 1 else "")
@@ -472,7 +472,7 @@ def _apply(role: str) -> None:
             logger.warning("h3_tp2: EXPERIMENT FP8 consumer fuse requested=%s, installed sites: %s", _cfuse.strip(),
                            ", ".join(_done) or "none")
 
-    # 9b4) H3_TP2_FP8_QUANT_FUSE=1 (EXPERIMENTAL, off by default; speed plan item 6): the per-token FP8 quant of the
+    # 9b4) H3_TP2_FP8_QUANT_FUSE=1 (default since 2026-11-05, 0 = the separate quant kernel; speed plan item 6): the per-token FP8 quant of the
     #      DiT blocks' GEMM inputs moves into the kernels that produce them (qkv: rms_norm_indexed_scale_shift, out:
     #      the Ulysses reverse unpack of H3_TP2_ULYSSES_EXACT=1, fc1: indexed_gate_rms_norm_scale_shift, fc2: SiluAndMul
     #      on fc1's bf16 output at the cutlass level); the producer writes the fp8 row and its scale instead of the
@@ -481,7 +481,7 @@ def _apply(role: str) -> None:
     #      selects sites; H3_TP2_FP8_QUANT_FUSE_VERIFY=1 compares every call (slow).  See h3_tp2/fp8_quant_fuse.py.
     #      With H3_TP2_ULYSSES_EXACT=2 (6e) the out site is skipped automatically (no unpack copy there; ulysses_outq
     #      serves the out-projection quant), logged once; qkv / fc1 / fc2 stay fused.
-    _qfuse = os.environ.get("H3_TP2_FP8_QUANT_FUSE", "0")
+    _qfuse = os.environ.get("H3_TP2_FP8_QUANT_FUSE", "1")
     if _qfuse.strip() not in ("", "0"):
         from . import fp8_quant_fuse as _fq
 
@@ -490,7 +490,7 @@ def _apply(role: str) -> None:
         except Exception:  # noqa: BLE001  (an opt-in experiment must not take the rank down)
             logger.warning("h3_tp2: FP8 quant fuse install failed; stock quant", exc_info=True)
             _qdone = []
-        logger.warning("h3_tp2: EXPERIMENT FP8 quant fuse requested=%s, installed sites: %s", _qfuse.strip(),
+        logger.info("h3_tp2: FP8 quant fuse requested=%s, installed sites: %s", _qfuse.strip(),
                        ", ".join(_qdone) or "none")
 
     # 9c) H3_TP2_VAE_STACK_TILES=1: the checkpoint's batched tile path for the video VAE (``stack_tiling``), DECODE ONLY

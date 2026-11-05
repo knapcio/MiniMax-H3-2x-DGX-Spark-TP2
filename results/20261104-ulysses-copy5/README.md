@@ -178,7 +178,8 @@ render from a test suite hit the head during the boot-B restart (03:04-03:08, th
 timeout and rebooted by the gate); it started after calibration A had finished and before boot B's probe, so no arm
 was affected.
 
-The default flip is gated with `H3_TP2_FP8_QUANT_FUSE` together (`results/20261105-levers-merge/`, queue74/75).
+The default flip was gated with `H3_TP2_FP8_QUANT_FUSE` together (`results/20261105-levers-merge/`, queue74/75): PASS,
+`H3_TP2_ULYSSES_EXACT` defaults to `2` since 2026-11-05 (`=1` restores copy 5).
 
 ### The recipe as planned
 

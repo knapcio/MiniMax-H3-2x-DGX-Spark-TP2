@@ -221,7 +221,9 @@ is a hint, not a measurement. The proof here is the digest and the bit-equal lat
 
 ## What is left
 
-- The default gate (queue75), then the flip of both levers' defaults together (`results/20261105-levers-merge/`).
+- Default gate PASS (queue75, 2026-11-05, boot with both levers): the 16 s 1344x768 FL2VA continuation twice, digests
+  `200e38721c9e 4138eba5a964`, framemd5 `e46129c05cc6` (gen.log: Q75-START 05:35:07; Q75-BOOT rc 0 PROBE PASS: first 8.05 (bf6e85687a6a), warm 7.58 s/step (reference 8.65, limit 9.342) latents bf6e85687a6a 05:48:06 05:48:06; Q75-CONT-1: 20/20 [27:53<00:00, 80.68s/it] 20/20 [27:53<00:00, 83.70s/it] 20/20 [08:36<00:00, 25.74s/it] 20/20 [08:36<00:00, 25.80s/it]  digests 200e38721c9e 4138eba5a964  framemd5: e46129c05cc6 phase diffuse 1674.1 s phase diffuse 516.1 s phase decode 86.5 s ; Q75 PASS 1; Q75-CONT-2: 20/20 [28:05<00:00, 83.83s/it] 20/20 [28:05<00:00, 84.26s/it] 20/20 [08:56<00:00, 26.71s/it] 20/20 [08:56<00:00, 26.80s/it]  digests 200e38721c9e 4138eba5a964  framemd5: e46129c05cc6 phase diffuse 1685.4 s phase diffuse 536.1 s phase decode 86.3 s ; Q75 PASS 2; Q75-BOOT-E (defaults restored) rc 0 health 200 07:19:44; Q75-DONE 07:19:44). **Both defaults
+  flipped on 2026-11-05: `H3_TP2_FP8_QUANT_FUSE` default `1`, `H3_TP2_ULYSSES_EXACT` default `2`.**
 - Mode 0's PTX schedules the RMS reduction's instructions in another order than upstream (same TTGIR, same layouts,
   LLVM does not reassociate float ops), so its exactness rests on the GPU checks (unit tests, probe on full M, the
   serving self-check) rather than on identical machine code; mode 1 has upstream's PTX reduction sequence and is the

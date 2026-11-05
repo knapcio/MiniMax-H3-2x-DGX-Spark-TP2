@@ -3,7 +3,7 @@
 Branch `levers` from main 50b5a9d: `quant-fuse` (db53042, `results/20261104-quant-fuse/`) merged first, then `copy5`
 (4a1962c, `results/20261104-ulysses-copy5/`). Both are opt-in; defaults unchanged. **Status: merged, combination rule
 implemented, CPU tests pass (13 new, both levers' suites unchanged); no GPU run (the `gpu-free` marker on Spark_06 was
-absent); serving proof PASS (queue74, below).**
+absent); serving proof PASS (queue74, below); 16 s gate PASS (queue75); both defaults flipped 2026-11-05.**
 
 ## The conflict
 
@@ -68,8 +68,26 @@ s/it), `installed sites: qkv, out, fc1, fc2`, four self-checks bit-identical on 
 `4d6d69e4aad0` twice, latents bit-equal to A (20.47 / 19.82 s/it), `site out skipped automatically ...`, `installed
 sites: qkv, fc1, fc2`, `Ulysses exact exchange installed (mode 2)`, three fuse self-checks and copy5's self-check
 bit-identical, nothing `NOT bit-identical` or `materialised`; E defaults restored, probe PASS, no lever line left in
-the env. Speed is inside the boot-to-boot spread (see the quant-fuse README); the digests are the proof. Next: the
-16 s continuation gate (queue75) on a boot with both levers, then the flip of both defaults.
+the env. Speed is inside the boot-to-boot spread (see the quant-fuse README); the digests are the proof.
+
+## Default gate: PASS (queue75, 2026-11-05) and the flip
+
+Boot with `H3_TP2_ULYSSES_EXACT=2` + `H3_TP2_FP8_QUANT_FUSE=1` (probe `bf6e85687a6a`), the 16 s 1344x768 FL2VA
+continuation (seed 1101, the queue63/69 gate) twice: digests `200e38721c9e 4138eba5a964`, framemd5 `e46129c05cc6` both
+times, the same frames as every default boot since 2026-11-03. gen.log:
+
+    Q75-START 05:35:07
+    Q75-BOOT rc 0 PROBE PASS: first 8.05 (bf6e85687a6a), warm 7.58 s/step (reference 8.65, limit 9.342) latents bf6e85687a6a 05:48:06 05:48:06
+    Q75-CONT-1: 20/20 [27:53<00:00, 80.68s/it] 20/20 [27:53<00:00, 83.70s/it] 20/20 [08:36<00:00, 25.74s/it] 20/20 [08:36<00:00, 25.80s/it]  digests 200e38721c9e 4138eba5a964  framemd5: e46129c05cc6 phase diffuse 1674.1 s phase diffuse 516.1 s phase decode 86.5 s 
+    Q75 PASS 1
+    Q75-CONT-2: 20/20 [28:05<00:00, 83.83s/it] 20/20 [28:05<00:00, 84.26s/it] 20/20 [08:56<00:00, 26.71s/it] 20/20 [08:56<00:00, 26.80s/it]  digests 200e38721c9e 4138eba5a964  framemd5: e46129c05cc6 phase diffuse 1685.4 s phase diffuse 536.1 s phase decode 86.3 s 
+    Q75 PASS 2
+    Q75-BOOT-E (defaults restored) rc 0 health 200 07:19:44
+    Q75-DONE 07:19:44
+
+Both defaults flipped in `h3_tp2/plugin.py` (`H3_TP2_ULYSSES_EXACT` `1` -> `2`, `H3_TP2_FP8_QUANT_FUSE` `0` -> `1`);
+`=1` / `=0` restore the previous defaults. The fuse's install line is now `INFO h3_tp2: FP8 quant fuse requested=1,
+installed sites: qkv, fc1, fc2` (the out site skipped automatically under mode 2).
 
 The plan as run: as in both levers' READMEs (`restart_head_gated`, queue-lib on the `levers` tree): A defaults; B
 `export H3_TP2_ULYSSES_EXACT=2` + `export H3_TP2_FP8_QUANT_FUSE=1` on both ranks: boot probe `bf6e85687a6a`,

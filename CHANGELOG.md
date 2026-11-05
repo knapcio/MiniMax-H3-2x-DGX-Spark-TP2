@@ -363,6 +363,13 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-05 07:20: defaults flipped: `H3_TP2_ULYSSES_EXACT` `1` -> `2` (copy 5 of the exact Ulysses exchange
+  not made, the out-projection quant reads the receive buffer) and `H3_TP2_FP8_QUANT_FUSE` `0` -> `1` (the per-token FP8
+  quant fused into the qkv / fc1 / fc2 producers; the out site is skipped automatically under mode 2). Gate (queue75,
+  boot with both): the 16 s 1344x768 FL2VA continuation twice, digests `200e38721c9e 4138eba5a964`, framemd5
+  `e46129c05cc6`, the same as the cutlass gate (queue69) and every default boot since 2026-11-03. `=1` / `=0` restore
+  the previous defaults. Expected saving ~0.55 s/step at 1344 (per-call timings); inside the boot-to-boot spread of
+  the serving calibration. `results/20261105-levers-merge/`, "Default gate".
 - 2026-11-05 06:10: the CPU test suite passes again (505 passed, 8 skipped; 57 failed since 2026-11-02). Two causes:
   the render tests' stub `curl` lives in `$H3_VENV/bin`, but `scripts/env.sh` sources `~/.h3-tp2.env`, which on a serving
   host sets `H3_VENV`, so the stub fell off PATH and the tests' requests reached the live API (one started a 60 s
