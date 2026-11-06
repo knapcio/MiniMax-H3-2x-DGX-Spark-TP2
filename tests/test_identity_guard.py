@@ -183,3 +183,63 @@ def test_guard_grows_the_bank_after_an_accepted_window(tmp_path):
     g2.set_references([str(ref)])
     out2 = g2.score(np.zeros((40, 16, 24, 3), dtype=np.uint8))
     assert "faces_file" not in out2 and g2.grow(out2) == 0
+
+
+def test_person_check_joins_the_face_check(tmp_path):
+    """With person_sim set the guard builds a person bank from the cards, scores people too, takes the worse
+    unknown fraction and grows both banks."""
+    fake = tmp_path / "fake_bank.py"
+    fake.write_text(
+        "import json, sys\n"
+        "import numpy as np\n"
+        "if sys.argv[1] == 'build':\n"
+        "    np.savez(sys.argv[sys.argv.index('--out') + 1], emb=np.eye(2, dtype=np.float32), src=np.array(['a', 'b']))\n"
+        "    print(json.dumps({'faces': 2, 'sources': ['a', 'b']}))\n"
+        "else:\n"
+        "    frames = [a for a in sys.argv[2:] if a.endswith('.png')]\n"
+        "    out = {'frames': len(frames), 'faces': 2, 'unknown_frac': 0.0}\n"
+        "    if '--save-faces' in sys.argv:\n"
+        "        f = sys.argv[sys.argv.index('--save-faces') + 1]\n"
+        "        np.savez(f, emb=np.ones((1, 2), np.float32), best=np.array([0.8], np.float32), src=np.array(['w@x=0.3']))\n"
+        "        out['faces_file'] = f\n"
+        "    print(json.dumps(out))\n"
+    )
+    pfake = tmp_path / "fake_person.py"
+    pfake.write_text(
+        "import json, sys\n"
+        "import numpy as np\n"
+        "if sys.argv[1] == 'build':\n"
+        "    cards = [sys.argv[i + 1] for i, a in enumerate(sys.argv) if a == '--cards']\n"
+        "    np.savez(sys.argv[sys.argv.index('--out') + 1], emb=np.eye(len(cards), 3, dtype=np.float32),\n"
+        "             src=np.array(cards), who=np.arange(len(cards), dtype=np.int16))\n"
+        "    print(json.dumps({'cards': len(cards), 'sources': cards}))\n"
+        "else:\n"
+        "    frames = [a for a in sys.argv[2:] if a.endswith('.png')]\n"
+        "    out = {'frames': len(frames), 'persons': 5, 'unknown_frac': 0.25, 'mean_best': 0.7, 'min_best': 0.4}\n"
+        "    if '--save-persons' in sys.argv:\n"
+        "        f = sys.argv[sys.argv.index('--save-persons') + 1]\n"
+        "        np.savez(f, emb=np.ones((2, 3), np.float32), best=np.array([0.9, 0.5], np.float32), src=np.array(['w@x=0.3', 'w@x=0.7']))\n"
+        "        out['persons_file'] = f\n"
+        "    print(json.dumps(out))\n"
+    )
+    pytest.importorskip("PIL")
+    from PIL import Image
+
+    scene, card0, card1 = (tmp_path / n for n in ("scene.png", "card0.png", "card1.png"))
+    for f in (scene, card0, card1):
+        Image.new("RGB", (64, 32)).save(f)
+    cfg = ig.Config(max_unknown=0.2, python=sys.executable, script=str(fake), grow_sim=0.6, person_sim=0.6,
+                    person_script=str(pfake))
+    g = ig.Guard(cfg)
+    assert g.set_references([str(scene), str(card0), str(card1)]) == 2
+    assert g.pbank_cards == 2 and list(np.load(g.pbank)["src"]) == [str(card0), str(card1)]  # the scene is not a card
+    out = g.score(np.zeros((40, 16, 24, 3), dtype=np.uint8))
+    assert out["persons"] == 5 and out["face_unknown_frac"] == 0.0 and out["unknown_frac"] == 0.25
+    ok, score = ig.verdict(out, 0.2)
+    assert not ok and score == pytest.approx(1.25)
+    assert ig.verdict({"faces": 0, "persons": 3, "unknown_frac": 0.5}, 0.2) == (False, pytest.approx(2.5))
+    # growth: one face at 0.8 and one figure at 0.9 (the 0.5 figure stays out); the person bank keeps its 'who'
+    assert g.grow(out) == 2
+    pb = np.load(g.pbank)
+    assert pb["emb"].shape == (3, 3) and list(pb["who"]) == [0, 1, -1] and list(pb["grown"]) == [False, False, True]
+    assert ig.config_from_env({"H3_TP2_IDENTITY_GUARD": "0.2", "H3_TP2_IDENTITY_PERSON_SIM": "0.55"}).person_sim == 0.55

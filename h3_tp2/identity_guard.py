@@ -6,7 +6,10 @@ Python with facenet-pytorch), and a window in which more than ``max_unknown`` of
 face that matches nobody in the bank is sampled again with another seed, like the seam and cut checks in
 ``cont_match``.  It catches a character replaced by another person, not a face that drifted a little.  With
 ``H3_TP2_IDENTITY_GROW=<similarity>`` the bank grows after every accepted window by the principal faces that matched it
-at least that well, so it follows the character through the clip instead of holding only the reference frame.  This
+at least that well, so it follows the character through the clip instead of holding only the reference frame.  With
+``H3_TP2_IDENTITY_PERSON_SIM=<similarity>`` every window is also judged as whole people (``scripts/person_bank.py``:
+a person detector and DINOv2 embeddings of each figure against the character cards, so hair, hats and clothes count,
+not only the face); a principal person matching no card makes the frame unknown like an unknown face.  This
 module holds the parts that run without a GPU: the configuration, the frame sampling, the subprocess calls, the
 verdict and the bank growth.
 """
@@ -36,6 +39,9 @@ class Config:
     width: int = 960
     grow_sim: float = 0.0   # > 0: after an accepted window, principal faces with at least this similarity join the bank
     grow_max: int = 24      # at most this many grown faces in the bank (oldest grown ones go first; references stay)
+    person_sim: float = 0.0  # > 0: whole-person check (scripts/person_bank.py), a principal person below this is unknown
+    person_script: str = ""  # scripts/person_bank.py (default: next to this package)
+    person_min_height: float = 0.4
 
 
 def config_from_env(env=None) -> Config | None:  # noqa: ANN001
@@ -57,6 +63,9 @@ def config_from_env(env=None) -> Config | None:  # noqa: ANN001
         width=int(env.get("H3_TP2_IDENTITY_WIDTH") or 960),
         grow_sim=float(env.get("H3_TP2_IDENTITY_GROW") or 0.0),
         grow_max=max(1, int(env.get("H3_TP2_IDENTITY_GROW_MAX") or 24)),
+        person_sim=float(env.get("H3_TP2_IDENTITY_PERSON_SIM") or 0.0),
+        person_script=(env.get("H3_TP2_IDENTITY_PERSON_SCRIPT") or os.path.join(here, "scripts", "person_bank.py")),
+        person_min_height=float(env.get("H3_TP2_IDENTITY_PERSON_MIN_HEIGHT") or 0.4),
     )
 
 
@@ -73,10 +82,9 @@ def sample_indices(total: int, count: int, skip_first: int = 0) -> list[int]:
 
 
 def verdict(summary: dict, max_unknown: float) -> tuple[bool, float]:
-    """(ok, score): score = the fraction of frames with an unknown principal face relative to the limit (>= 1.0 fails);
-    no faces = nothing to judge."""
-    faces = int(summary.get("faces") or 0)
-    if faces <= 0:
+    """(ok, score): score = the fraction of frames with an unknown principal face or person relative to the limit
+    (>= 1.0 fails); no faces and no people = nothing to judge."""
+    if int(summary.get("faces") or 0) <= 0 and int(summary.get("persons") or 0) <= 0:
         return True, 0.0
     frac = float(summary.get("unknown_frac") or 0.0)
     score = frac / max(max_unknown, 1e-9)
@@ -118,6 +126,7 @@ def grow_bank(bank: str, faces_file: str, min_sim: float, max_grown: int) -> tup
     data = np.load(bank, allow_pickle=False)
     emb, src = data["emb"], data["src"].astype(str)
     grown = data["grown"] if "grown" in data.files else np.zeros(len(emb), dtype=bool)
+    who = data["who"] if "who" in data.files else None  # person banks: the character of each card (-1 = grown)
     cand = np.load(faces_file, allow_pickle=False)
     keep = [i for i, b in enumerate(cand["best"]) if float(b) >= min_sim]
     if not keep:
@@ -125,13 +134,40 @@ def grow_bank(bank: str, faces_file: str, min_sim: float, max_grown: int) -> tup
     emb = np.concatenate([emb, cand["emb"][keep].astype(np.float32)])
     src = np.concatenate([src, cand["src"].astype(str)[keep]])
     grown = np.concatenate([grown, np.ones(len(keep), dtype=bool)])
+    if who is not None:
+        who = np.concatenate([who, np.full(len(keep), -1, dtype=who.dtype)])
     excess = int(grown.sum()) - int(max_grown)
     if excess > 0:
         drop = set(np.flatnonzero(grown)[:excess].tolist())
         sel = np.array([i not in drop for i in range(len(emb))])
         emb, src, grown = emb[sel], src[sel], grown[sel]
-    np.savez(bank, emb=emb, src=src, grown=grown)
+        who = who[sel] if who is not None else None
+    extra = {"who": who} if who is not None else {}
+    np.savez(bank, emb=emb, src=src, grown=grown, **extra)
     return len(keep), int(len(emb)), int(grown.sum())
+
+
+def build_person_bank(cfg: Config, cards: list[str], out: str) -> dict:
+    """Run ``person_bank.py build`` with every card as its own character; returns its JSON."""
+    cmd = [cfg.python, cfg.person_script, "build", "--out", out]
+    for c in cards:
+        cmd += ["--cards", c]
+    res = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
+    if res.returncode != 0:
+        raise RuntimeError(f"person bank build failed (rc {res.returncode}): {res.stderr.strip()[-400:]}")
+    return json.loads(res.stdout.strip().splitlines()[-1])
+
+
+def score_persons(cfg: Config, bank: str, frame_files: list[str], save_persons: str = "") -> dict:
+    cmd = [cfg.python, cfg.person_script, "score", "--bank", bank, "--min-sim", str(cfg.person_sim),
+           "--min-height", str(cfg.person_min_height), "--width", str(cfg.width)]
+    if save_persons:
+        cmd += ["--save-persons", save_persons]
+    cmd += frame_files
+    res = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+    if res.returncode != 0:
+        raise RuntimeError(f"person bank score failed (rc {res.returncode}): {res.stderr.strip()[-400:]}")
+    return json.loads(res.stdout.strip().splitlines()[-1])
 
 
 def frames_to_uint8(frames, convert):  # noqa: ANN001
@@ -168,6 +204,8 @@ class Guard:
         self.dir = tempfile.mkdtemp(prefix="h3-identity-")
         self.bank: str | None = None
         self.bank_faces = 0
+        self.pbank: str | None = None   # whole-person bank (Config.person_sim > 0)
+        self.pbank_cards = 0
         self.windows = 0
 
     def set_references(self, images) -> int:  # noqa: ANN001  (PIL images or file names)
@@ -187,6 +225,14 @@ class Guard:
         self.bank, self.bank_faces = out, int(info.get("faces") or 0)
         logger.info("h3_tp2 identity bank: %d face(s) from %d reference image(s): %s", self.bank_faces, len(files),
                     ", ".join(os.path.basename(s) for s in info.get("sources", [])))
+        if self.cfg.person_sim > 0:
+            # the character cards are the reference images after the scene frame (all of them when there is one image)
+            cards = files[1:] if len(files) > 1 else files
+            pout = os.path.join(self.dir, "pbank.npz")
+            pinfo = build_person_bank(self.cfg, cards, pout)
+            self.pbank, self.pbank_cards = pout, int(pinfo.get("cards") or 0)
+            logger.info("h3_tp2 identity person bank: %d card(s): %s", self.pbank_cards,
+                        ", ".join(os.path.basename(s) for s in pinfo.get("sources", [])))
         return self.bank_faces
 
     def score(self, frames_u8, skip_first: int = 0) -> dict:  # noqa: ANN001
@@ -203,23 +249,45 @@ class Guard:
         os.makedirs(d, exist_ok=True)
         files = save_frames(frames_u8, idx, d)
         out = score_frames(self.cfg, self.bank, files, os.path.join(d, "faces.npz") if self.cfg.grow_sim > 0 else "")
+        if self.pbank:
+            # whole person (hair, hat, clothes): a principal person matching no card makes the frame unknown too
+            pout = score_persons(self.cfg, self.pbank, files, os.path.join(d, "persons.npz") if self.cfg.grow_sim > 0 else "")
+            out["persons"] = pout.get("persons", 0)
+            out["person_unknown_frac"] = pout.get("unknown_frac", 0.0)
+            out["person_mean_best"] = pout.get("mean_best")
+            out["person_min_best"] = pout.get("min_best")
+            if pout.get("persons_file"):
+                out["persons_file"] = pout["persons_file"]
+            out["face_unknown_frac"] = out.get("unknown_frac", 0.0)
+            out["unknown_frac"] = max(float(out.get("unknown_frac") or 0.0), float(pout.get("unknown_frac") or 0.0))
         out["indices"] = idx
         out["dir"] = d
         sample = frames_u8[idx[0]]
         logger.info("h3_tp2 identity frames %s: %d of %d frames, frame %s %s mean %.1f, scorer %s", d, len(idx),
                     int(frames_u8.shape[0]), tuple(sample.shape), sample.dtype, float(sample.mean()),
-                    json.dumps({k: v for k, v in out.items() if k not in ("indices", "dir", "bank_best", "faces_file")}))
+                    json.dumps({k: v for k, v in out.items() if k not in ("indices", "dir", "bank_best", "faces_file", "persons_file")}))
         for old in sorted(x for x in os.listdir(self.dir) if x.startswith("w"))[:-KEEP_WINDOWS]:
             shutil.rmtree(os.path.join(self.dir, old), ignore_errors=True)
         return out
 
     def grow(self, summary: dict) -> int:
         """After an accepted window: add its well-matched principal faces to the bank (``Config.grow_sim`` > 0)."""
-        f = summary.get("faces_file") if summary else None
-        if not self.bank or self.cfg.grow_sim <= 0 or not f or not os.path.exists(f):
+        if not summary or self.cfg.grow_sim <= 0:
             return 0
-        added, size, grown = grow_bank(self.bank, f, self.cfg.grow_sim, self.cfg.grow_max)
-        if added:
-            logger.info("h3_tp2 identity bank grown: +%d face(s) at similarity >= %.2f, bank %d (%d grown, %d reference)",
-                        added, self.cfg.grow_sim, size, grown, size - grown)
-        return added
+        total = 0
+        f = summary.get("faces_file")
+        if self.bank and f and os.path.exists(f):
+            added, size, grown = grow_bank(self.bank, f, self.cfg.grow_sim, self.cfg.grow_max)
+            if added:
+                logger.info("h3_tp2 identity bank grown: +%d face(s) at similarity >= %.2f, bank %d (%d grown, %d reference)",
+                            added, self.cfg.grow_sim, size, grown, size - grown)
+            total += added
+        pf = summary.get("persons_file")
+        if self.pbank and pf and os.path.exists(pf):
+            # whole-person embeddings: the same rule with the person threshold (a figure at >= person_sim joins)
+            added, size, grown = grow_bank(self.pbank, pf, max(self.cfg.person_sim, self.cfg.grow_sim), self.cfg.grow_max)
+            if added:
+                logger.info("h3_tp2 identity person bank grown: +%d figure(s), bank %d (%d grown, %d card)",
+                            added, size, grown, size - grown)
+            total += added
+        return total
