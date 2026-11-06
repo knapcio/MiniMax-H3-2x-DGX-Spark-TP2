@@ -363,6 +363,13 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-06 17:00: robust look-lock, opt-in `H3_TP2_CONT_LOCK_ROBUST=1` (`h3_tp2/cont_match.py` `robust_params`): the lock's
+  per-channel mean/std on both sides come from the positions that did not change between the reference tail and the
+  window (median / MAD inliers of the per-position temporal-mean difference), so a character who returns from behind
+  something no longer moves the correction. On the saved S2c window latents the plain lock shifted channels by up to
+  0.40 std and squeezed one channel's std to 0.62 with the two figures as the outlier positions; the inlier estimate
+  shifts 0.31 max and keeps the gains at 0.86-1.05. Checkpoint state carries the reference maps (`match.maps_*`). Under
+  measurement in queue102 (replay) before any default changes.
 - 2026-11-06 16:50: voice naturalness A/B (queue101, `results/20261106-voice/`): the audio look-lock is not what makes
   the later windows sound synthetic (window 2 of a 22 s monologue 4.05 UTMOS with the lock, 4.10 without; the lock moved
   the audio latent std by 1 %). The hand-over itself costs 0.25-0.3 on that clip against a seed spread of 0.11, with

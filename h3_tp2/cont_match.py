@@ -47,6 +47,52 @@ def class_stats(x: torch.Tensor, offset: int = 0) -> dict:
     return out
 
 
+def pos_moments(x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    """Per-position first and second moments over batch and time of [B, C, T, H, W] latents: two [C, H, W] maps."""
+    xf = x.float()
+    return xf.mean(dim=(0, 2)), (xf * xf).mean(dim=(0, 2))
+
+
+def class_pos_moments(x: torch.Tensor, offset: int = 0) -> dict:
+    """``pos_moments`` over all tokens and over the two token classes of ``class_stats``."""
+    a = block_start_mask(x.shape[2], x.device, offset)
+    out = {"all": pos_moments(x)}
+    out["A"] = pos_moments(x[:, :, a]) if int(a.sum()) >= 2 else out["all"]
+    out["B"] = pos_moments(x[:, :, ~a]) if int((~a).sum()) >= 2 else out["all"]
+    return out
+
+
+def robust_params(ref_maps: tuple[torch.Tensor, torch.Tensor], free: torch.Tensor, k: float = 3.0):
+    """Reference and window statistics estimated on the positions that did NOT change between them.
+
+    The look-lock's per-channel affine compares the free frames' mean/std with the reference tail's.  Both are
+    content-dependent: a character who is hidden in the reference tail and back in the new window raises the channel
+    means of the new window by her share of the frame, and the lock then shifts the whole frame (and her) away from
+    her own colours (the orange coat and the changed face of 2026-11-06, `results/20261106-whole-person/`).  Drift,
+    the thing the lock is for, is a whole-frame change; a character is a local one.  So the difference of the
+    per-position temporal means (reference - window) is taken per channel, its median and median absolute deviation
+    define the inliers (|d - median| <= k * MAD: the positions that moved like the majority), and the means and stds
+    of both tensors are computed over time and those positions only.  Returns ``(mean_ref, std_ref, mean_free,
+    std_free, inlier_fraction)``, each per channel.
+    """
+    m1_r, m2_r = ref_maps
+    m1_f, m2_f = pos_moments(free)
+    d = (m1_r - m1_f).flatten(1)
+    med = d.median(dim=1).values
+    mad = (d - med[:, None]).abs().median(dim=1).values
+    inl = ((d - med[:, None]).abs() <= (k * mad + 1e-6)[:, None]).float()   # [C, P]
+    n = inl.sum(dim=1).clamp_min(1.0)
+
+    def _joint(m1, m2):
+        mu = (m1.flatten(1) * inl).sum(dim=1) / n
+        ex2 = (m2.flatten(1) * inl).sum(dim=1) / n
+        return mu, (ex2 - mu * mu).clamp_min(0.0).sqrt()
+
+    mu_r, sd_r = _joint(m1_r, m2_r)
+    mu_f, sd_f = _joint(m1_f, m2_f)
+    return mu_r, sd_r, mu_f, sd_f, inl.mean(dim=1)
+
+
 def match_window(prev_tail: torch.Tensor, new_window: torch.Tensor, overlap_v: int, *, apply: bool, index: int) -> torch.Tensor:
     """Log the hand-over mismatch and, if ``apply``, return the affine-matched new window (same dtype/shape)."""
     regen = new_window[:, :, :overlap_v]
@@ -137,7 +183,7 @@ def _log_post_correction_seam(video: torch.Tensor, overlap_v: int, index: int) -
 def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, retries: int = 0, max_ratio: float = 2.0,
                  lock: str = "", lock_strength: float = 1.0, lock_ramp: float = 1.0, lock_audio: bool = False,
                  lock_std: float | None = None, lock_ref: str = "window", lock_classes: bool = False,
-                 max_cut: float = 0.0, identity_fn=None, max_unknown: float = 0.0):  # noqa: ANN001
+                 max_cut: float = 0.0, identity_fn=None, max_unknown: float = 0.0, lock_robust: bool = False):  # noqa: ANN001
     """Return a ``diffuse`` replacement for one continuation request (state: the previous window's video latents).
 
     With ``retries`` > 0 a window whose latent seam ratio exceeds ``max_ratio``, or (``max_cut`` > 0) whose interior
@@ -146,8 +192,10 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
     (with ``max_unknown`` > 0) adds the identity guard, which also judges the first window: it returns
     ``(score, faces, unknown_frac)`` for the window's decoded frames after ``skip_frames`` (``h3_tp2.identity_guard``);
     a score >= 1.0 means more faces than tolerated match no reference face, and the window is re-sampled.
+    ``lock_robust`` estimates the look-lock's statistics on the positions that did not change between the reference
+    tail and the new window (``robust_params``), so a character who returns from behind something is not recoloured.
     """
-    state = {"prev": None, "index": 0, "ref": None, "ref_audio": None}
+    state = {"prev": None, "index": 0, "ref": None, "ref_audio": None, "ref_maps": None}
     # Read once per request wrapper, covering both plugin continuation routes.
     # Disabled: no extra tensor operations, measurements or log records.
     postcheck = os.environ.get("H3_TP2_SEAM_POSTCHECK", "0").strip() == "1"
@@ -227,7 +275,8 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
             try:
                 video = match_window(state["prev"][:, :, -ov:], video, ov, apply=apply, index=state["index"])
                 if lock == "first" and state["ref"] is not None:
-                    video = lock_to_reference(state["ref"], video, ov, lock_strength, index=state["index"], ramp=lock_ramp, std_strength=lock_std)
+                    video = lock_to_reference(state["ref"], video, ov, lock_strength, index=state["index"], ramp=lock_ramp, std_strength=lock_std,
+                                              ref_maps=state["ref_maps"])
                 # The ambient look-lock must not alter latents explicitly
                 # supplied by audio_mode=lock_source. Otherwise later windows
                 # are re-colored toward window one's audio statistics even
@@ -245,6 +294,8 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
             _rv = ref_slice(video, lock_ref, dim=2)
             # class phase of the reference slice: the tail starts at token T - len(tail) of the window
             state["ref"] = class_stats(_rv, offset=video.shape[2] - _rv.shape[2]) if lock_classes else _stats(_rv)
+            if lock_robust and lock == "first":
+                state["ref_maps"] = class_pos_moments(_rv, offset=video.shape[2] - _rv.shape[2]) if lock_classes else pos_moments(_rv)
             if isinstance(audio, torch.Tensor) and audio.dim() == 3:
                 state["ref_audio"] = audio_stats(ref_slice(audio, lock_ref, dim=2))
         if postcheck and ov:
@@ -270,6 +321,13 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
         if ref_audio is not None:
             tensors["match.audio_mean"] = ref_audio[0].detach().to("cpu", copy=True)
             tensors["match.audio_std"] = ref_audio[1].detach().to("cpu", copy=True)
+        maps = state["ref_maps"]
+        if maps is not None:
+            # the robust lock's per-position moments of the reference tail; class maps only with a class reference
+            for cls, pair in (maps.items() if isinstance(maps, dict) else (("all", maps),)):
+                tag = "maps" if cls == "all" else f"maps_{cls}"
+                tensors[f"match.{tag}_mean"] = pair[0].detach().to("cpu", copy=True)
+                tensors[f"match.{tag}_sq"] = pair[1].detach().to("cpu", copy=True)
         return tensors
 
     def _restore_state(tensors, *, device):  # noqa: ANN001
@@ -277,10 +335,16 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
         required = {"match.index", "match.prev", "match.ref_mean", "match.ref_std"}
         audio_keys = {"match.audio_mean", "match.audio_std"}
         class_keys = {"match.ref_A_mean", "match.ref_A_std", "match.ref_B_mean", "match.ref_B_std"}
+        maps_keys = {"match.maps_mean", "match.maps_sq"}
+        maps_class_keys = {"match.maps_A_mean", "match.maps_A_sq", "match.maps_B_mean", "match.maps_B_sq"}
         if state["index"] != 0:
             raise ValueError("match state can only be restored into a fresh wrapper")
-        if not isinstance(tensors, dict) or set(tensors) not in (required, required | audio_keys, required | class_keys,
-                                                                   required | audio_keys | class_keys):
+        if not isinstance(tensors, dict) or not required <= set(tensors):
+            raise ValueError("incomplete or unexpected match-state tensors")
+        extra = set(tensors) - required
+        groups = (audio_keys, class_keys, maps_keys, maps_class_keys)
+        if (extra - set().union(*groups) or any(g & extra and not g <= extra for g in groups)
+                or (maps_class_keys <= extra and not (class_keys <= extra and maps_keys <= extra))):
             raise ValueError("incomplete or unexpected match-state tensors")
         if any(not isinstance(value, torch.Tensor) for value in tensors.values()):
             raise ValueError("match state contains a non-tensor value")
@@ -313,7 +377,19 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
                     or (audio_std < 0).any().item()):
                 raise ValueError("invalid audio match reference")
             ref_audio = (audio_mean.to(device=device, copy=True), audio_std.to(device=device, copy=True))
-        restored = {"prev": prev.to(device=device, copy=True), "index": int(index.item()), "ref": ref, "ref_audio": ref_audio}
+        ref_maps = None
+        if maps_keys.issubset(tensors):
+            def _maps(tag):
+                m1, m2 = tensors[f"match.{tag}_mean"], tensors[f"match.{tag}_sq"]
+                if (m1.dtype != torch.float32 or m2.dtype != torch.float32 or m1.dim() != 3 or m1.shape != m2.shape
+                        or m1.shape[0] != prev.shape[1] or m1.shape[1:] != prev.shape[3:] or (m2 < m1 * m1 - 1e-4).any().item()):
+                    raise ValueError("invalid robust look-lock maps")
+                return m1.to(device=device, copy=True), m2.to(device=device, copy=True)
+            ref_maps = _maps("maps")
+            if maps_class_keys.issubset(tensors):
+                ref_maps = {"all": ref_maps, "A": _maps("maps_A"), "B": _maps("maps_B")}
+        restored = {"prev": prev.to(device=device, copy=True), "index": int(index.item()), "ref": ref, "ref_audio": ref_audio,
+                    "ref_maps": ref_maps}
         state.update(restored)
 
     # Introspection is inert unless explicitly invoked; the serving loop does
@@ -357,13 +433,24 @@ def ref_slice(x: torch.Tensor, mode: str, *, dim: int) -> torch.Tensor:
 
 
 def lock_to_reference(ref_stats: tuple[torch.Tensor, torch.Tensor], new_window: torch.Tensor, overlap_v: int,
-                      strength: float, *, index: int, ramp: float = 1.0, std_strength: float | None = None) -> torch.Tensor:
+                      strength: float, *, index: int, ramp: float = 1.0, std_strength: float | None = None,
+                      ref_maps=None) -> torch.Tensor:  # noqa: ANN001
     """Per-channel affine of the new window's FREE frames (after the pinned overlap) so that their mean/std move
     toward the reference window's statistics by ``strength`` (1.0 = equal).  Against the drift that compounds window
     after window (luma +41 and a 10x detail metric over 60 s on 2026-10-29): every window restarts exactly from the
     previous tail and then wanders toward the model's brighter, sharper prior; the lock pulls it back to the look of
-    the first window.  Latents only; the pinned overlap frames are left untouched."""
+    the first window.  Latents only; the pinned overlap frames are left untouched.  With ``ref_maps`` (the reference
+    tail's per-position moments, see ``robust_params``) the statistics on both sides come from the positions that did
+    not change, so a character who is back in the frame does not move the correction."""
     free = new_window[:, :, overlap_v:].float()
+    robust = ref_maps is not None
+    if robust:
+        _m = ref_maps["all"][0] if isinstance(ref_maps, dict) else ref_maps[0]
+        if tuple(_m.shape[1:]) != tuple(free.shape[3:]):
+            logger.warning("h3_tp2 look-lock window %d: reference maps %s do not match the window %s, plain statistics used",
+                           index, tuple(_m.shape), tuple(free.shape[1:]))
+            robust = False
+    inliers = []
     n_free = free.shape[2]
     # Ramped: the first free frame gets 1/n_ramp of the correction; the pinned overlap stays untouched. Full correction
     # begins at the n_ramp-th free frame. A whole-window correction previously stepped brightness at the hand-over
@@ -373,8 +460,12 @@ def lock_to_reference(ref_stats: tuple[torch.Tensor, torch.Tensor], new_window: 
     w = torch.clamp(torch.arange(1, n_free + 1, device=free.device, dtype=torch.float32) / n_ramp, max=1.0).view(1, 1, -1, 1, 1)
     k_std = strength if std_strength is None else std_strength   # std_strength 0 = mean only
 
-    def _affine(x, m_ref, s_ref, wt):
-        m, sd = _stats(x)
+    def _affine(x, m_ref, s_ref, wt, maps=None):
+        if robust and maps is not None:
+            m_ref, s_ref, m, sd, frac = robust_params(maps, x)
+            inliers.append(frac.mean().item())
+        else:
+            m, sd = _stats(x)
         gain = 1.0 + k_std * ((s_ref / sd.clamp_min(1e-6)).clamp(0.5, 2.0) - 1.0)
         shift = strength * (m_ref - m)
         gain_t = 1.0 + wt * (gain.view(1, -1, 1, 1, 1) - 1.0)
@@ -391,14 +482,17 @@ def lock_to_reference(ref_stats: tuple[torch.Tensor, torch.Tensor], new_window: 
             if int(mask.sum()) == 0:
                 continue
             m_r, s_r = ref_stats[cls]
-            out[:, :, mask], _, _ = _affine(free[:, :, mask], m_r, s_r, w[:, :, mask])
+            maps = (ref_maps.get(cls, ref_maps["all"]) if isinstance(ref_maps, dict) else ref_maps) if robust else None
+            out[:, :, mask], _, _ = _affine(free[:, :, mask], m_r, s_r, w[:, :, mask], maps)
         m, sd = _stats(free)
         m_ref, s_ref = ref_stats["all"]
         tag = " classes A/B"
     else:
         m_ref, s_ref = ref_stats
-        out, m, sd = _affine(free, m_ref, s_ref, w)
+        out, m, sd = _affine(free, m_ref, s_ref, w, (ref_maps["all"] if isinstance(ref_maps, dict) else ref_maps) if robust else None)
         tag = ""
+    if robust and inliers:
+        tag += " robust, inliers %.2f" % (sum(inliers) / len(inliers))
     m2, s2 = _stats(out)
     logger.info("h3_tp2 look-lock window %d: free frames mean %.4f std %.4f -> %.4f / %.4f (reference %.4f / %.4f, strength %.2f, ramp %.2f%s)",
                 index, m.mean().item(), sd.mean().item(), m2.mean().item(), s2.mean().item(), m_ref.mean().item(), s_ref.mean().item(), strength, ramp, tag)

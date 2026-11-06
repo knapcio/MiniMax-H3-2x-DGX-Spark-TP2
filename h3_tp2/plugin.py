@@ -743,6 +743,10 @@ def _apply(role: str) -> None:
             # default ON since 2026-11-02: the plain affine on the token mixture produced the 17-frame luma flicker (-2.5 Y at
             # every block boundary vs -0.66 raw); per-class matching keeps the brightness correction and the raw boundaries
             _lock_classes = os.environ.get("H3_TP2_CONT_LOCK_CLASSES", "1").strip() == "1"   # 0 = the pre-11-02 mixture affine
+            # H3_TP2_CONT_LOCK_ROBUST=1: the lock's statistics from the positions that did not change between the reference
+            # tail and the window (median / MAD inliers of the per-position difference), so a character who returns from
+            # behind something is not recoloured toward a reference without her (the orange coat, 2026-11-06)
+            _lock_robust = os.environ.get("H3_TP2_CONT_LOCK_ROBUST", "0").strip() == "1"
             # H3_TP2_WINDOW_SEED_STEP=n inside this loop too: window k samples with seed + k*n. Upstream re-creates the
             # generators from the request seed for every window, so equal-shaped windows restart the SAME noise and tend
             # to re-stage the same camera move (the owner's "the woman shown 5-6 times", 2026-10-30 07:35).
@@ -793,7 +797,8 @@ def _apply(role: str) -> None:
                     diffuse = _cm.wrap_diffuse(diffuse, apply=_apply_match, max_cut=_max_cut, overlap_v_hint=_ct._video_t(overlap_frames),
                                                identity_fn=_make_identity_fn(diffuse, overlap_frames),
                                                max_unknown=(_ig_cfg.max_unknown if _ig_cfg is not None else 0.0),
-                                               retries=_retries, max_ratio=_max_ratio, lock=_lock, lock_strength=_lock_strength, lock_ramp=_lock_ramp, lock_audio=_lock_audio, lock_std=_lock_std, lock_ref=_lock_ref, lock_classes=_lock_classes)
+                                               retries=_retries, max_ratio=_max_ratio, lock=_lock, lock_strength=_lock_strength, lock_ramp=_lock_ramp, lock_audio=_lock_audio, lock_std=_lock_std, lock_ref=_lock_ref, lock_classes=_lock_classes,
+                                               lock_robust=_lock_robust)
                     windows = _ct.plan_continuation_windows(kwargs["num_frames"], window_frames, overlap_frames)
                     if (len(windows) > 1 and kwargs.get("task") == "fl2va"
                             and -1 in (kwargs.get("keyframe_frame_indices") or [])):
@@ -873,8 +878,8 @@ def _apply(role: str) -> None:
 
             _pp9e.diffuse_continuation = _dc
             _pp9e._h3_tp2_cont_match_patched = True
-            logger.warning("h3_tp2: continuation hand-over diagnostics ON; latent match %s; crossfade %s; edit prefix %s; seam retries %d (ratio > %.1f); look-lock %s (%.2f, ramp %.2f, audio %s, ref %s, classes %s); window seed step %d",
-                           "ON" if _apply_match else "off", "ON" if _xfade else "off", _edit or "off", _retries, _max_ratio, _lock or "off", _lock_strength, _lock_ramp, "ON" if _lock_audio else "off", _lock_ref, "ON" if _lock_classes else "off", _seed_step)
+            logger.warning("h3_tp2: continuation hand-over diagnostics ON; latent match %s; crossfade %s; edit prefix %s; seam retries %d (ratio > %.1f); look-lock %s (%.2f, ramp %.2f, audio %s, ref %s, classes %s, robust %s); window seed step %d",
+                           "ON" if _apply_match else "off", "ON" if _xfade else "off", _edit or "off", _retries, _max_ratio, _lock or "off", _lock_strength, _lock_ramp, "ON" if _lock_audio else "off", _lock_ref, "ON" if _lock_classes else "off", "ON" if _lock_robust else "off", _seed_step)
     except Exception as e:  # noqa: BLE001
         logger.warning("h3_tp2: continuation hand-over hook not installed (%s)", e)
 
