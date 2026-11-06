@@ -94,6 +94,10 @@ monologue on Ref2VA (reference = the first frame of the default clip, seed 2701)
 
 (For comparison from section 3: the FL2VA default hand-over is 4.34 / 4.05, median F0 155 / 169 Hz.)
 
+(The "Ref2VA, default hand-over" boot carried `H3_TP2_CONT_LOCK_ROBUST=1`, left in the head's environment by an earlier
+queue: its video look-lock was the robust variant. The flag does not touch the audio path, so the voice numbers are
+those of the default hand-over.)
+
 - **About half of the FL2VA drop is the text.** The second pair of lines scores 4.25-4.26 when it is a window of its
   own, against 4.40-4.45 for the first pair: 0.17 lower with no hand-over at all. The hand-over itself costs the other
   0.15-0.2 on FL2VA (4.25 -> 4.05-4.10).
