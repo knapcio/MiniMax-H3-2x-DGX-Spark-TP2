@@ -363,6 +363,10 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-06 02:25: native-size crops closed (queue90, `results/20261105-multiref/`): `H3_TP2_REF_NO_UPSCALE=600`
+  removes the crops' cost (diffuse 587 / 581 s against 726 s, same as the scene alone) and their effect with it (the
+  woman after the occlusion 0.03-0.14 / 0.30-0.42 on the two seeds, against 0.42-0.70 with the crops upscaled to 1024
+  px and 0.34-0.59 / 0.37 with none). The extra references work through their rows; the recipe keeps the default size.
 - 2026-11-06 01:27: the character crops on a whole clip (queue89, `results/20261105-multiref/`): the 60 s Polish doll
   scene rendered with the scene frame + two 512 px head-and-shoulders crops against the PL5 baseline (same seed, lines,
   geometry): face similarity man / woman 0.844 / 0.758 against 0.810 / 0.701, minima 0.66 / 0.56 against 0.54 / 0.44,

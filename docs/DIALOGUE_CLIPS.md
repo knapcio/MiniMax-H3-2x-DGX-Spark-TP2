@@ -90,7 +90,8 @@ probes the crops raised the returning character's face similarity by 0.1-0.2 on 
 0.70 -> 0.84 / 0.76, minima 0.54 / 0.44 -> 0.66 / 0.56, the first window most) with the speech, pauses and cuts
 unchanged (`results/20261105-multiref/`). The model's own rendered close-ups do not help, so cut the crops from the
 scene frame itself. The crops cost 19-25 % of the render time at the default 1024 px reference size (three reference
-blocks instead of one); `H3_TP2_REF_NO_UPSCALE=600` keeps them at their 512 px (measurement pending). A character replaced by someone else after an occlusion is what the opt-in identity guard
+blocks instead of one). Keeping them at their native 512 px (`H3_TP2_REF_NO_UPSCALE=600`) removes the cost and the
+gain with it (a quarter of the rows, no identity effect on two seeds), so pay for the upscale. A character replaced by someone else after an occlusion is what the opt-in identity guard
 (`H3_TP2_IDENTITY_GUARD=0.2`, prototype) re-samples on.
 
 ## 5. Checks before anyone sees it

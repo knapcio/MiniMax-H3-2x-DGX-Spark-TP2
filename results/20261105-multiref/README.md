@@ -110,3 +110,14 @@ cost 19 % of the render at 1024 px (three reference blocks instead of one; queue
 The speech, pauses and cuts are unchanged. `sheet-multiref.png` is the contact sheet (one frame every 2 s): one take,
 the same two people throughout. The recipe in `docs/DIALOGUE_CLIPS.md` now lists the crops as a default step for any
 clip with recognisable characters.
+
+**Native-size crops: closed (queue90, 2026-11-06 01:27-02:18).** `H3_TP2_REF_NO_UPSCALE=600` on the occlusion scene,
+seeds 2301 and 2302: the scene frame still goes to 1792x1024, the two crops stay at 512x768 / 512x832 (the journal
+prints `reference image 512x773 -> 512x768`). The cost disappears: diffuse 587 / 581 s against 585 s for the scene
+alone and 726 s with the upscaled crops, peak 62.2 GB. So does the gain: the woman re-enters at 0.03-0.14 (seed 2301)
+and 0.30-0.42 (seed 2302) against 0.42-0.67 / 0.44-0.70 with the upscaled crops and 0.34-0.59 / 0.37 with no crops
+(`xclip/drift-noupscale-occl-s*-embed.txt`, `sheet-noupscale-occl-s2301.png`, `sheet-noupscale-occl-s2302.png`:
+she comes back small and far behind the counter on both seeds, as in arm A). A 512 px crop block has a quarter of the
+rows of a 1024 px one, and the identity effect goes with the rows, not with the pixels: the crops have to be upscaled
+to the scene's reference size to count. The option stays opt-in for anyone who wants cheaper extra references; the
+recipe keeps the default size and pays the 19-25 %.
