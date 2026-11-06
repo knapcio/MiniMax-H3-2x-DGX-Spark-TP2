@@ -363,6 +363,12 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-06 08:51: identity guard validated live (queue94, the 22 s occlusion probe with `GUARD=0.1`, `GROW=0.6`):
+  the decoder's uint8 output confirmed in the journal, 11-13 faces per window scored, window 1 re-sampled on one
+  unknown frame of 8 (the blurred pass-by, 0.08) and accepted on the next seed, the bank grown from 4 to 25 faces, two
+  doubtful detections ignored by the probability rule; 41 s per check at 960x544, one re-sampled window, peak
+  unchanged; the woman returns at 0.88 against 0.81 without the guard. Recipe in `docs/DIALOGUE_CLIPS.md`:
+  `H3_TP2_IDENTITY_GUARD=0.1` + `H3_TP2_IDENTITY_GROW=0.6`, opt-in. Head restored to FL2VA with the serving defaults.
 - 2026-11-06 07:58: the X shop scene rendered with the identity fix and its three failure cases written into the
   prompts (`results/20261106-xclip-events/`, queue92): 60 s 1344x768, scene + two 512 px crops, the woman turns to the
   shelves (window 2), the man turns away for a ledger (window 4), the woman bends below the counter (window 5). One

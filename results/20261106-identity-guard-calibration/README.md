@@ -67,3 +67,29 @@ frame, and only the bank that has grown through the earlier windows keeps the pr
 
 Files: `sheet-flagged-frames.png` (eleven of the flagged frames with their times). The frame scores live in
 `/tmp/h3-calib120/` on spark-06 (`faces-chunk.*.npz`: embedding, best similarity, width, probability per principal face).
+
+## The first live run with the fixes (queue94, 2026-11-06 08:10-08:48)
+
+The 22 s occlusion probe of queue93 (960x544, seed 2301, scene + two crops, she walks left behind him in window 1 and
+back to the right in window 2) with `H3_TP2_IDENTITY_GUARD=0.1` and `H3_TP2_IDENTITY_GROW=0.6` on the fixed code
+(`c17ba9f`). From the head's journal:
+
+- `identity decode: shape (1, 3, 277, 544, 960) dtype torch.uint8 min 0 max 255 mean 68.7`: the decoder returns uint8,
+  which is what the first run scaled to white; the scored frames now have a mean of 63-70 and the scorer finds
+  11-13 faces per window (`sheet-live-scored-frames.png`: the 8 frames of the two accepted windows, left to right).
+- Window 1, attempt 1 (seed 2301): 13 faces, 2 unknown in **1 of 8 frames** (12 %, min similarity 0.08: the woman
+  passing behind him, blurred) -> score 1.25 at the 0.1 limit -> **re-sampled** with seed 10220: 11 faces, 0 unknown
+  frames, accepted; the bank grew by 10 faces. Window 2 (seed 2302): 12 faces, 0 unknown frames, bank +11 (25 faces,
+  4 of them references). In both accepted windows one doubtful detection with similarity -0.10 / 0.01 was ignored by
+  the probability rule, as calibrated above.
+- Cost: decode 34 s + scorer 7 s = **41 s per check at 960x544** (67-68 s at 1344x768), and one re-sampled window
+  (679 s): 2261 s against 1534 s for the same request without the guard (queue93), peak 63.9 GB (unchanged).
+- The clip (`sheet-live-clip.png`): one take, 0 cuts; the man 0.89 mean throughout, the woman 0.89 at the start and
+  0.88 at the end (embedding-matched), 0.36-0.47 while she passes behind him. Against queue93 (0.63 start, 0.81 end)
+  her return is closer to the reference; the re-sampled window 1 also keeps her behind him instead of crossing the
+  foreground, which is a different seed, not the guard's merit.
+
+What the limit means with 8 scored frames: one frame is 12.5 %, so **0.1 re-samples a window on a single unknown
+frame** (a stranger who stays, or, as here, one blurred pass-by) and 0.2 tolerates one. On the published 120 s clip
+the stranger's window would trip at 0.1 only. For a dialogue scene in which nobody new should appear, 0.1 and one
+re-sampled window now and then is the better trade; 0.2 when extras may walk through.

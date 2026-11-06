@@ -92,8 +92,19 @@ probes the crops raised the returning character's face similarity by 0.1-0.2 on 
 unchanged (`results/20261105-multiref/`). The model's own rendered close-ups do not help, so cut the crops from the
 scene frame itself. The crops cost 19-25 % of the render time at the default 1024 px reference size (three reference
 blocks instead of one). Keeping them at their native 512 px (`H3_TP2_REF_NO_UPSCALE=600`) removes the cost and the
-gain with it (a quarter of the rows, no identity effect on two seeds), so pay for the upscale. A character replaced by someone else after an occlusion is what the opt-in identity guard
-(`H3_TP2_IDENTITY_GUARD=0.2`, prototype) re-samples on.
+gain with it (a quarter of the rows, no identity effect on two seeds), so pay for the upscale. On the public 60 s shop
+scene at 1344x768 with a turn-away, a turn to a shelf and a bend below the counter written into the prompts, every
+character came back as the same person with the crops alone (`results/20261106-xclip-events/`).
+
+A character replaced by someone else is what the **identity guard** catches: `H3_TP2_IDENTITY_GUARD=0.1` with
+`H3_TP2_IDENTITY_GROW=0.6` (opt-in; needs facenet-pytorch in `~/facenv`, see `scripts/face_bank.py`). After every window
+the guard decodes it, scores 8 frames against a face bank built from the request's reference images, and re-samples
+the window with another seed when more than the limit of the frames show a confident face that matches nobody; the
+faces of an accepted window join the bank, so a lead in profile stays known. With 8 frames, 0.1 re-samples on a single
+unknown frame (a stranger who stays, but also a blurred pass-by), 0.2 tolerates one. Cost: 41 s per window at 960x544,
+67-68 s at 1344x768, plus any re-sampled window. Calibrated on the published 120 s clip, where it would have re-sampled
+exactly the window in which a stranger walks in, and run live on the 22 s occlusion probe
+(`results/20261106-identity-guard-calibration/`).
 
 ## 5. Checks before anyone sees it
 
