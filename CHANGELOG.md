@@ -370,6 +370,10 @@
   0.40 std and squeezed one channel's std to 0.62 with the two figures as the outlier positions; the inlier estimate
   shifts 0.31 max and keeps the gains at 0.86-1.05. Checkpoint state carries the reference maps (`match.maps_*`). Under
   measurement in queue102 (replay) before any default changes.
+- 2026-11-06 19:45: voice controls (queue103, `results/20261106-voice/` section 4). The second pair of lines of the
+  monologue scores UTMOS 4.25-4.26 as a window of its own against 4.40-4.45 for the first pair, so about half of the
+  FL2VA window-2 drop is the text and 0.15-0.2 the hand-over. On Ref2VA the hand-over costs 0.09 with our loop and 0.12
+  with upstream's. The speaker's median pitch moves at the hand-over: -2.6 semitones with our loop, -7 with upstream's.
 - 2026-11-06 16:50: voice naturalness A/B (queue101, `results/20261106-voice/`): the audio look-lock is not what makes
   the later windows sound synthetic (window 2 of a 22 s monologue 4.05 UTMOS with the lock, 4.10 without; the lock moved
   the audio latent std by 1 %). The hand-over itself costs 0.25-0.3 on that clip against a seed spread of 0.11, with

@@ -79,9 +79,31 @@ on Ref2VA.
   than anything in this English probe; the Polish single window already starts lower (4.14), and the drop may grow with
   the window count or with the pinned tail of a Polish line. Measured next on a 60 s Polish clip once the controls are in.
 
-## 4. Controls (queue103, running)
+## 4. Controls (queue103)
 
-1. The window-2 text alone (`voice/prompt_cont2_en.txt`, 11 s, seeds 2702 and 2703, FL2VA): the single-window score of
-   the shorter lines. If it lands at 4.05-4.10 the hand-over loses nothing on this clip.
-2. The 22 s monologue on Ref2VA (reference = the first frame of the default clip): default hand-over against upstream's
-   `H3_TP2_CONT_EDIT=0 CONT_RETRY=0 CONT_LOCK=off`, per window.
+The window-2 text alone as a single window (`voice/prompt_cont2_en.txt`, 11 s, FL2VA, two seeds), and the 22 s
+monologue on Ref2VA (reference = the first frame of the default clip, seed 2701) with our hand-over against upstream's
+(`H3_TP2_CONT_EDIT=0 CONT_RETRY=0 CONT_LOCK=off`).
+
+| clip | UTMOS w1 | UTMOS w2 | voiced w1 / w2 | median F0 w1 / w2 (Hz) | DNSMOS SIG w1 / w2 | WER | render |
+|---|---|---|---|---|---|---|---|
+| window-2 text alone, seed 2702 (FL2VA) | 4.25 | - | 0.56 | 153 | 3.64 | 0.00 | 522 s |
+| window-2 text alone, seed 2703 (FL2VA) | 4.26 | - | 0.38 | 160 | 3.69 | 0.00 | 536 s |
+| Ref2VA, default hand-over | 4.40 | 4.31 | 0.54 / 0.71 | 156 / 134 | 3.41 / 3.56 | 0.02 | 1174 s |
+| Ref2VA, upstream hand-over | 4.40 | 4.28 | 0.57 / 0.81 | 155 / 103 | 3.41 / 3.53 | 0.00 | 1263 s |
+
+(For comparison from section 3: the FL2VA default hand-over is 4.34 / 4.05, median F0 155 / 169 Hz.)
+
+- **About half of the FL2VA drop is the text.** The second pair of lines scores 4.25-4.26 when it is a window of its
+  own, against 4.40-4.45 for the first pair: 0.17 lower with no hand-over at all. The hand-over itself costs the other
+  0.15-0.2 on FL2VA (4.25 -> 4.05-4.10).
+- **On Ref2VA the hand-over costs 0.09 with our loop and 0.12 with upstream's**, inside two seed spreads of the
+  predictor (0.01-0.05 per text). Our edits to the hand-over (re-sample, cut check, look-lock, audio lock) do not make
+  the voice less natural than upstream's on this clip.
+- **The pitch moves at the hand-over, more with upstream's loop**: the median F0 of the same speaker goes 156 -> 134 Hz
+  (-2.6 semitones) with ours and 155 -> 103 Hz (-7 semitones) with upstream's; single windows of this speaker sit at
+  153-168 Hz. UTMOS does not rate this (both windows sound natural on their own); a listener hears a different voice.
+  The per-window median F0 is in the tool's output for that reason.
+- Not explained by this probe: the 118 s Polish doll clip (2.6-2.7 in four of eleven windows). The English two-window
+  monologue never goes below 4.05. The next voice test is a 60 s Polish clip, per window, with the speaker's pitch
+  tracked along the windows.
