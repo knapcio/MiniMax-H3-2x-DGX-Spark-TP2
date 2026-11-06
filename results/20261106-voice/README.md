@@ -107,3 +107,28 @@ monologue on Ref2VA (reference = the first frame of the default clip, seed 2701)
 - Not explained by this probe: the 118 s Polish doll clip (2.6-2.7 in four of eleven windows). The English two-window
   monologue never goes below 4.05. The next voice test is a 60 s Polish clip, per window, with the speaker's pitch
   tracked along the windows.
+
+## 5. The long Polish clips, per spoken segment
+
+A window's score is the score of whoever speaks in it and of how much silence it holds, so the two long doll clips were
+re-scored per transcribed segment (`scripts/voice_naturalness.py --segments`, segments from `scripts/speech_qa.py`),
+averaged per window:
+
+| clip | segments | UTMOS per window (mean of its segments) |
+|---|---|---|
+| doll 118 s pl120v2 (three lines per window, seed 3401) | 39 | 3.79, 3.70, 3.66, **3.01**, 3.26, 3.20, 3.40, 3.39, 3.04, 3.31, 3.31 |
+| doll 120 s (one line per window, seed 3301) | 21 | 4.18, 3.36, 3.04, 3.70, 3.74, 3.04, 3.38, 3.13, 3.83, 3.27, 3.42, 3.01 |
+
+- In the 118 s clip the first three windows hold 3.7-3.8 and every window from the fourth on sits at 3.0-3.4; DNSMOS
+  SIG follows (3.4 -> 2.9-3.2) and the transcript turns wrong in windows 8-10 ("Napirzę go szczerze", "Piękne słaba są
+  dla witryn"), so it is audible distortion, not only a flatter delivery.
+- **Both speakers lose the same amount**: the man (median F0 about 100 Hz) 3.66 -> 3.28, the woman (about 200 Hz)
+  3.78 -> 3.22 between windows 1-3 and 4-11. The speakers' pitch stays put along the clip.
+- The audio latent statistics do not drift: the raw free-step std of windows 2-11 is 0.463-0.499 against the reference
+  0.456, and the audio lock moves it by 1-4 %.
+- The 120 s clip has no trend after window 1: its windows scatter between 3.0 and 3.8.
+
+What this does not tell is whether the chain of hand-overs or the lines themselves cost the points (a fresh Polish
+window already scored 3.82-4.14 in section 1). Queue106 renders the lines of windows 4, 9 and 10 of the 118 s clip each
+as a fresh single window with the seed the window had in the chain, and the first six windows with the default
+hand-over and with upstream's.
