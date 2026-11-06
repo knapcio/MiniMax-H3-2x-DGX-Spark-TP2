@@ -81,3 +81,29 @@ def test_guard_scores_through_the_subprocess(tmp_path, monkeypatch):
     out = g.score(frames, skip_first=4)
     assert out["frames"] == 8 and out["indices"] == ig.sample_indices(40, 8, 4)
     assert ig.verdict(out, cfg.max_unknown) == (False, pytest.approx(2.5))
+    # the sampled frames of the last KEEP_WINDOWS windows stay on disk, older ones go
+    assert sorted(os.listdir(out["dir"])) == [f"frame{i:05d}.png" for i in out["indices"]]
+    dirs = [g.score(frames)["dir"] for _ in range(ig.KEEP_WINDOWS)]
+    assert not os.path.isdir(out["dir"]) and all(os.path.isdir(d) for d in dirs)
+
+
+def test_frames_to_uint8_never_rescales_uint8():
+    """A float decode goes through the converter; a uint8 one is only re-laid out to (B, F, H, W, 3)."""
+    calls = []
+
+    def convert(x):
+        calls.append(x.shape)
+        return np.zeros((1, 4, 2, 2, 3), dtype=np.uint8)
+
+    f = np.zeros((1, 3, 4, 2, 2), dtype=np.float32)
+    assert ig.frames_to_uint8(f, convert).shape == (1, 4, 2, 2, 3) and calls == [(1, 3, 4, 2, 2)]
+
+    class U8:
+        dtype, ndim, shape = "torch.uint8", 5, (1, 3, 4, 2, 2)
+
+        def permute(self, *dims):
+            return ("permuted", dims)
+
+    assert ig.frames_to_uint8(U8(), convert) == ("permuted", (0, 2, 3, 4, 1)) and len(calls) == 1
+    already = np.zeros((1, 4, 2, 2, 3), dtype=np.uint8)
+    assert ig.frames_to_uint8(already, convert) is already and len(calls) == 1

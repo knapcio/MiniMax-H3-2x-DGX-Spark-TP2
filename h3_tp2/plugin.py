@@ -695,7 +695,10 @@ def _apply(role: str) -> None:
                         with pipe._component_on_device(pipe.video_vae.decoder_component):
                             with _ppig.current_omni_platform.create_autocast_context(device_type=pipe.device.type, dtype=torch.float16, enabled=True):
                                 frames = pipe.video_vae.decode_latent(video)
-                        u8 = _ho.to_uint8_frames(frames)[0].cpu().numpy()
+                        _probe = frames[:, :, ::16] if frames.ndim == 5 else frames
+                        logger.info("h3_tp2 identity decode: shape %s dtype %s min %.3f max %.3f mean %.3f", tuple(frames.shape),
+                                    frames.dtype, float(_probe.float().amin()), float(_probe.float().amax()), float(_probe.float().mean()))
+                        u8 = _ig.frames_to_uint8(frames, _ho.to_uint8_frames)[0].cpu().numpy()
                         del frames
                         out = torch.zeros(3, dtype=torch.float32, device=video.device)
                         if rank == 0:

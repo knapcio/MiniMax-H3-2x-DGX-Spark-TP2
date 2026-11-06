@@ -13,11 +13,13 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
 import subprocess
 import tempfile
 from dataclasses import dataclass
 
 logger = logging.getLogger("vllm_omni.h3_tp2.identity")
+KEEP_WINDOWS = 2  # scored frames of this many windows are kept on disk
 
 
 @dataclass(frozen=True)
@@ -92,6 +94,20 @@ def score_frames(cfg: Config, bank: str, frame_files: list[str]) -> dict:
     return json.loads(res.stdout.strip().splitlines()[-1])
 
 
+def frames_to_uint8(frames, convert):  # noqa: ANN001
+    """Decoded frames -> (B, F, H, W, 3) uint8.
+
+    ``convert`` is the float path ((B, C, F, H, W) in [0, 1] -> uint8, ``h3_output.to_uint8_frames``); a decoder that
+    already returns uint8 (the streaming write-back) is only re-laid out, never re-scaled (scaling 0-255 values again
+    would clamp every frame to white and the scorer would find no face).
+    """
+    if "uint8" in str(getattr(frames, "dtype", "")):
+        if frames.ndim == 5 and frames.shape[-1] != 3 and frames.shape[1] == 3:
+            return frames.permute(0, 2, 3, 4, 1)
+        return frames
+    return convert(frames)
+
+
 def save_frames(frames_u8, indices: list[int], directory: str) -> list[str]:  # noqa: ANN001
     """Write the selected frames of a (F, H, W, 3) uint8 array as PNGs; returns the file names."""
     from PIL import Image
@@ -112,6 +128,7 @@ class Guard:
         self.dir = tempfile.mkdtemp(prefix="h3-identity-")
         self.bank: str | None = None
         self.bank_faces = 0
+        self.windows = 0
 
     def set_references(self, images) -> int:  # noqa: ANN001  (PIL images or file names)
         files = []
@@ -133,12 +150,25 @@ class Guard:
         return self.bank_faces
 
     def score(self, frames_u8, skip_first: int = 0) -> dict:  # noqa: ANN001
-        """Score a decoded window ((F, H, W, 3) uint8 numpy); {} when there is no bank."""
+        """Score a decoded window ((F, H, W, 3) uint8 numpy); {} when there is no bank.
+
+        The sampled frames of the last ``KEEP_WINDOWS`` scored windows stay in ``<dir>/wNNN`` next to the bank (a
+        judgement can be checked by eye afterwards); older ones are removed.
+        """
         if not self.bank:
             return {}
         idx = sample_indices(int(frames_u8.shape[0]), self.cfg.frames, skip_first)
-        with tempfile.TemporaryDirectory(dir=self.dir) as d:
-            files = save_frames(frames_u8, idx, d)
-            out = score_frames(self.cfg, self.bank, files)
+        self.windows += 1
+        d = os.path.join(self.dir, f"w{self.windows:03d}")
+        os.makedirs(d, exist_ok=True)
+        files = save_frames(frames_u8, idx, d)
+        out = score_frames(self.cfg, self.bank, files)
         out["indices"] = idx
+        out["dir"] = d
+        sample = frames_u8[idx[0]]
+        logger.info("h3_tp2 identity frames %s: %d of %d frames, frame %s %s mean %.1f, scorer %s", d, len(idx),
+                    int(frames_u8.shape[0]), tuple(sample.shape), sample.dtype, float(sample.mean()),
+                    json.dumps({k: v for k, v in out.items() if k not in ("indices", "dir", "bank_best")}))
+        for old in sorted(x for x in os.listdir(self.dir) if x.startswith("w"))[:-KEEP_WINDOWS]:
+            shutil.rmtree(os.path.join(self.dir, old), ignore_errors=True)
         return out
