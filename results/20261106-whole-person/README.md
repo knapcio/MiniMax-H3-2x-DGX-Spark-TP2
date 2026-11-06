@@ -107,6 +107,38 @@ Two guard defects found on the way are fixed (7bf65a5): the person bank lost its
 and a head crop and a body crop of one character were two characters, so a figure matched to the head crop was never
 colour-checked against the body crop's torso.
 
-The look-lock itself is measured next on the saved S2c window latents, replayed through the hand-over with no diffusion
-(queue102): the default lock (control, must reproduce S2c), the lock off, strength 0.5 and the mean-only lock, each
-scored with the colour check and with the per-window voice naturalness of `results/20261106-voice/`.
+## The look-lock on the saved latents (queue107)
+
+The two saved S2c windows were replayed through the hand-over with no diffusion (`H3_TP2_REPLAY_LATENTS`, one glob per
+window so that every rank finds its own copy), once per lock variant. Window 1 is the same in all five clips; the
+numbers are window 2, where the woman is back.
+
+| arm | lock | persons `changed` | colour distance max / mean | faces mean | woman's face, first 10 % -> last 10 % | UTMOS w2 |
+|---|---|---|---|---|---|---|
+| R0 | default (`first`, strength 1, per-class mean + std) | **10 of 35** | **27.7** / 11.7 | 0.829 | 0.84 -> 0.72 | 3.14 |
+| R1 | off | 0 | 10.5 / 4.4 | 0.879 | 0.84 -> 0.84 | 3.47 |
+| R2 | strength 0.5 | 0 | 14.4 / 6.3 | 0.854 | 0.84 -> 0.78 | 3.45 |
+| R3 | mean only (`H3_TP2_CONT_LOCK_STD=0`) | 0 | 10.7 / 5.9 | 0.864 | 0.84 -> 0.81 | 3.14 |
+| R4 | robust (`H3_TP2_CONT_LOCK_ROBUST=1`) | 0 | 11.6 / 5.7 | 0.858 | 0.84 -> 0.79 | 3.14 |
+
+R0 reproduces S2c bit for bit (framemd5 `fa977861...`), so the replay stands for the render. `sheet-lock-replay.jpg`:
+four frames of window 2 (13, 16, 19, 21.5 s), rows R0, R1, R3, R4.
+
+![window 2 under four lock variants](sheet-lock-replay.jpg)
+
+- **The default lock is what turns the coat orange**, and it does it along the window (the correction is ramped): red
+  at 16 s, orange at 19 s and 21.5 s. With the lock off the same latents decode to the red coat and the same face in
+  every frame.
+- **Most of the damage is the gain**, not the shift: the mean-only lock (R3) keeps the coat (colour distance 10.7
+  against 10.5 with no lock) and the face (0.864).
+- **The robust lock keeps the character** (0 changed, 11.6, the coat red in every frame of the sheet): its statistics
+  come from the positions that did not change between window 1's tail and the new window, so the returning figures do
+  not enter them. Half strength stays just under the colour limit (14.4 of 15).
+- The voice column is the audio look-lock, which rides on the same switch: window 2 scores 3.47 without it and 3.14
+  with it (R2 runs it at half strength: 3.45). Window 1's tail in this scene is the quiet moment before the woman
+  returns, and the lock pulls the speech of window 2 toward it (audio latent std 0.349 -> 0.255, reference 0.210).
+  Followed up in `results/20261106-voice/`.
+
+What the replay cannot show is the reason the lock exists: the slow whole-frame drift over many windows. Queue104
+renders the 60 s painting clip with no lock, the default, the robust and the mean-only lock to see which of them still
+holds the brightness.
