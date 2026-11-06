@@ -378,6 +378,13 @@
   list named every lock variable one by one and missed the new `H3_TP2_CONT_LOCK_ROBUST`, so the robust arm of one queue
   stayed in the head's environment for the following boots (the control arm of the look-lock replay logged "robust").
   `tests/test_queue_lib_strip.py` fails when the plugin reads a continuation variable the list does not match.
+- 2026-11-06 23:40: the voice loss of the long Polish clip is the chain's, not the lines' (queue110, `results/20261106-voice/`
+  section 7): the lines of windows 4, 9 and 10 of the 118 s doll clip score 3.66-3.79 UTMOS as fresh single windows
+  against 3.01 / 3.04 / 3.31 in the chain. Two candidate mechanisms go to a six-window test (queue111): the per-window
+  RoPE time shift (window 4 starts at 1275 units, a training clip spans 600; `H3_TP2_ID_LOCK=toff0`) and the inherited
+  pinned audio tail (new diagnostic `H3_TP2_CONT_EDIT_AUDIO=0`: later windows pin only the video prefix and sample
+  their audio free, cutting the soundtrack at every hand-over; default 1, no change to renders). `scripts/queue-lib.sh`
+  strips `H3_TP2_CONT_EDIT*`.
 - 2026-11-06 20:50: look-lock replay on the saved seam-scene latents (queue107, `results/20261106-whole-person/`). The
   default lock is what changes the returning character (10 of 35 figures `changed`, colour distance 27.7; the coat goes
   red -> orange along the window); off, mean-only and the robust lock keep her (0 changed, 10.5 / 10.7 / 11.6). The

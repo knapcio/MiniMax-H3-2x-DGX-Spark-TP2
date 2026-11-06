@@ -751,6 +751,10 @@ def _apply(role: str) -> None:
             # generators from the request seed for every window, so equal-shaped windows restart the SAME noise and tend
             # to re-stage the same camera move (the owner's "the woman shown 5-6 times", 2026-10-30 07:35).
             _seed_step = int(os.environ.get("H3_TP2_WINDOW_SEED_STEP", "1").strip() or 0)   # default 1 since 2026-10-30 10:10
+            # H3_TP2_CONT_EDIT_AUDIO=0 (diagnostic, NOT output-preserving): later windows pin only the video prefix and
+            # sample their audio free, so the soundtrack is cut at every hand-over.  Separates "the chain of pinned
+            # audio tails degrades the voice" from "the window's own position does" (results/20261106-voice, window 4+).
+            _edit_audio = os.environ.get("H3_TP2_CONT_EDIT_AUDIO", "1").strip() != "0"
 
             if _edit:
                 # 9f) continuation on the FL2VA partition (the wife's use: the still IS the first frame, static camera,
@@ -851,14 +855,15 @@ def _apply(role: str) -> None:
                                 mask = torch.ones(n_rows, device=dev, dtype=torch.float32); mask[:n_guide] = 0.0
                                 args["video_edit_clean_rows"], args["video_edit_mask_rows"], args["video_edit_restore_mask_rows"] = clean, mask, mask.clone()
                                 ov_a, a_t = window.overlap_audio_t, args["audio_t"]
-                                clean_a = torch.zeros((2 * a_t, guide_audio.shape[1]), device=dev, dtype=torch.float32)
-                                mask_a = torch.ones(2 * a_t, device=dev, dtype=torch.float32)
-                                for c in range(2):
-                                    clean_a[c * a_t:c * a_t + ov_a] = guide_audio[c * ov_a:(c + 1) * ov_a].float()
-                                    mask_a[c * a_t:c * a_t + ov_a] = 0.0
-                                args["audio_edit_clean_rows"], args["audio_edit_mask_rows"], args["audio_edit_restore_mask_rows"] = clean_a, mask_a, mask_a.clone()
+                                if _edit_audio:
+                                    clean_a = torch.zeros((2 * a_t, guide_audio.shape[1]), device=dev, dtype=torch.float32)
+                                    mask_a = torch.ones(2 * a_t, device=dev, dtype=torch.float32)
+                                    for c in range(2):
+                                        clean_a[c * a_t:c * a_t + ov_a] = guide_audio[c * ov_a:(c + 1) * ov_a].float()
+                                        mask_a[c * a_t:c * a_t + ov_a] = 0.0
+                                    args["audio_edit_clean_rows"], args["audio_edit_mask_rows"], args["audio_edit_restore_mask_rows"] = clean_a, mask_a, mask_a.clone()
                                 _ct.logger.info("h3_tp2 continuation edit prefix: %d of %d video rows and %d of %d audio rows pinned to the previous tail (guide block %s)",
-                                                n_guide, n_rows, 2 * ov_a, 2 * a_t, "kept" if _edit == 1 else "dropped")
+                                                n_guide, n_rows, 2 * ov_a if _edit_audio else 0, 2 * a_t, "kept" if _edit == 1 else "dropped")
                         _ct.logger.info("MiniMax H3 continuation window %d/%d: frames [%d, %d), hidden overlap %d, temporal offset %.6f (h3_tp2 crossfade)",
                                         index + 1, len(windows), window.start, window.end, window.overlap, args["temporal_offset"])
                         sampled_video, sampled_audio = diffuse(**args)

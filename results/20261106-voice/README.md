@@ -135,7 +135,7 @@ averaged per window:
 What this does not tell is whether the chain of hand-overs or the lines themselves cost the points (a fresh Polish
 window already scored 3.82-4.14 in section 1). Queue106 renders the lines of windows 4, 9 and 10 of the 118 s clip each
 as a fresh single window with the seed the window had in the chain, and the first six windows with the default
-hand-over and with upstream's.
+hand-over and with upstream's (the fresh windows became queue110, section 7; the six-window chains queue111).
 
 ## 6. The audio lock on two more clips (queue107, queue109: replays, no diffusion)
 
@@ -159,3 +159,33 @@ of saved window latents, each decoded with the lock and without it:
 The audio lock was added for one reason: the ambience of a 60 s painting clip climbed 23 dB over its last two windows
 (2026-10-30). A lock that only holds the level, measured on the quiet steps, would keep that and leave speech alone;
 it is designed once the no-lock arm of the painting clip (queue104) has reproduced the climb on today's code.
+
+## 7. The lines are fine, the chain is not (queue110: fresh single windows)
+
+The lines of windows 4, 9 and 10 of the 118 s clip, each rendered as a single 11.5 s window on the same boot settings
+(Ref2VA, the doll reference at 1024 px, the seed that window had in the chain), scored per segment like the clip:
+
+| lines of window | in the 118 s chain | as a fresh single window | the fresh window's segments |
+|---|---|---|---|
+| 4 | 3.01 | **3.77** | 3.88, 3.82, 3.73, 3.66 |
+| 9 | 3.04 | **3.66** | 3.70, 3.77, 3.50 |
+| 10 | 3.31 | **3.79** | 3.82, 3.67, 3.88 |
+
+- The same Polish lines, the same speakers and seeds score 3.66-3.79 alone, the level of windows 1-3 of the chain
+  (3.66-3.79). The 0.4-0.7 the chain loses from window 4 on is the chain's doing, not the lines'.
+- The transcript of the fresh windows is right where the chain's was garbled ("Napiszę go szczerze" against "Napirzę go
+  szczerze" in window 10).
+
+Two mechanisms fit, and queue111 renders the first six windows of the scene three times to separate them:
+
+1. **Position.** Upstream (and our loop) shifts every media row of window k by its start frame in RoPE units
+   (start_frame * 40 / 24): window 4 begins at 1275 units, window 6 at 2125, while a 15 s training clip spans 600. The
+   reference image and the text stay at the origin. Arm `toff64` keeps every window on local time (`H3_TP2_ID_LOCK=toff0`,
+   the switch of `h3_tp2/identity_lock.py`; the older `H3_TP2_WINDOW_TEMPORAL_OFFSET` wraps upstream's loop, which the
+   edited loop replaces, so it is a no-op on the current stack).
+2. **Inheritance.** Every window pins the previous window's last 37 audio steps (74 of its 924 rows) and samples the
+   rest to match them; a slightly worse tail breeds a worse window. Arm `noapin64` samples the audio of every window free
+   (`H3_TP2_CONT_EDIT_AUDIO=0`, new, diagnostic only: the soundtrack is cut at every hand-over; the video prefix stays
+   pinned), so a window's voice can only be as good as a fresh one.
+
+Arm `def64` is the control (default hand-over; its windows 1-3 must match the 118 s clip).
