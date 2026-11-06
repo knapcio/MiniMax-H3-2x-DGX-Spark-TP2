@@ -374,6 +374,10 @@
   monologue scores UTMOS 4.25-4.26 as a window of its own against 4.40-4.45 for the first pair, so about half of the
   FL2VA window-2 drop is the text and 0.15-0.2 the hand-over. On Ref2VA the hand-over costs 0.09 with our loop and 0.12
   with upstream's. The speaker's median pitch moves at the hand-over: -2.6 semitones with our loop, -7 with upstream's.
+- 2026-11-06 20:00: `scripts/queue-lib.sh` strips `H3_TP2_CONT_LOCK*` and `H3_TP2_CONT_CUT_RATIO` between boots. The strip
+  list named every lock variable one by one and missed the new `H3_TP2_CONT_LOCK_ROBUST`, so the robust arm of one queue
+  stayed in the head's environment for the following boots (the control arm of the look-lock replay logged "robust").
+  `tests/test_queue_lib_strip.py` fails when the plugin reads a continuation variable the list does not match.
 - 2026-11-06 16:50: voice naturalness A/B (queue101, `results/20261106-voice/`): the audio look-lock is not what makes
   the later windows sound synthetic (window 2 of a 22 s monologue 4.05 UTMOS with the lock, 4.10 without; the lock moved
   the audio latent std by 1 %). The hand-over itself costs 0.25-0.3 on that clip against a seed spread of 0.11, with
