@@ -262,3 +262,62 @@ def test_person_bank_scoring_judges_only_people_with_a_face():
     boxes = [(0, 0, 10, 90, 0.9), (0, 0, 10, 60, 0.9), (0, 0, 10, 30, 0.9)]
     assert [b[3] for b in person_bank.principal(boxes, 100, 0.4, 0.75)] == [90]
     assert [b[3] for b in person_bank.principal(boxes, 100, 0.4, 0.5)] == [90, 60]
+
+
+def test_person_bank_colour_signature_and_distance():
+    pytest.importorskip("torch")
+    pytest.importorskip("torchvision")
+    import person_bank
+    from PIL import Image
+
+    # a 100x300 figure: red hair band, red torso, blue legs below a face box at (40, 20, 60, 50)
+    a = np.zeros((300, 100, 3), np.uint8)
+    a[44:68, :, :] = (200, 60, 40)      # hair band (y1 - 0.2 fh .. y1 + 0.6 fh = 44..68)
+    a[74:146, :, :] = (220, 30, 30)     # torso (y1 + 0.8 fh .. y1 + 3.2 fh = 74..146)
+    a[146:230, :, :] = (30, 40, 220)    # legs (146..230)
+    sig = person_bank.colour_signature(Image.fromarray(a), (40, 20, 60, 50))
+    assert sig.shape == (3, 3) and not np.isnan(sig).any()
+    assert sig[0][0] == pytest.approx(7.5, abs=1.5) and sig[1][0] == pytest.approx(0.0, abs=1.5) and sig[2][0] == pytest.approx(237, abs=2)
+    assert sig[1][1] > 0.8 and sig[2][1] > 0.8
+    # a region that is mostly outside the image (or the person box) carries no evidence
+    cut = person_bank.colour_signature(Image.fromarray(a[:150]), (40, 20, 60, 50))
+    assert not np.isnan(cut[1][0]) and np.isnan(cut[2][0])
+    # the same look in other light (hue +4, saturation -0.05 everywhere) stays close; another coat is far
+    same = sig.copy(); same[:, 0] += 3; same[:, 1] -= 0.03
+    other = sig.copy(); other[1][0] = 30; other[0][0] = 20
+    assert person_bank.colour_distance(same, [sig]) == pytest.approx(3 * 3 + 3 * 30 * 0.03)
+    assert person_bank.colour_distance(other, [sig]) > 15
+    # dark regions carry no hue or saturation evidence: a near-black coat with another "hue" is not a change
+    dark = np.array([[22, 0.4, 0.1], [40, 0.5, 0.12], [np.nan, np.nan, np.nan]], np.float32)
+    dark2 = dark.copy(); dark2[0][0] = 60; dark2[1][0] = 10; dark2[1][1] = 0.25; dark2[1][2] = 0.1
+    assert person_bank.colour_distance(dark2, [dark]) == pytest.approx(0.0, abs=1e-3)
+    # a character's cards are merged per region: a head card with the hair only and a body card with the rest
+    head = sig.copy(); head[1:] = np.nan
+    body = sig.copy(); body[0] = np.nan
+    assert person_bank.colour_distance(sig, [head, body]) == pytest.approx(0.0)
+    assert np.isnan(person_bank.colour_distance(sig, [np.full((3, 3), np.nan, np.float32)]))
+    # hue wraps around: 358 against 2 is 4 degrees apart
+    wrap = sig.copy(); wrap[1][0] = 358.0; base = sig.copy(); base[1][0] = 2.0
+    assert person_bank.colour_distance(wrap, [base]) == pytest.approx(4.0)
+
+
+def test_person_bank_scoring_flags_a_changed_look_as_unknown():
+    pytest.importorskip("torch")
+    pytest.importorskip("torchvision")
+    import person_bank
+
+    bank = np.stack([_unit([1, 0, 0]), _unit([0, 1, 0])]); who = np.array([0, 1], np.int16)
+    col0 = np.array([[22, 0.65, 0.4], [3, 0.8, 0.4], [357, 0.85, 0.45]], np.float32)   # the red-coat woman's cards
+    col1 = np.array([[40, 0.3, 0.5], [90, 0.3, 0.2], [np.nan, np.nan, np.nan]], np.float32)
+    e0 = _unit([1, 0.1, 0])
+    same = np.array([[24, 0.7, 0.4], [6, 0.8, 0.4], [1, 0.85, 0.45]], np.float32)          # same look, park light
+    other = np.array([[33, 0.62, 0.37], [20, 0.77, 0.38], [16, 0.83, 0.4]], np.float32)   # blonder hair, orange coat
+    found = [[(0.3, 0.8, e0, e0, 0.999, same)], [(0.3, 0.8, e0, e0, 0.999, other)], [(0.3, 0.8, e0, e0, 0.0, other)]]
+    flags = []
+    out = person_bank.score_frames(bank, who, found, 0.6, bank_col=np.stack([col0, col1]), changed_out=flags)
+    assert (out["persons"], out["known"], out["changed"], out["unknown"], out["unknown_frames"]) == (3, 2, 1, 0, 1)
+    assert out["unknown_frac"] == pytest.approx(1 / 3) and flags == [False, True, False]   # no face: not judged
+    assert out["colour_max"] > 15 > out["colour_mean"] / 2
+    # without the colour bank (an old bank file) or with the check disabled nothing changes
+    assert person_bank.score_frames(bank, who, found, 0.6)["changed"] == 0
+    assert person_bank.score_frames(bank, who, found, 0.6, bank_col=np.stack([col0, col1]), max_colour=1e9)["changed"] == 0

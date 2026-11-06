@@ -363,6 +363,18 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-06 12:15: the owner's defect reproduced and measured: the occlusion ACROSS a window hand-over (queue98 S0, the
+  woman hidden behind the oak and the man turned away at the end of window 1, scene reference only) brings the woman
+  back as another person: an open orange-brown coat over a white blouse and a blue skirt instead of the closed red
+  coat, blonder hair, an older face; the man, never fully hidden, is intact. The embedding checks pass her (figure
+  0.86-0.92 against her card, face 0.76-0.78 "known"), so `scripts/person_bank.py` gets a **colour signature**: hair,
+  torso and legs regions placed relative to the face box, (hue, saturation, value) each, from the cards at build time
+  and from every judged person; the distance to the matched character (hue differences weighted by chroma,
+  saturation differences weighted by brightness, summed over the regions) above `--max-colour` (default 15) makes
+  the person `changed` = unknown for the guard, and it never joins the bank. Calibrated on the saved signatures: the
+  same person 0-12 (the shop clip's dark clothes 0-5 over all 120 s, the park 3-9, the man after his turn up to 14),
+  the changed woman 15-27 (10 of 11 instances; window unknown_frac 0.48 against 0 in every same-person window of
+  four clips). Tests: signature regions, gating, wrap-around, card merging, changed-look scoring (18 pass).
 - 2026-11-06 11:05: the park test bed finished (queue97, `results/20261106-whole-person/`): three reference sets on one
   boot, 22 s 960x544, the woman behind the oak and back in window 1, the man turned away and back in window 2. The
   short probe does not reproduce the owner's defect: with the scene frame alone both come back in the same hat, hair
