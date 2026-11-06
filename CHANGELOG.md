@@ -363,7 +363,7 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
-- 2026-11-06 06:10: the guard calibrated offline on the published 120 s X clip (`results/20261106-identity-guard-calibration/`):
+- 2026-11-06 06:07: the guard calibrated offline on the published 120 s X clip (`results/20261106-identity-guard-calibration/`):
   of 25 unknown principal faces, 17 were the lead man in profile (0.30-0.38 to a frontal bank), 8 a brass scale on the
   counter detected as a face at probability 0.90-0.976 with similarity below 0.07, and 2 the stranger who walks in at
   87 s (the defect the clip was criticised for). `face_bank.py score` now counts a face as unknown only when the
