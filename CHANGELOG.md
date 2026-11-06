@@ -363,6 +363,15 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-06 11:05: the park test bed finished (queue97, `results/20261106-whole-person/`): three reference sets on one
+  boot, 22 s 960x544, the woman behind the oak and back in window 1, the man turned away and back in window 2. The
+  short probe does not reproduce the owner's defect: with the scene frame alone both come back in the same hat, hair
+  and clothes, one take, 0 cuts. Head cards + full-figure cards (V2) give the best faces (means 0.908 / 0.878 against
+  0.868 / 0.869), the best figure similarity (0.883 / 0.840 against 0.865 / 0.827) and the smallest drift for 58 % more
+  render time (1881 against 1191 s); head cards alone +26 % for half the lift. Whole-person scorer: 0 unknown persons in
+  all six windows, back views unjudged. Next: the occlusion across the window hand-over (queue98: the woman hidden and
+  the man turned away at the end of window 1; scene only against cards + the live guard with
+  `H3_TP2_IDENTITY_PERSON_SIM=0.6`).
 - 2026-11-06 09:55: the whole-person check judges only people with a confident face in their upper part. On the park
   probe (queue97 V0, scene reference only: the woman walks behind the oak and back, the man turns his back) a figure
   seen from behind scored 0.57-0.65 against the frontal cards, the same as a stranger in a similar coat on the 120 s
