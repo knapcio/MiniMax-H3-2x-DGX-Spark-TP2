@@ -136,3 +136,26 @@ What this does not tell is whether the chain of hand-overs or the lines themselv
 window already scored 3.82-4.14 in section 1). Queue106 renders the lines of windows 4, 9 and 10 of the 118 s clip each
 as a fresh single window with the seed the window had in the chain, and the first six windows with the default
 hand-over and with upstream's.
+
+## 6. The audio lock on two more clips (queue107, queue109: replays, no diffusion)
+
+The audio look-lock is a per-(channel, dimension) affine toward the statistics of window 1's last quarter. Two replays
+of saved window latents, each decoded with the lock and without it:
+
+| clip | UTMOS with the audio lock | without | what the lock did to the latents |
+|---|---|---|---|
+| park seam scene, window 2 (per window) | 3.14 | **3.47** | std 0.349 -> 0.255 (reference 0.210): per-dimension gains 0.18-0.95, mean 0.61 |
+| doll 118 s, windows 4-11 (mean of the segments) | 3.14 | 3.23 | std moves 1-4 %; per-dimension gains 0.62-1.48 |
+| doll 118 s, all 11 windows (per window) | 3.64 3.22 3.21 2.64 2.89 2.67 3.04 2.95 2.59 2.67 2.98 | 3.64 3.28 3.27 2.78 2.95 2.77 3.03 2.87 2.58 2.11 3.02 | |
+
+- **In the park scene the lock costs a third of a point.** Window 1 ends on the quiet moment before the woman comes
+  back, so the reference is a tail without speech and the lock turns the speech of window 2 down, dimension by
+  dimension. Measured against the whole first window the same latents would need gains of 0.67-1.35 (mean 0.91).
+- **In the doll clip the lock is not the cause**: with it off the windows from the fourth on score the same within
+  0.1 (one window, the tenth, is worse without it). The loss from window 4 on is in the sampled latents, which leaves
+  the chain of hand-overs or the lines themselves (queue110: the lines of windows 4, 9 and 10 as fresh single windows).
+- The replay with the lock reproduces the clip's own audio (windows 1-8 score exactly as the original render).
+
+The audio lock was added for one reason: the ambience of a 60 s painting clip climbed 23 dB over its last two windows
+(2026-10-30). A lock that only holds the level, measured on the quiet steps, would keep that and leave speech alone;
+it is designed once the no-lock arm of the painting clip (queue104) has reproduced the climb on today's code.
