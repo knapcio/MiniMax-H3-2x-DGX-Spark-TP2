@@ -140,9 +140,14 @@ def test_principal_faces_is_pure():
 
     bank = np.stack([_unit([1, 0, 0]), _unit([0, 1, 0])])
     found = [[(0.3, 0.08, _unit([1, 0.1, 0])), (0.9, 0.02, _unit([0, 0, 1]))], [(0.7, 0.06, _unit([0, 1, 0]))]]
-    embs, best, src = face_bank.principal_faces(bank, found, 0.05, ["a.png", "b.png"])
-    assert len(embs) == 2 and src == ["a.png@x=0.30", "b.png@x=0.70"]
+    embs, best, src, widths, probs = face_bank.principal_faces(bank, found, 0.05, ["a.png", "b.png"])
+    assert len(embs) == 2 and src == ["a.png@x=0.30", "b.png@x=0.70"] and widths == [0.08, 0.06] and probs == [1.0, 1.0]
     assert best[0] == pytest.approx(float(bank[0] @ _unit([1, 0.1, 0]))) and best[1] == pytest.approx(1.0)
+    # a doubtful detection that matches nobody is not an unknown face (the brass scale); a confident one is
+    found = [[(0.3, 0.10, _unit([1, 0, 0]), 0.999), (0.5, 0.15, _unit([0, 0, 1]), 0.93)], [(0.1, 0.07, _unit([0, 0, 1]), 0.999)]]
+    out = face_bank.score_frames(bank, found, 0.4, 0.05)
+    assert (out["faces"], out["unknown"], out["unknown_frames"]) == (3, 2, 1)
+    assert face_bank.score_frames(bank, found, 0.4, 0.05, unknown_min_prob=0.9)["unknown_frames"] == 2
 
 
 def test_guard_grows_the_bank_after_an_accepted_window(tmp_path):

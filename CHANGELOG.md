@@ -363,6 +363,14 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-06 06:10: the guard calibrated offline on the published 120 s X clip (`results/20261106-identity-guard-calibration/`):
+  of 25 unknown principal faces, 17 were the lead man in profile (0.30-0.38 to a frontal bank), 8 a brass scale on the
+  counter detected as a face at probability 0.90-0.976 with similarity below 0.07, and 2 the stranger who walks in at
+  87 s (the defect the clip was criticised for). `face_bank.py score` now counts a face as unknown only when the
+  detector's probability reaches `--unknown-min-prob` (default 0.98; the real faces sit at 0.995+), and the saved faces
+  carry width and probability. Simulated window by window with the guard's own acceptance: the probability rule plus
+  bank growth at 0.6 leave the clip untouched at the 0.2 limit and re-sample exactly the stranger's window at 0.1
+  (as deployed in queue93: 3 and 5 windows). A relative face-size rule was tried and dropped (no effect).
 - 2026-11-06 05:57: identity bank growth (opt-in `H3_TP2_IDENTITY_GROW=<similarity>`, at most `H3_TP2_IDENTITY_GROW_MAX`
   grown faces, default 24). After a window the guard accepts, the principal faces that matched the bank at least that
   well join it (`face_bank.py score --save-faces`, `identity_guard.grow_bank`: oldest grown faces drop first, the
