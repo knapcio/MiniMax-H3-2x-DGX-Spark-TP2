@@ -19,6 +19,9 @@ def test_config_parsing():
                               "H3_TP2_IDENTITY_PY": "/x/python"})
     assert (cfg.max_unknown, cfg.min_sim, cfg.frames, cfg.python, cfg.min_face) == (0.25, 0.45, 6, "/x/python", 0.05)
     assert ig.config_from_env({"H3_TP2_IDENTITY_GUARD": "0.2"}).min_sim == 0.4
+    assert (cfg.grow_sim, cfg.grow_max) == (0.0, 24)
+    grow = ig.config_from_env({"H3_TP2_IDENTITY_GUARD": "0.2", "H3_TP2_IDENTITY_GROW": "0.6", "H3_TP2_IDENTITY_GROW_MAX": "5"})
+    assert (grow.grow_sim, grow.grow_max) == (0.6, 5)
     assert cfg.script.endswith(os.path.join("scripts", "face_bank.py"))
     with pytest.raises(ValueError):
         ig.config_from_env({"H3_TP2_IDENTITY_GUARD": "1.5"})
@@ -107,3 +110,71 @@ def test_frames_to_uint8_never_rescales_uint8():
     assert ig.frames_to_uint8(U8(), convert) == ("permuted", (0, 2, 3, 4, 1)) and len(calls) == 1
     already = np.zeros((1, 4, 2, 2, 3), dtype=np.uint8)
     assert ig.frames_to_uint8(already, convert) is already and len(calls) == 1
+
+
+def _unit(v):
+    v = np.asarray(v, dtype=np.float32)
+    return v / np.linalg.norm(v)
+
+
+def test_grow_bank_adds_matched_faces_fifo_and_keeps_the_references(tmp_path):
+    bank = tmp_path / "bank.npz"
+    np.savez(bank, emb=np.stack([_unit([1, 0, 0]), _unit([0, 1, 0])]), src=np.array(["ref0@x=0.3", "ref0@x=0.7"]))
+    cand = tmp_path / "faces.npz"
+    np.savez(cand, emb=np.stack([_unit([1, 0.2, 0]), _unit([0.5, 0.5, 0.7]), _unit([0, 1, 0.1])]),
+             best=np.array([0.7, 0.5, 0.9], np.float32), src=np.array(["w001@x=0.3", "w001@x=0.5", "w001@x=0.7"]))
+    assert ig.grow_bank(str(bank), str(cand), 0.6, 24) == (2, 4, 2)
+    data = np.load(bank)
+    assert list(data["src"]) == ["ref0@x=0.3", "ref0@x=0.7", "w001@x=0.3", "w001@x=0.7"]
+    assert list(data["grown"]) == [False, False, True, True]
+    # the cap drops the oldest grown faces only; nothing is added below the threshold
+    assert ig.grow_bank(str(bank), str(cand), 0.6, 3) == (2, 5, 3)
+    data = np.load(bank)
+    assert list(data["src"]) == ["ref0@x=0.3", "ref0@x=0.7", "w001@x=0.7", "w001@x=0.3", "w001@x=0.7"]
+    assert ig.grow_bank(str(bank), str(cand), 0.95, 3) == (0, 5, 3)
+
+
+def test_principal_faces_is_pure():
+    pytest.importorskip("torch")
+    import face_bank
+
+    bank = np.stack([_unit([1, 0, 0]), _unit([0, 1, 0])])
+    found = [[(0.3, 0.08, _unit([1, 0.1, 0])), (0.9, 0.02, _unit([0, 0, 1]))], [(0.7, 0.06, _unit([0, 1, 0]))]]
+    embs, best, src = face_bank.principal_faces(bank, found, 0.05, ["a.png", "b.png"])
+    assert len(embs) == 2 and src == ["a.png@x=0.30", "b.png@x=0.70"]
+    assert best[0] == pytest.approx(float(bank[0] @ _unit([1, 0.1, 0]))) and best[1] == pytest.approx(1.0)
+
+
+def test_guard_grows_the_bank_after_an_accepted_window(tmp_path):
+    fake = tmp_path / "fake_bank.py"
+    fake.write_text(
+        "import json, sys\n"
+        "import numpy as np\n"
+        "if sys.argv[1] == 'build':\n"
+        "    np.savez(sys.argv[sys.argv.index('--out') + 1], emb=np.eye(2, dtype=np.float32), src=np.array(['a', 'b']))\n"
+        "    print(json.dumps({'faces': 2, 'sources': ['a', 'b']}))\n"
+        "else:\n"
+        "    frames = [a for a in sys.argv[2:] if a.endswith('.png')]\n"
+        "    out = {'frames': len(frames), 'faces': 2, 'unknown_frac': 0.0}\n"
+        "    if '--save-faces' in sys.argv:\n"
+        "        f = sys.argv[sys.argv.index('--save-faces') + 1]\n"
+        "        np.savez(f, emb=np.ones((2, 2), np.float32), best=np.array([0.8, 0.3], np.float32), src=np.array(['w@x=0.3', 'w@x=0.7']))\n"
+        "        out['faces_file'] = f\n"
+        "    print(json.dumps(out))\n"
+    )
+    pytest.importorskip("PIL")
+    from PIL import Image
+
+    ref = tmp_path / "ref.png"
+    Image.new("RGB", (64, 32)).save(ref)
+    g = ig.Guard(ig.Config(max_unknown=0.2, python=sys.executable, script=str(fake), grow_sim=0.6))
+    assert g.set_references([str(ref)]) == 2
+    out = g.score(np.zeros((40, 16, 24, 3), dtype=np.uint8))
+    assert out["faces_file"].endswith("faces.npz") and ig.verdict(out, 0.2)[0]
+    assert g.grow(out) == 1
+    assert np.load(g.bank)["emb"].shape == (3, 2)
+    # growth off: the scorer is not asked for the faces file and grow() is a no-op
+    g2 = ig.Guard(ig.Config(max_unknown=0.2, python=sys.executable, script=str(fake)))
+    g2.set_references([str(ref)])
+    out2 = g2.score(np.zeros((40, 16, 24, 3), dtype=np.uint8))
+    assert "faces_file" not in out2 and g2.grow(out2) == 0

@@ -3,7 +3,7 @@
 against them.
 
   python scripts/face_bank.py build --out bank.npz scene.png crop0.png crop1.png
-  python scripts/face_bank.py score --bank bank.npz --min-sim 0.5 [--min-face 0.04] frame1.png frame2.png ...
+  python scripts/face_bank.py score --bank bank.npz --min-sim 0.5 [--min-face 0.04] [--save-faces faces.npz] frame1.png ...
 
 ``build`` detects every face (MTCNN, probability >= 0.9) in the given images and stores its L2-normalised
 InceptionResnetV1 (VGGFace2) embedding. ``score`` detects the faces in the frames, takes for each the best cosine
@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 
 import numpy as np
@@ -107,12 +108,32 @@ def score_frames(bank: np.ndarray, found_per_frame, min_sim: float, min_face: fl
     }
 
 
+def principal_faces(bank: np.ndarray, found_per_frame, min_face: float, names=None):
+    """Pure: the principal faces of the frames as (embeddings, best similarity to the bank, source label)."""
+    embs, best, src = [], [], []
+    for i, found in enumerate(found_per_frame):
+        name = names[i] if names is not None else str(i)
+        for x, w, e in found:
+            if w < min_face:
+                continue
+            embs.append(np.asarray(e, dtype=np.float32))
+            best.append(float((bank @ e).max()))
+            src.append(f"{name}@x={x:.2f}")
+    return embs, best, src
+
+
 def score(args) -> int:
     data = np.load(args.bank, allow_pickle=False)
     bank = data["emb"]
     det, net = _models()
     found_per_frame = [faces(det, net, _load(p, args.width)) for p in args.frames]
     out = score_frames(bank, found_per_frame, args.min_sim, args.min_face)
+    if args.save_faces:
+        # the principal faces with their best similarity, for the guard's bank growth (identity_guard.grow_bank)
+        embs, best, src = principal_faces(bank, found_per_frame, args.min_face, [os.path.basename(p) for p in args.frames])
+        np.savez(args.save_faces, emb=np.stack(embs) if embs else np.zeros((0, bank.shape[1]), np.float32),
+                 best=np.array(best, np.float32), src=np.array(src))
+        out["faces_file"] = args.save_faces
     print(json.dumps(out))
     return 0
 
@@ -130,6 +151,7 @@ def main() -> int:
     s.add_argument("--min-face", type=float, default=0.05, help="ignore faces narrower than this fraction of the frame")
     s.add_argument("--width", type=int, default=960)
     s.add_argument("--threads", type=int, default=8)
+    s.add_argument("--save-faces", default="", help="write the principal faces' embeddings and best similarities to this .npz")
     s.add_argument("frames", nargs="+")
     args = ap.parse_args()
     torch.set_num_threads(getattr(args, "threads", 8))

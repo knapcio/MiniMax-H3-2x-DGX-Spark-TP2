@@ -363,6 +363,14 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-06 06:00: identity bank growth (opt-in `H3_TP2_IDENTITY_GROW=<similarity>`, at most `H3_TP2_IDENTITY_GROW_MAX`
+  grown faces, default 24). After a window the guard accepts, the principal faces that matched the bank at least that
+  well join it (`face_bank.py score --save-faces`, `identity_guard.grow_bank`: oldest grown faces drop first, the
+  reference faces never), so the bank follows a character's angle, light and expression through the clip instead of
+  holding only the reference frame; a stranger stays below the threshold and never gets in. Exercised with the real
+  scorer on frames of the queue93 clip (7 faces at 0.64-0.94 added to the 4 reference faces). The rank-0 scoring path
+  now catches its own failures before the broadcast rank 1 waits in (a scorer crash accepted the window before too,
+  but could have hung the pair). 3 more CPU tests (21 in the guard files). queue94 runs with `GROW=0.6`.
 - 2026-11-06 05:50: the guard's empty scores explained before the validation render. The stack installs the VAE's
   streaming uint8 decode patch by default, so `decode_latent` returns uint8 `(B, C, T, H, W)` and the guard's float
   conversion scaled it to white (confirmed in `vae.py`); the scorer is healthy (`face_bank.py score` on five frames cut

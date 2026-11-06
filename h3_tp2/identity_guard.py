@@ -4,8 +4,11 @@ After a continued window is denoised, its latents are decoded, a few frames spre
 against a bank of face embeddings built from the request's reference images (``scripts/face_bank.py`` in a separate
 Python with facenet-pytorch), and a window in which more than ``max_unknown`` of the sampled frames show a principal
 face that matches nobody in the bank is sampled again with another seed, like the seam and cut checks in
-``cont_match``.  It catches a character replaced by another person, not a face that drifted a little.  This module holds the parts
-that run without a GPU: the configuration, the frame sampling, the subprocess calls and the verdict.
+``cont_match``.  It catches a character replaced by another person, not a face that drifted a little.  With
+``H3_TP2_IDENTITY_GROW=<similarity>`` the bank grows after every accepted window by the principal faces that matched it
+at least that well, so it follows the character through the clip instead of holding only the reference frame.  This
+module holds the parts that run without a GPU: the configuration, the frame sampling, the subprocess calls, the
+verdict and the bank growth.
 """
 
 from __future__ import annotations
@@ -31,6 +34,8 @@ class Config:
     python: str = ""        # interpreter with facenet-pytorch (default ~/facenv/bin/python)
     script: str = ""        # scripts/face_bank.py (default: next to this package)
     width: int = 960
+    grow_sim: float = 0.0   # > 0: after an accepted window, principal faces with at least this similarity join the bank
+    grow_max: int = 24      # at most this many grown faces in the bank (oldest grown ones go first; references stay)
 
 
 def config_from_env(env=None) -> Config | None:  # noqa: ANN001
@@ -50,6 +55,8 @@ def config_from_env(env=None) -> Config | None:  # noqa: ANN001
         python=(env.get("H3_TP2_IDENTITY_PY") or os.path.expanduser("~/facenv/bin/python")),
         script=(env.get("H3_TP2_IDENTITY_SCRIPT") or os.path.join(here, "scripts", "face_bank.py")),
         width=int(env.get("H3_TP2_IDENTITY_WIDTH") or 960),
+        grow_sim=float(env.get("H3_TP2_IDENTITY_GROW") or 0.0),
+        grow_max=max(1, int(env.get("H3_TP2_IDENTITY_GROW_MAX") or 24)),
     )
 
 
@@ -85,13 +92,46 @@ def build_bank(cfg: Config, images: list[str], out: str) -> dict:
     return json.loads(res.stdout.strip().splitlines()[-1])
 
 
-def score_frames(cfg: Config, bank: str, frame_files: list[str]) -> dict:
+def score_frames(cfg: Config, bank: str, frame_files: list[str], save_faces: str = "") -> dict:
     cmd = [cfg.python, cfg.script, "score", "--bank", bank, "--min-sim", str(cfg.min_sim), "--min-face", str(cfg.min_face),
-           "--width", str(cfg.width), *frame_files]
+           "--width", str(cfg.width)]
+    if save_faces:
+        cmd += ["--save-faces", save_faces]
+    cmd += frame_files
     res = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
     if res.returncode != 0:
         raise RuntimeError(f"face bank score failed (rc {res.returncode}): {res.stderr.strip()[-400:]}")
     return json.loads(res.stdout.strip().splitlines()[-1])
+
+
+def grow_bank(bank: str, faces_file: str, min_sim: float, max_grown: int) -> tuple[int, int, int]:
+    """Append the faces of ``faces_file`` (``face_bank.py score --save-faces``) whose best similarity to the bank
+    reaches ``min_sim`` to the bank file; at most ``max_grown`` grown faces are kept (the oldest grown go first, the
+    reference faces never).  Returns (added, bank size, grown faces in the bank).
+
+    The bank then follows a character through the clip (lighting, angle, expression) instead of holding only the
+    reference frame; a stranger (best similarity below ``min_sim``) is never added, so the guard still trips on a
+    replacement.
+    """
+    import numpy as np
+
+    data = np.load(bank, allow_pickle=False)
+    emb, src = data["emb"], data["src"].astype(str)
+    grown = data["grown"] if "grown" in data.files else np.zeros(len(emb), dtype=bool)
+    cand = np.load(faces_file, allow_pickle=False)
+    keep = [i for i, b in enumerate(cand["best"]) if float(b) >= min_sim]
+    if not keep:
+        return 0, int(len(emb)), int(grown.sum())
+    emb = np.concatenate([emb, cand["emb"][keep].astype(np.float32)])
+    src = np.concatenate([src, cand["src"].astype(str)[keep]])
+    grown = np.concatenate([grown, np.ones(len(keep), dtype=bool)])
+    excess = int(grown.sum()) - int(max_grown)
+    if excess > 0:
+        drop = set(np.flatnonzero(grown)[:excess].tolist())
+        sel = np.array([i not in drop for i in range(len(emb))])
+        emb, src, grown = emb[sel], src[sel], grown[sel]
+    np.savez(bank, emb=emb, src=src, grown=grown)
+    return len(keep), int(len(emb)), int(grown.sum())
 
 
 def frames_to_uint8(frames, convert):  # noqa: ANN001
@@ -162,13 +202,24 @@ class Guard:
         d = os.path.join(self.dir, f"w{self.windows:03d}")
         os.makedirs(d, exist_ok=True)
         files = save_frames(frames_u8, idx, d)
-        out = score_frames(self.cfg, self.bank, files)
+        out = score_frames(self.cfg, self.bank, files, os.path.join(d, "faces.npz") if self.cfg.grow_sim > 0 else "")
         out["indices"] = idx
         out["dir"] = d
         sample = frames_u8[idx[0]]
         logger.info("h3_tp2 identity frames %s: %d of %d frames, frame %s %s mean %.1f, scorer %s", d, len(idx),
                     int(frames_u8.shape[0]), tuple(sample.shape), sample.dtype, float(sample.mean()),
-                    json.dumps({k: v for k, v in out.items() if k not in ("indices", "dir", "bank_best")}))
+                    json.dumps({k: v for k, v in out.items() if k not in ("indices", "dir", "bank_best", "faces_file")}))
         for old in sorted(x for x in os.listdir(self.dir) if x.startswith("w"))[:-KEEP_WINDOWS]:
             shutil.rmtree(os.path.join(self.dir, old), ignore_errors=True)
         return out
+
+    def grow(self, summary: dict) -> int:
+        """After an accepted window: add its well-matched principal faces to the bank (``Config.grow_sim`` > 0)."""
+        f = summary.get("faces_file") if summary else None
+        if not self.bank or self.cfg.grow_sim <= 0 or not f or not os.path.exists(f):
+            return 0
+        added, size, grown = grow_bank(self.bank, f, self.cfg.grow_sim, self.cfg.grow_max)
+        if added:
+            logger.info("h3_tp2 identity bank grown: +%d face(s) at similarity >= %.2f, bank %d (%d grown, %d reference)",
+                        added, self.cfg.grow_sim, size, grown, size - grown)
+        return added

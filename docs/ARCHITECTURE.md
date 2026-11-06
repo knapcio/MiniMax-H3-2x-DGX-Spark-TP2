@@ -132,7 +132,9 @@ same-seed frame digest (`h3_tp2 frames sha256` in the head journal, framemd5 in 
   short edge is below px keeps its own size instead of being upscaled: small character crops next to a scene frame,
   `h3_tp2/ref_shape.py`), `H3_TP2_IDENTITY_GUARD=<fraction>` (every window decoded and its faces scored against a bank built
   from the request's reference images, re-sampled when more than the fraction of the frames show a face that matches
-  no reference face; `h3_tp2/identity_guard.py`, `scripts/face_bank.py`), `H3_TP2_ANCHOR_FRAMES=<17n+5>` (the first window's
+  no reference face; `h3_tp2/identity_guard.py`, `scripts/face_bank.py`; `H3_TP2_IDENTITY_GROW=<similarity>` lets the
+  bank grow after every accepted window by the faces that matched it at least that well, at most
+  `H3_TP2_IDENTITY_GROW_MAX` of them, default 24), `H3_TP2_ANCHOR_FRAMES=<17n+5>` (the first window's
   opening frames join every later window as a Ref2VA video reference, placed before the latent guide; see
   `insert_anchor_block`; `H3_TP2_ANCHOR_SOURCE=tail` uses the previous window's last frames instead, the same-shaped
   control). Note that any extra reference block also shifts the reference clock and the size of the condition-noise draw. The seed step and the temporal offset were measured to change nothing (results/); the

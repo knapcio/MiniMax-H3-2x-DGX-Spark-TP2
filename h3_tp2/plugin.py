@@ -702,12 +702,17 @@ def _apply(role: str) -> None:
                         del frames
                         out = torch.zeros(3, dtype=torch.float32, device=video.device)
                         if rank == 0:
-                            g = _ig_state["guard"]
-                            summary = g.score(u8, skip_first=int(skip_frames)) if g is not None else {}
-                            _ok, sc = _ig.verdict(summary, _ig_cfg.max_unknown)
-                            out[0] = float(sc)
-                            out[1] = float(summary.get("faces") or 0)
-                            out[2] = float(summary.get("unknown_frac") or 0.0)
+                            try:  # rank 1 waits in the broadcast below: a scorer failure must still reach it
+                                g = _ig_state["guard"]
+                                summary = g.score(u8, skip_first=int(skip_frames)) if g is not None else {}
+                                _ok, sc = _ig.verdict(summary, _ig_cfg.max_unknown)
+                                out[0] = float(sc)
+                                out[1] = float(summary.get("faces") or 0)
+                                out[2] = float(summary.get("unknown_frac") or 0.0)
+                                if _ok and g is not None:
+                                    g.grow(summary)
+                            except Exception as e:  # noqa: BLE001
+                                logger.warning("h3_tp2 identity check failed on rank 0 (%s); the window is accepted", e)
                         if world > 1:
                             _dist.broadcast(out, src=0, group=group)
                         pipe._release_stage_cache()
