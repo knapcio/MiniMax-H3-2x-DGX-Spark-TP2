@@ -59,5 +59,11 @@ Also tried and dropped: a relative size rule (principal = at least 0.6 of the wi
 nothing, because the false detection was the widest "face" in its frames; `min_face` 0.03 instead of 0.05 only added
 background faces (5 re-samples at 0.2).
 
+**The leads by eye** (`sheet-lead-crops.png`: the woman at 5-52 s, the man at 5-110 s). Both are the same person
+throughout; the woman's own-face similarity falls to 0.43-0.48 (12.5 s, 35 s) and the man's to 0.17-0.40 (10-20 s,
+65-70 s, 95-100 s) when they stand in profile, and the woman is not detected at all through most of 10-50 s. So on this
+clip the embedding separates "turned away" (0.17-0.5) from "somebody else" (0.30 for the stranger) poorly on a single
+frame, and only the bank that has grown through the earlier windows keeps the profiles known; `min_sim` 0.4 stays.
+
 Files: `sheet-flagged-frames.png` (eleven of the flagged frames with their times). The frame scores live in
 `/tmp/h3-calib120/` on spark-06 (`faces-chunk.*.npz`: embedding, best similarity, width, probability per principal face).
