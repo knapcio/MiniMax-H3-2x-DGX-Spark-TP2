@@ -363,7 +363,7 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
-- 2026-11-06 06:00: identity bank growth (opt-in `H3_TP2_IDENTITY_GROW=<similarity>`, at most `H3_TP2_IDENTITY_GROW_MAX`
+- 2026-11-06 05:57: identity bank growth (opt-in `H3_TP2_IDENTITY_GROW=<similarity>`, at most `H3_TP2_IDENTITY_GROW_MAX`
   grown faces, default 24). After a window the guard accepts, the principal faces that matched the bank at least that
   well join it (`face_bank.py score --save-faces`, `identity_guard.grow_bank`: oldest grown faces drop first, the
   reference faces never), so the bank follows a character's angle, light and expression through the clip instead of
