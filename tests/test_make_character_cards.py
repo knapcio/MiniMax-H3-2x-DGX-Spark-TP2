@@ -36,6 +36,23 @@ class CardTests(unittest.TestCase):
             self.assertEqual([pathlib.Path(p).name for p in parts], ["scene.png", "scene_face0.png", "scene_face1.png"])
             self.assertGreaterEqual(min(Image.open(parts[1]).size), 512)
 
+    def test_body_box_covers_the_figure_below_the_face(self):
+        self.assertEqual(m.body_box((100, 100, 200, 220), 1344, 768), (0, 52, 350, 768))
+        self.assertEqual(m.body_box((400, 80, 460, 150), 1344, 768), (310, 52, 550, 675))
+
+    def test_cli_body_cards_follow_the_head_cards(self):
+        with tempfile.TemporaryDirectory() as d:
+            scene = pathlib.Path(d) / "scene.png"; Image.new("RGB", (640, 360), "gray").save(scene)
+            import io, contextlib
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc = m.main([str(scene), "--out-dir", d, "--body", "--box", "400,80,460,150", "--box", "100,90,150,150"])
+            self.assertEqual(rc, 0)
+            parts = buf.getvalue().strip().split("=", 1)[1].split(",")
+            self.assertEqual([pathlib.Path(p).name for p in parts],
+                             ["scene.png", "scene_face0.png", "scene_face1.png", "scene_body0.png", "scene_body1.png"])
+            self.assertGreaterEqual(min(Image.open(parts[3]).size), 512)
+
 
 if __name__ == "__main__":
     unittest.main()

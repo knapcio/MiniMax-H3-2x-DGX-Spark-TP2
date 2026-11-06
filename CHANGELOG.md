@@ -363,6 +363,16 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-06 09:10: the identity work widened from faces to the whole person (the owner's defect report: hairstyle,
+  hair colour and clothes changed after a character went behind something or turned away). `scripts/make_character_cards.py
+  --body` adds a full-figure card per character after the head cards (4 face widths wide, hat to about the knees).
+  New `scripts/person_bank.py`: people found by a COCO person detector (torchvision Faster R-CNN MobileNet), each
+  figure and its upper part embedded with DINOv2 ViT-S/14 (hair, hat, clothes and face together), scored against the
+  characters' cards like `face_bank.py` (principal people only: at least 0.4 of the frame and 0.75 of the tallest
+  person; `--save-persons` for bank growth). On the published 120 s clip at 1 fps: 246 principal people, the leads at
+  0.82-0.95 to their cards (mean 0.85), 4 below 0.6, among them the stranger who walks in at 87 s (0.57). Both run on a
+  CPU in the face venv on spark-06. Next: the park-and-oak test bed (a character walks behind a tree, another turns
+  away) with scene-only, head-card and body-card references, 22 s 960x544.
 - 2026-11-06 08:51: identity guard validated live (queue94, the 22 s occlusion probe with `GUARD=0.1`, `GROW=0.6`):
   the decoder's uint8 output confirmed in the journal, 11-13 faces per window scored, window 1 re-sampled on one
   unknown frame of 8 (the blurred pass-by, 0.08) and accepted on the next seed, the bank grown from 4 to 25 faces, two

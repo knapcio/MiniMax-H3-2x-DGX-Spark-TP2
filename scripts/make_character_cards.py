@@ -4,9 +4,12 @@ with several reference images (`H3_REF_IMAGES=scene.png,crop0.png,...` in script
 
   python scripts/make_character_cards.py scene.png --out-dir refs/            # MTCNN detection (facenet_pytorch)
   python scripts/make_character_cards.py scene.png --out-dir refs/ --box 317,130,415,256 --box 951,180,1034,282
+  python scripts/make_character_cards.py scene.png --out-dir refs/ --body       # plus a full-figure card per character
 
 Each crop is 2.4 face widths wide and 3 face heights tall (above the hair to the chest), ordered left to right, and
 upscaled so that its short edge is at least --min-edge (default 512; the server refuses references under 256 px).
+With ``--body`` a second card per character follows the head cards: 4 face widths wide, from above the hat to about
+eight face heights below the face (the whole figure in a medium shot: hair, hat, coat, scarf), clamped to the frame.
 Prints the H3_REF_IMAGES value. Measured 2026-11-05 (results/20261105-multiref/): the crops raise every face
 similarity measure by 0.1-0.2 while the character is visible; what they do after an occlusion is still being measured.
 """
@@ -29,6 +32,11 @@ def crop_box(box, width, height, wide=2.4, tall=3.0, above=0.45):
     left, top = max(0, int(cx - cw / 2)), max(0, int(cy - ch * above))
     right, bottom = min(width, int(cx + cw / 2)), min(height, int(cy + ch * (1 - above)))
     return left, top, right, bottom
+
+
+def body_box(box, width, height):
+    """The full-figure crop of a face box: 4 face widths wide, 0.9 face heights above the face centre to 8 below."""
+    return crop_box(box, width, height, wide=4.0, tall=8.9, above=0.9 / 8.9)
 
 
 def upscale(image: Image.Image, min_edge: int) -> Image.Image:
@@ -57,6 +65,7 @@ def main(argv=None) -> int:
     ap.add_argument("--box", action="append", default=[], help="x0,y0,x1,y1 of a face (repeat); skips detection")
     ap.add_argument("--min-edge", type=int, default=512)
     ap.add_argument("--prefix", default="")
+    ap.add_argument("--body", action="store_true", help="also write a full-figure card per character (after the head cards)")
     args = ap.parse_args(argv)
     image = Image.open(args.scene).convert("RGB")
     boxes = [tuple(float(v) for v in b.split(",")) for b in args.box] if args.box else detect(image)
@@ -66,12 +75,15 @@ def main(argv=None) -> int:
     out = Path(args.out_dir); out.mkdir(parents=True, exist_ok=True)
     prefix = args.prefix or Path(args.scene).stem
     paths = [str(Path(args.scene).resolve())]
-    for i, box in enumerate(sorted(boxes, key=lambda b: b[0])):
-        crop = upscale(image.crop(crop_box(box, image.width, image.height)), args.min_edge)
-        path = out / f"{prefix}_face{i}.png"
-        crop.save(path)
-        print(f"{path} box {[round(v) for v in box]} -> {crop.size[0]}x{crop.size[1]}", file=sys.stderr)
-        paths.append(str(path.resolve()))
+    ordered = sorted(boxes, key=lambda b: b[0])
+    kinds = [("face", crop_box)] + ([("body", body_box)] if args.body else [])
+    for kind, fn in kinds:
+        for i, box in enumerate(ordered):
+            crop = upscale(image.crop(fn(box, image.width, image.height)), args.min_edge)
+            path = out / f"{prefix}_{kind}{i}.png"
+            crop.save(path)
+            print(f"{path} box {[round(v) for v in box]} -> {crop.size[0]}x{crop.size[1]}", file=sys.stderr)
+            paths.append(str(path.resolve()))
     print("H3_REF_IMAGES=" + ",".join(paths))
     return 0
 
