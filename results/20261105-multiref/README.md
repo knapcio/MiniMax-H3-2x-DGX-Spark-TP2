@@ -47,7 +47,7 @@ reference block made the model cut; image blocks do not), and every identity mea
 before and after the event. The loss at re-appearance is not removed: after the occlusion the woman comes back at
 0.57 against 0.83 before it (A: 0.49 against 0.69). Sharper references do not change that (cards, above), and the second seed confirms the crops' gain. Cost: the two
 crops add a quarter of the window time at this size, because `H3_TP2_REF_SHORT_EDGE` upscales them to 1024 px like the
-scene; `H3_TP2_REF_NO_UPSCALE=1` (queue90) keeps a reference below the setting at its own size.
+scene; `H3_TP2_REF_NO_UPSCALE=600` (queue90) keeps a reference whose short edge is below 600 px at its own size.
 
 **Reference key scaling: closed (queue88, 22:38-23:46).** `H3_TP2_REF_KEY_SCALE` multiplies the attention keys of the
 reference-image rows (one factor per image block, applied to the local rows before the exact Ulysses exchange), the
@@ -83,3 +83,30 @@ So at the default limit (`H3_TP2_IDENTITY_GUARD=0.2`, two of eight frames) none 
 the guard is for a replaced character, not for the 0.1-0.2 of similarity the crops recover. The first live run
 (queue91, limit 0.1 so that B's pass-by frame trips it) measures the plumbing and the cost of a decode plus scoring
 per attempt.
+
+**The 60 s Polish doll scene with the crops (queue89, 2026-11-05 23:49 to 2026-11-06 01:12).** The same request as
+the PL5 baseline of `results/20261105-polish-pacing/` (960x544, 6 windows, 17 respelled lines, seed 3401, Ref2VA 1024,
+20 steps), with two head-and-shoulders crops of the doll scene frame added to the reference list
+(`H3_REF_IMAGES=reference.png,refs/lalka_face0.png,refs/lalka_face1.png`, 512 px short edge, upscaled to 1024 by the
+default). No occlusion in this scene: it measures what the crops do to an ordinary two-shot over a minute.
+
+| | PL5, scene frame only | scene frame + 2 crops |
+|---|---|---|
+| render | 3434 s | 4083 s (+19 %) |
+| diffuse per full window | 575-587 s (28.8 s/step) | 682-703 s (34.1 s/step) |
+| peak head memory | 64.0 GB | 64.7 GB |
+| cuts / pauses >= 1.5 s | 0 / 0 | 0 / 0 |
+| seam and cut checks | all first attempts | all first attempts (ratios 1.00-1.11) |
+| speech, Polish WER | 0.035 | 0.021 (`czynsz` -> `czynż` again; `lepszym` right this time) |
+| faces, mean man / woman | 0.810 / 0.701 | **0.844 / 0.758** |
+| faces, minimum | 0.543 / 0.444 | **0.664 / 0.557** |
+| first 10 % of the clip | 0.616 / 0.570 | **0.780 / 0.659** |
+| per window, man | 0.73, 0.85, 0.83, 0.85, 0.78, 0.82 | 0.81, 0.86, 0.84, 0.86, 0.83, 0.87 |
+| per window, woman | 0.65, 0.74, 0.67, 0.72, 0.72, 0.71 | 0.70, 0.78, 0.78, 0.77, 0.79, 0.72 |
+
+Both faces are closer to the reference in every one of the six windows, the minima rise by 0.12 / 0.11 and the first
+window, the only one without a continuation anchor, gains the most (man 0.73 -> 0.81, woman 0.65 -> 0.70). The crops
+cost 19 % of the render at 1024 px (three reference blocks instead of one; queue90 measures the native-size variant).
+The speech, pauses and cuts are unchanged. `sheet-multiref.png` is the contact sheet (one frame every 2 s): one take,
+the same two people throughout. The recipe in `docs/DIALOGUE_CLIPS.md` now lists the crops as a default step for any
+clip with recognisable characters.

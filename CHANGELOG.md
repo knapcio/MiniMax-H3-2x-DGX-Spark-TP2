@@ -363,6 +363,12 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-06 01:27: the character crops on a whole clip (queue89, `results/20261105-multiref/`): the 60 s Polish doll
+  scene rendered with the scene frame + two 512 px head-and-shoulders crops against the PL5 baseline (same seed, lines,
+  geometry): face similarity man / woman 0.844 / 0.758 against 0.810 / 0.701, minima 0.66 / 0.56 against 0.54 / 0.44,
+  every window higher, the first window most; WER 0.021 against 0.035, 0 cuts, 0 pauses; +19 % render time (4083 s
+  against 3434 s, 34.1 against 28.8 s/step) at the default 1024 px reference size. The crops are now a recipe step in
+  `docs/DIALOGUE_CLIPS.md`.
 - 2026-11-06 00:06: identity guard prototype, opt-in `H3_TP2_IDENTITY_GUARD=<fraction>` (`h3_tp2/identity_guard.py`,
   `scripts/face_bank.py`): every window of a continuation request (the first one too) is decoded after the denoising,
   eight frames are scored against a bank of face embeddings built from the request's reference images in a separate

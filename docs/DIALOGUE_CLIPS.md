@@ -85,10 +85,12 @@ with `H3_TP2_SAVE_LATENTS` set a window that still goes wrong is re-sampled afte
 Identity through an occlusion or a turn-away: give the request the scene frame **and a head-and-shoulders crop per
 character** (`scripts/make_character_cards.py scene.png --out-dir refs` prints the `H3_REF_IMAGES=` line;
 `TASK=ref2va H3_REF_IMAGES=scene.png,refs/face0.png,refs/face1.png bash scripts/render.sh ...`). On the 11 s occlusion
-probes the crops raised the returning character's face similarity by 0.1-0.2 on two seeds, with no cut
-(`results/20261105-multiref/`); the model's own rendered close-ups do not help, so cut the crops from the scene frame
-itself. The crops cost a quarter of the window time at 1024 px; `H3_TP2_REF_NO_UPSCALE=600` keeps them at their 512 px
-(measurement pending). A character replaced by someone else after an occlusion is what the opt-in identity guard
+probes the crops raised the returning character's face similarity by 0.1-0.2 on two seeds, with no cut, and on the
+60 s Polish doll scene (no occlusion, same seed and lines as PL5) they lifted both faces in every window (means 0.81 /
+0.70 -> 0.84 / 0.76, minima 0.54 / 0.44 -> 0.66 / 0.56, the first window most) with the speech, pauses and cuts
+unchanged (`results/20261105-multiref/`). The model's own rendered close-ups do not help, so cut the crops from the
+scene frame itself. The crops cost 19-25 % of the render time at the default 1024 px reference size (three reference
+blocks instead of one); `H3_TP2_REF_NO_UPSCALE=600` keeps them at their 512 px (measurement pending). A character replaced by someone else after an occlusion is what the opt-in identity guard
 (`H3_TP2_IDENTITY_GUARD=0.2`, prototype) re-samples on.
 
 ## 5. Checks before anyone sees it
