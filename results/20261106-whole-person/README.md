@@ -84,6 +84,29 @@ hue and saturation each, compared with the character's cards (hue weighted by ch
 shop clip's near-black clothes carry no noise); above 15 the person is `changed`. Over the four clips every window of
 the same person scores 0-12 (the 120 s shop clip 0-5 in all ten windows), the invented woman 15-28.
 
-Prevention did not come from the cards; the guard's re-sample with the colour check is the mechanism under test
-next (queue100: the same request with the colour-aware bank, so window 2 is re-sampled until she comes back right or
-the retries run out).
+Prevention did not come from the cards. The guard's re-sample with the colour check was tried next (queue100, S2c).
+
+## What the guard saw and what the clip shows (queue100)
+
+S2c is S2 once more with the colour check live in the guard (`H3_TP2_IDENTITY_GUARD=0.1 GROW=0.6 PERSON_SIM=0.6`). Two
+things came out of it:
+
+- **Renders are deterministic at a fixed seed.** S2 and S2c (same request, same seed) have the same `framemd5`, so the
+  invented woman of S2 is not a lottery of the run but of the seed: only another seed is a new draw.
+- **The guard passed window 2 (0 % unknown, colour distance 3-5 to the cards) and the clip still shows the orange coat
+  and another face.** The frame below is the guard's decoded sample of window 2 on the left and the same frame of the
+  finished clip on the right: the identity check runs on the raw sample inside the attempt loop, and the look-lock
+  (`H3_TP2_CONT_LOCK=first`, the per-class latent statistics of every later window pulled toward window 1's tail) is applied
+  to the chosen window afterwards. In this scene window 1's tail is the moment the woman is hidden and the man shows his
+  back, so the lock moves the returning character toward a window without her: the coat goes red -> orange (torso hue
+  3 -> 11-18, over the colour limit) and the face changes with it. The audio look-lock sits at the same place.
+
+![window 2, the guard's frame against the clip's](frame-seam-S2c-guard-vs-clip.jpg)
+
+Two guard defects found on the way are fixed (7bf65a5): the person bank lost its colour signatures at the first growth,
+and a head crop and a body crop of one character were two characters, so a figure matched to the head crop was never
+colour-checked against the body crop's torso.
+
+The look-lock itself is measured next on the saved S2c window latents, replayed through the hand-over with no diffusion
+(queue102): the default lock (control, must reproduce S2c), the lock off, strength 0.5 and the mean-only lock, each
+scored with the colour check and with the per-window voice naturalness of `results/20261106-voice/`.

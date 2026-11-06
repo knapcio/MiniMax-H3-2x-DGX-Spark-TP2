@@ -363,6 +363,13 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-06 15:20: the seam-identity culprit located, two guard defects fixed. Renders are deterministic at a fixed
+  seed (S2 and S2c share a `framemd5`). The guard judges the raw sample inside the attempt loop and the look-lock is
+  applied to the chosen window afterwards: in the seam scene the frame the guard passed (red coat, the right face) and
+  the same frame of the finished clip (orange coat, another face) differ because the lock's reference is window 1's
+  tail, where the character is hidden (`results/20261106-whole-person/`, frame comparison). Fixed: the person bank
+  lost its colour signatures at the first growth; head and body cards of one character were two characters (now merged
+  by face, `person_bank.py build --merge-faces`). The lock is replayed on the saved window latents next (queue102).
 - 2026-11-06 12:15: the owner's defect reproduced and measured: the occlusion ACROSS a window hand-over (queue98 S0, the
   woman hidden behind the oak and the man turned away at the end of window 1, scene reference only) brings the woman
   back as another person: an open orange-brown coat over a white blouse and a blue skirt instead of the closed red
