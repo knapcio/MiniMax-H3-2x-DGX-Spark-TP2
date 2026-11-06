@@ -363,13 +363,15 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
-- 2026-11-06 03:55: identity guard diagnostics after its first scored run (queue93, two windows of the occlusion
+- 2026-11-06 03:46: identity guard diagnostics after its first scored run (queue93, two windows of the occlusion
   scene): the guard logged `0 face(s)` for both windows although the clip shows both faces in every frame, so the
   scored frames are wrong somewhere between the window's decode and the PNGs. The plugin now logs the decoded
   tensor's shape, dtype and value range per check (`identity decode: ...`), the guard keeps the sampled frames of the
   last two windows in its `h3-identity-*/wNNN` directory and logs their stats with the scorer's JSON, and a decoder
   that already returns uint8 is re-laid out instead of re-scaled (`identity_guard.frames_to_uint8`). 2 more CPU tests.
-  Until the next probe (queue94) the guard is a no-op that costs one window decode per window.
+  The likely cause is exactly that: in plain requests the video VAE's `decode_latent` runs the streaming uint8
+  write-back and returns uint8 frames, which the float conversion scaled to white (the stock output path checks
+  the dtype first; the guard did not). The next probe (queue94) shows the decoded dtype in the journal.
 - 2026-11-06 03:00: queue helper strips `H3_TP2_REF_NO_UPSCALE` and `H3_TP2_IDENTITY_*` from the head environment
   file between queues (`scripts/queue-lib.sh`): queue91 booted with queue90's `REF_NO_UPSCALE=600` still set and
   measured nothing new. The identity guard lives in the continuation loop, so a one-window request (up to 11 s at 277
