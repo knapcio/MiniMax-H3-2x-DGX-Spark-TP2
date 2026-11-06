@@ -114,11 +114,16 @@ ffmpeg -i clip.mp4 -af silencedetect=n=-40dB:d=1.5 -f null -                    
 ffmpeg -nostats -i clip.mp4 -vf "select=gt(scene\,0.1),showinfo" -f null - 2>&1 | grep -c pts_time   # cuts
 ~/facenv/bin/python scripts/face_drift.py clip.mp4 reference.png --json drift.json  # faces per window vs the reference
 ~/facenv/bin/python scripts/voice_naturalness.py clip.mp4           # UTMOS + DNSMOS + pitch spread per window
+.speech-venv/bin/python scripts/speech_qa.py clip.mp4 --language pl --output speech.json
+~/facenv/bin/python scripts/voice_naturalness.py clip.mp4 --segments speech.json   # the same per spoken line
 ```
 
 `voice_naturalness.py` prints one line per continuation window: UTMOS (a predictor of how natural speech sounds; the
-model's single windows score 4.3-4.5 in English and 4.1 in Polish, the same range as recordings), DNSMOS signal quality
-and the pitch spread. A window far below the first one is where a voice turned flat or synthetic
+model's single windows score 4.3-4.5 in English and 3.7-4.1 in Polish, the same range as recordings), DNSMOS signal
+quality and the pitch spread. A window far below the first one is where a voice turned flat or synthetic. Per-window
+scores mix silence and whoever speaks, so judge a long dialogue with `--segments`: one score per transcribed line, with
+the window it starts in and the speaker's median pitch. In the long Polish clips every line from the fourth window on
+scores 0.4-0.7 below the same lines rendered as a fresh single window; this is the hand-over chain, under investigation
 (`results/20261106-voice/`).
 
 Targets met by the delivered clips: word error rate 0.005-0.054 (every line present and in order, the language never
