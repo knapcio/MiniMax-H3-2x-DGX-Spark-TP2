@@ -70,6 +70,7 @@ What it costs on the pair (20 steps, cutlass FP8 GEMM, the exact Ulysses exchang
 |---|---|---|---|
 | 60 s 960x544 | 6 | 3434 s (57 min) | the Polish doll scenes: diffuse 575-587 s per full window, decode 183 s |
 | 60 s 1344x768 | 6 | 12 031 s (3.3 h) | `xclip60v2`, six diffuse phases of 2086-2109 s |
+| 60 s 1344x768, scene + 2 crops | 6 (+1 re-sample) | 13 391 s (3.7 h) | `xclip60v3`: diffuse 1866-1963 s per window (92.7-100.4 s/step, about 15 % over the scene reference alone), one window re-sampled by the cut check, peak 70.1 GB (`results/20261106-xclip-events/`) |
 | 120 s 1344x768 | 12 | 7.9 h denoising + 633 s decode | `xclip120`; a 277-frame window at 1344x768 runs at 80-84 s per step |
 
 The decode of 2880 frames at 1344x768 takes over 600 s: the API server's per-step wait (`VLLM_OMNI_ASYNC_OUTPUT_TIMEOUT`,

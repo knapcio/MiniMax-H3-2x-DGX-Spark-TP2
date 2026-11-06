@@ -363,6 +363,13 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-06 07:58: the X shop scene rendered with the identity fix and its three failure cases written into the
+  prompts (`results/20261106-xclip-events/`, queue92): 60 s 1344x768, scene + two 512 px crops, the woman turns to the
+  shelves (window 2), the man turns away for a ledger (window 4), the woman bends below the counter (window 5). One
+  take, 0 cuts, 0 pauses, WER 0.005, each character back as the same person after each event (faces 0.70 / 0.78 mean
+  against 0.54-0.64 for the v2 clip without crops); 13 391 s including one window re-sampled on the interior cut check
+  (ratio 4.23); the crops cost about 15 % per step at 1344x768; peak 70.1 GB. Delivered to `~/Downloads/h3-prod-smoke/xclip/`
+  raw and with the two beds. The guard was a no-op in this run (pre-fix code).
 - 2026-11-06 06:07: the guard calibrated offline on the published 120 s X clip (`results/20261106-identity-guard-calibration/`):
   of 25 unknown principal faces, 17 were the lead man in profile (0.30-0.38 to a frontal bank), 8 a brass scale on the
   counter detected as a face at probability 0.90-0.976 with similarity below 0.07, and 2 the stranger who walks in at
