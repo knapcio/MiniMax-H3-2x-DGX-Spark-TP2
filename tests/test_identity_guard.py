@@ -134,6 +134,30 @@ def test_grow_bank_adds_matched_faces_fifo_and_keeps_the_references(tmp_path):
     assert ig.grow_bank(str(bank), str(cand), 0.95, 3) == (0, 5, 3)
 
 
+def test_grow_bank_keeps_the_person_bank_colour_signatures(tmp_path):
+    """A person bank carries ``who`` and the colour signature ``col`` per card; growth keeps both, the grown figures get
+    NaN signatures (the cards stay the only colour reference) and the cap drops rows of every array alike.  The live
+    guard lost ``col`` at the first growth on 2026-11-06 (queue100), so the colour check never ran on window 2."""
+    bank = tmp_path / "pbank.npz"
+    col = np.array([[[10, 0.5, 0.5]] * 3, [[200, 0.4, 0.6]] * 3], np.float32)
+    np.savez(bank, emb=np.stack([_unit([1, 0, 0]), _unit([0, 1, 0])]), src=np.array(["ref1", "ref2"]),
+             who=np.array([0, 1], np.int16), col=col)
+    cand = tmp_path / "persons.npz"
+    np.savez(cand, emb=np.stack([_unit([1, 0.2, 0]), _unit([0, 1, 0.1])]), best=np.array([0.9, 0.9], np.float32),
+             src=np.array(["w001@a", "w001@b"]))
+    assert ig.grow_bank(str(bank), str(cand), 0.6, 24) == (2, 4, 2)
+    data = np.load(bank)
+    assert list(data["who"]) == [0, 1, -1, -1]
+    assert data["col"].shape == (4, 3, 3)
+    assert np.allclose(data["col"][:2], col)
+    assert np.isnan(data["col"][2:]).all()
+    # the cap drops the oldest grown row from every array
+    assert ig.grow_bank(str(bank), str(cand), 0.6, 3) == (2, 5, 3)
+    data = np.load(bank)
+    assert data["col"].shape == (5, 3, 3) and list(data["who"]) == [0, 1, -1, -1, -1]
+    assert np.allclose(data["col"][:2], col) and np.isnan(data["col"][2:]).all()
+
+
 def test_principal_faces_is_pure():
     pytest.importorskip("torch")
     import face_bank
@@ -262,6 +286,22 @@ def test_person_bank_scoring_judges_only_people_with_a_face():
     boxes = [(0, 0, 10, 90, 0.9), (0, 0, 10, 60, 0.9), (0, 0, 10, 30, 0.9)]
     assert [b[3] for b in person_bank.principal(boxes, 100, 0.4, 0.75)] == [90]
     assert [b[3] for b in person_bank.principal(boxes, 100, 0.4, 0.5)] == [90, 60]
+
+
+def test_person_bank_merges_cards_of_one_character_by_face():
+    """The guard gives every reference image as its own group; groups whose faces match become one character so the
+    colour check sees the body card's torso even when a figure matched the head card best."""
+    pytest.importorskip("torch")
+    pytest.importorskip("torchvision")
+    import person_bank as pb
+
+    a = _unit([1, 0, 0]); a2 = _unit([0.95, 0.3, 0]); b = _unit([0, 1, 0])
+    # head0, body0 (same face), head1, body1 (same face), a card with no face
+    assert pb.merge_characters([0, 1, 2, 3, 4], [a, a2, b, b, None], 0.6) == [0, 0, 1, 1, 2]
+    # the merge is transitive and the given grouping always holds
+    assert pb.merge_characters([0, 0, 1], [a, None, a2], 0.6) == [0, 0, 0]
+    assert pb.merge_characters([0, 1, 2, 3], [a, a2, b, b], 0.0) == [0, 1, 2, 3]
+    assert pb.merge_characters([0, 1], [a, b], 0.6) == [0, 1]
 
 
 def test_person_bank_colour_signature_and_distance():

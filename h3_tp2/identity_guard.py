@@ -127,6 +127,7 @@ def grow_bank(bank: str, faces_file: str, min_sim: float, max_grown: int) -> tup
     emb, src = data["emb"], data["src"].astype(str)
     grown = data["grown"] if "grown" in data.files else np.zeros(len(emb), dtype=bool)
     who = data["who"] if "who" in data.files else None  # person banks: the character of each card (-1 = grown)
+    col = data["col"] if "col" in data.files else None  # person banks: the colour signature of each card (NaN = grown)
     cand = np.load(faces_file, allow_pickle=False)
     keep = [i for i, b in enumerate(cand["best"]) if float(b) >= min_sim]
     if not keep:
@@ -136,13 +137,19 @@ def grow_bank(bank: str, faces_file: str, min_sim: float, max_grown: int) -> tup
     grown = np.concatenate([grown, np.ones(len(keep), dtype=bool)])
     if who is not None:
         who = np.concatenate([who, np.full(len(keep), -1, dtype=who.dtype)])
+    if col is not None:
+        # grown figures carry no colour signature: the cards stay the only reference for hair / clothes colours
+        col = np.concatenate([col, np.full((len(keep),) + tuple(col.shape[1:]), np.nan, dtype=col.dtype)])
     excess = int(grown.sum()) - int(max_grown)
     if excess > 0:
         drop = set(np.flatnonzero(grown)[:excess].tolist())
         sel = np.array([i not in drop for i in range(len(emb))])
         emb, src, grown = emb[sel], src[sel], grown[sel]
         who = who[sel] if who is not None else None
+        col = col[sel] if col is not None else None
     extra = {"who": who} if who is not None else {}
+    if col is not None:
+        extra["col"] = col
     np.savez(bank, emb=emb, src=src, grown=grown, **extra)
     return len(keep), int(len(emb)), int(grown.sum())
 

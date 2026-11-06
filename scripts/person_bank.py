@@ -195,23 +195,58 @@ def _load(path: str, width: int) -> Image.Image:
     return img
 
 
+def merge_characters(groups: list[int], face_embs: list, min_sim: float) -> list[int]:
+    """Character id per card after merging the given groups whose faces match (cosine >= ``min_sim``).
+
+    The guard hands every reference image to ``build`` as its own character, so a head crop and a body crop of the
+    same person were two characters: a figure matched to the head crop was then colour-checked against a card without
+    a torso, and the changed coat passed (2026-11-06, queue100).  Cards without a face keep their given group; ids are
+    renumbered 0..k-1 in order of first appearance.  ``min_sim`` <= 0 disables the merge.
+    """
+    parent = list(range(len(groups)))
+
+    def root(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for i in range(len(groups)):
+        for j in range(i):
+            same_group = groups[i] == groups[j]
+            same_face = (min_sim > 0 and face_embs[i] is not None and face_embs[j] is not None
+                         and float(np.dot(face_embs[i], face_embs[j])) >= min_sim)
+            if same_group or same_face:
+                parent[root(i)] = root(j)
+    ids: dict[int, int] = {}
+    return [ids.setdefault(root(i), len(ids)) for i in range(len(groups))]
+
+
 def build(args) -> int:
     _, dino = _models(detector=False)
-    mtcnn = _face_detector()
-    embs, src, who, cols = [], [], [], []
+    here = os.path.dirname(os.path.abspath(__file__))
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    from face_bank import _models as _face_models, faces as _faces
+
+    mtcnn, facenet = _face_models()
+    embs, src, groups, cols, face_embs = [], [], [], [], []
     for c, cards in enumerate(args.cards):
         for path in cards.split(","):
             img = Image.open(path).convert("RGB")
             embs.append(embed(dino, img))
             src.append(os.path.basename(path))
-            who.append(c)
+            groups.append(c)
             prob, box = face_box(mtcnn, img)
             cols.append(colour_signature(img, box) if box is not None and prob >= 0.9 else np.full((3, 3), np.nan, np.float32))
+            found = _faces(mtcnn, facenet, img, 0.9)
+            face_embs.append(max(found, key=lambda f: f[3])[2] if found else None)
     if not embs:
         print("no cards given", file=sys.stderr)
         return 2
+    who = merge_characters(groups, face_embs, float(getattr(args, "merge_faces", 0.6)))
     np.savez(args.out, emb=np.stack(embs), src=np.array(src), who=np.array(who, np.int16), col=np.stack(cols))
-    print(json.dumps({"bank": args.out, "cards": len(embs), "characters": len(args.cards), "sources": src,
+    print(json.dumps({"bank": args.out, "cards": len(embs), "characters": int(max(who)) + 1, "who": who, "sources": src,
                       "colour_regions": [int(np.sum(~np.isnan(c[:, 0]))) for c in cols]}))
     return 0
 
@@ -335,6 +370,9 @@ def main() -> int:
     b = sub.add_parser("build")
     b.add_argument("--out", required=True)
     b.add_argument("--cards", action="append", required=True, help="comma-separated card images of ONE character (repeat)")
+    b.add_argument("--merge-faces", type=float, default=0.6,
+                   help="merge --cards groups whose faces match at this cosine similarity (facenet) into one character; "
+                        "0 keeps the groups as given")
     s = sub.add_parser("score")
     s.add_argument("--bank", required=True)
     s.add_argument("--min-sim", type=float, default=0.6)
