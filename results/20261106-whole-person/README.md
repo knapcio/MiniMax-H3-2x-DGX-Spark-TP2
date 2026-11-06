@@ -58,6 +58,32 @@ two events, cropped to each character.
   figures `unjudged` (0.42-0.57 against the frontal cards, the same range as a stranger in similar clothes on the
   120 s shop clip, which is why a figure without a face is not judged).
 
-The case the probe leaves open is an occlusion that spans a window hand-over, where the continuation receives
-only the reference images and frames without the character; that is the next test (queue98: the woman hidden and the
-man turned away at the end of window 1, scene only against cards + the live guard with the whole-person check).
+## The seam test: hidden at the window hand-over (queue98)
+
+The same scene with the events moved onto the hand-over: window 1 ends with the woman behind the trunk and the man
+with his back to the camera, window 2 brings both back (`tree/prompt_seam.txt`, `extra_seam.json`, seed 2601).
+
+| | S0 scene only | S2 scene + head + body cards, guard (faces, figure embeddings) |
+|---|---|---|
+| the man (turned away, never hidden) | the same man | the same man |
+| the woman (hidden) after the hand-over | **another person**: an open orange-brown coat over a white blouse and a blue skirt instead of the closed red coat, blonder hair, an older face | the same change (the cards do not prevent it) |
+| figure embedding vs her card, after | 0.86-0.92 ("known") | 0.90 |
+| face vs her head card, after | 0.76-0.78 ("known") | 0.83 |
+| colour distance to her cards, after (hair + torso) | 15-27 (10 of 11 instances above 15) | 15-28 (10 of 12) |
+| colour distance before the seam | 5-9 | 3-7 |
+| guard verdict (bank without colour) | - | window 2 accepted: 10 faces, 0 % unknown |
+| render | 1239 s | 1956 s |
+
+`sheet-seam-S0-vs-reference.jpg`, `sheet-seam-S2-vs-reference.jpg`: the reference frame and five frames of each clip.
+
+**This is the owner's defect**, and it is a hand-over problem: with the character absent from the overlap frames the
+next window invents her from the prompt and the references, and the references lose (the same with five reference
+images as with one). The embedding checks pass the invented woman (same type of person, 0.86-0.92), which is why
+`scripts/person_bank.py` got the colour signature: hair, torso and legs regions placed relative to the face box,
+hue and saturation each, compared with the character's cards (hue weighted by chroma, saturation by brightness, so the
+shop clip's near-black clothes carry no noise); above 15 the person is `changed`. Over the four clips every window of
+the same person scores 0-12 (the 120 s shop clip 0-5 in all ten windows), the invented woman 15-28.
+
+Prevention did not come from the cards; the guard's re-sample with the colour check is the mechanism under test
+next (queue100: the same request with the colour-aware bank, so window 2 is re-sampled until she comes back right or
+the retries run out).

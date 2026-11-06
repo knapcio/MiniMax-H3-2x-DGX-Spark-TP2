@@ -137,7 +137,11 @@ same-seed frame digest (`h3_tp2 frames sha256` in the head journal, framemd5 in 
   `H3_TP2_IDENTITY_GROW_MAX` of them, default 24; `H3_TP2_IDENTITY_PERSON_SIM=<similarity>` adds a whole-person check:
   the people in the scored frames, found by a person detector, are embedded with DINOv2 as figures and upper parts and
   compared with the character cards, the reference images after the scene frame, so hair, hats and clothes count and
-  not only the face; `scripts/person_bank.py`, `scripts/make_character_cards.py --body` for full-figure cards),
+  not only the face; a person is judged only when a confident face shows in its upper part, and a judged person whose
+  colour signature (hair, torso and legs regions placed relative to the face box, hue weighted by chroma and
+  saturation by brightness) is more than 15 away from the matched character's cards is `changed` and counts as
+  unknown, because the embeddings pass "the same woman in another coat" (the park seam test of 2026-11-06, the
+  calibration in `scripts/person_bank.py`); `scripts/make_character_cards.py --body` for full-figure cards),
   `H3_TP2_ANCHOR_FRAMES=<17n+5>` (the first window's
   opening frames join every later window as a Ref2VA video reference, placed before the latent guide; see
   `insert_anchor_block`; `H3_TP2_ANCHOR_SOURCE=tail` uses the previous window's last frames instead, the same-shaped
