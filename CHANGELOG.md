@@ -363,6 +363,14 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-06 09:55: the whole-person check judges only people with a confident face in their upper part. On the park
+  probe (queue97 V0, scene reference only: the woman walks behind the oak and back, the man turns his back) a figure
+  seen from behind scored 0.57-0.65 against the frontal cards, the same as a stranger in a similar coat on the 120 s
+  clip (0.57), so without a face there is no evidence either way: such people are `unjudged`, not unknown. With the
+  rule the V0 probe has 0 unknown frames in both windows (2 + 4 unjudged) and the 120 s clip exactly one unknown
+  person, the stranger at 87 s (face 0.997, figure 0.57); the right-edge extras become unjudged. `person_bank.py
+  --face-prob` (default 0.98, 0 judges everyone), `face_prob` saved with the persons. The guard's person check uses it
+  through the script. Test bed V0: one take, 0 cuts, 1191 s, peak 62.3 GB, faces back at 0.85 / 0.90 after the events.
 - 2026-11-06 09:10: the identity work widened from faces to the whole person (the owner's defect report: hairstyle,
   hair colour and clothes changed after a character went behind something or turned away). `scripts/make_character_cards.py
   --body` adds a full-figure card per character after the head cards (4 face widths wide, hat to about the knees).

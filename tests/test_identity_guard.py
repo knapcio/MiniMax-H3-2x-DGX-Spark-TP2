@@ -243,3 +243,22 @@ def test_person_check_joins_the_face_check(tmp_path):
     pb = np.load(g.pbank)
     assert pb["emb"].shape == (3, 3) and list(pb["who"]) == [0, 1, -1] and list(pb["grown"]) == [False, False, True]
     assert ig.config_from_env({"H3_TP2_IDENTITY_GUARD": "0.2", "H3_TP2_IDENTITY_PERSON_SIM": "0.55"}).person_sim == 0.55
+
+
+def test_person_bank_scoring_judges_only_people_with_a_face():
+    pytest.importorskip("torch")
+    pytest.importorskip("torchvision")
+    import person_bank
+
+    bank = np.stack([_unit([1, 0, 0]), _unit([0, 1, 0])]); who = np.array([0, 1], np.int16)
+    e_known, e_other = _unit([1, 0.1, 0]), _unit([0, 0, 1])
+    found = [[(0.3, 0.9, e_known, e_known, 0.999), (0.7, 0.9, e_other, e_other, 0.0)],   # a lead and a back view
+             [(0.5, 0.9, e_other, e_other, 0.999)]]                                       # a stranger facing the camera
+    out = person_bank.score_frames(bank, who, found, 0.6)
+    assert (out["persons"], out["known"], out["unknown"], out["unjudged"], out["unknown_frames"]) == (3, 1, 1, 1, 1)
+    assert out["unknown_frac"] == pytest.approx(0.5) and out["character_best"][0] == pytest.approx(float(bank[0] @ e_known))
+    assert person_bank.score_frames(bank, who, found, 0.6, face_prob_min=0.0)["unknown"] == 2   # judge everyone
+    # the principal rule: at least 0.4 of the frame and 0.75 of the tallest
+    boxes = [(0, 0, 10, 90, 0.9), (0, 0, 10, 60, 0.9), (0, 0, 10, 30, 0.9)]
+    assert [b[3] for b in person_bank.principal(boxes, 100, 0.4, 0.75)] == [90]
+    assert [b[3] for b in person_bank.principal(boxes, 100, 0.4, 0.5)] == [90, 60]

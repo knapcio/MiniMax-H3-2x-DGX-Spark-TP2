@@ -12,9 +12,15 @@ hair, hat, clothes and face together, not the face alone). ``score`` finds the p
 Faster R-CNN MobileNet, COCO "person"), embeds each figure and its upper part, takes the best cosine similarity to any
 card of any character, and prints one JSON line: persons (the principal ones: at least ``min-height`` of the frame
 tall and at least ``principal-ratio`` of the tallest person in the frame, so extras further back do not count), known
-(best >= min-sim), unknown, unknown_frames, unknown_frac (the fraction of FRAMES with an unknown principal person), mean_best,
-min_best and per character its best similarity. With ``--save-persons`` the embeddings and similarities of the
-principal persons are written for the bank growth (``identity_guard.grow_bank``).
+(best >= min-sim), unknown, unjudged, unknown_frames, unknown_frac (the fraction of FRAMES with an unknown principal
+person), mean_best, min_best and per character its best similarity. With ``--save-persons`` the embeddings and
+similarities of the principal persons are written for the bank growth (``identity_guard.grow_bank``).
+
+A person is judged only when a confident face (MTCNN probability >= ``face-prob``, default 0.98) shows in its upper
+part: a figure seen from behind or half hidden scores 0.4-0.6 against frontal cards whoever it is (the park probe of
+2026-11-06: the lead's back 0.57, a stranger in a similar coat on the 120 s clip 0.57), so without a face there is
+no evidence either way and the person counts as ``unjudged``. With a face, a low figure similarity means the same
+face in other hair or clothes, which is what the check is for; the face itself is judged by ``face_bank.py``.
 
 Calibrated 2026-11-06 on the published 120 s shop clip at 960 px: the leads (0.85-0.95 of the frame tall) score
 0.67-0.95 against their cards, extras further back (0.25-0.7 of the frame) 0.37-0.55, a second man in a similar dark
@@ -45,6 +51,20 @@ def _models(detector: bool = True):
 
         det = fasterrcnn_mobilenet_v3_large_320_fpn(weights=FasterRCNN_MobileNet_V3_Large_320_FPN_Weights.DEFAULT).eval()
     return det, dino
+
+
+def _face_detector():
+    from facenet_pytorch import MTCNN
+
+    return MTCNN(keep_all=True, device="cpu")
+
+
+def face_prob(mtcnn, img: Image.Image) -> float:
+    """The best face-detection probability in ``img`` (0 when nothing is found)."""
+    _boxes, probs = mtcnn.detect(img)
+    if probs is None:
+        return 0.0
+    return max((float(p) for p in probs if p is not None), default=0.0)
 
 
 def embed(dino, img: Image.Image) -> np.ndarray:
@@ -100,33 +120,42 @@ def build(args) -> int:
     return 0
 
 
-def score_frames(bank: np.ndarray, who: np.ndarray, found_per_frame, min_sim: float) -> dict:
-    """Pure part of ``score``: ``found_per_frame`` = per frame a list of (x, height, figure embedding, upper embedding).
+def score_frames(bank: np.ndarray, who: np.ndarray, found_per_frame, min_sim: float, face_prob_min: float = 0.98) -> dict:
+    """Pure part of ``score``: ``found_per_frame`` = per frame a list of (x, height, figure embedding, upper embedding
+    [, face probability]).
 
     A person is known when the better of the figure's and the upper part's best similarity to any card reaches
-    ``min_sim``; ``unknown_frac`` is the fraction of FRAMES with an unknown principal person.
+    ``min_sim``, unknown when it does not AND a confident face shows in its upper part (``face_prob_min``), unjudged
+    otherwise (seen from behind, half hidden); ``unknown_frac`` is the fraction of FRAMES with an unknown principal
+    person.
     """
     n_char = int(who.max()) + 1 if len(who) else 0
-    best_all, per_char, unknown_frames = [], [-1.0] * n_char, 0
+    best_all, per_char, unknown_frames, unknown, unjudged = [], [-1.0] * n_char, 0, 0, 0
     for found in found_per_frame:
         frame_unknown = False
-        for x, h, ef, eu in found:
+        for x, h, ef, eu, *rest in found:
+            fp = float(rest[0]) if rest else 1.0
             sims = np.maximum(bank @ ef, bank @ eu)
             best = float(sims.max())
             best_all.append(best)
-            frame_unknown = frame_unknown or best < min_sim
+            if best < min_sim:
+                if fp >= face_prob_min:
+                    unknown += 1
+                    frame_unknown = True
+                else:
+                    unjudged += 1
             for c in range(n_char):
                 m = sims[who == c]
                 if len(m):
                     per_char[c] = max(per_char[c], float(m.max()))
         unknown_frames += int(frame_unknown)
     n = len(best_all)
-    known = sum(1 for s in best_all if s >= min_sim)
     return {
         "frames": len(found_per_frame),
         "persons": n,
-        "known": known,
-        "unknown": n - known,
+        "known": n - unknown - unjudged,
+        "unknown": unknown,
+        "unjudged": unjudged,
         "unknown_frames": unknown_frames,
         "unknown_frac": unknown_frames / len(found_per_frame) if found_per_frame else 0.0,
         "mean_best": float(np.mean(best_all)) if n else None,
@@ -145,6 +174,7 @@ def score(args) -> int:
     data = np.load(args.bank, allow_pickle=False)
     bank, who = data["emb"], data["who"]
     det, dino = _models()
+    mtcnn = _face_detector() if args.face_prob > 0 else None
     found_per_frame, saved = [], []
     for path in args.frames:
         img = _load(path, args.width)
@@ -153,16 +183,18 @@ def score(args) -> int:
             h = (box[3] - box[1]) / img.height
             figure, upper = person_crops(img, box)
             ef, eu = embed(dino, figure), embed(dino, upper)
-            found.append(((box[0] + box[2]) / 2 / img.width, h, ef, eu))
-            saved.append((os.path.basename(path), found[-1][0], h, ef, eu))
+            fp = face_prob(mtcnn, upper) if mtcnn is not None else 1.0
+            found.append(((box[0] + box[2]) / 2 / img.width, h, ef, eu, fp))
+            saved.append((os.path.basename(path), found[-1][0], h, ef, eu, fp))
         found_per_frame.append(found)
-    out = score_frames(bank, who, found_per_frame, args.min_sim)
+    out = score_frames(bank, who, found_per_frame, args.min_sim, args.face_prob)
     if args.save_persons:
-        best = [float(np.maximum(bank @ ef, bank @ eu).max()) for _n, _x, _h, ef, eu in saved]
+        best = [float(np.maximum(bank @ ef, bank @ eu).max()) for _n, _x, _h, ef, eu, _fp in saved]
         np.savez(args.save_persons,
-                 emb=np.stack([ef for *_r, ef, _eu in saved]) if saved else np.zeros((0, bank.shape[1]), np.float32),
-                 emb_upper=np.stack([eu for *_r, eu in saved]) if saved else np.zeros((0, bank.shape[1]), np.float32),
+                 emb=np.stack([ef for _n, _x, _h, ef, _eu, _fp in saved]) if saved else np.zeros((0, bank.shape[1]), np.float32),
+                 emb_upper=np.stack([eu for _n, _x, _h, _ef, eu, _fp in saved]) if saved else np.zeros((0, bank.shape[1]), np.float32),
                  best=np.array(best, np.float32), height=np.array([h for _n, _x, h, *_r in saved], np.float32),
+                 face_prob=np.array([fp for *_r, fp in saved], np.float32),
                  src=np.array([f"{n}@x={x:.2f}" for n, x, *_r in saved]))
         out["persons_file"] = args.save_persons
     print(json.dumps(out))
@@ -184,6 +216,8 @@ def main() -> int:
     s.add_argument("--width", type=int, default=960)
     s.add_argument("--threads", type=int, default=8)
     s.add_argument("--save-persons", default="")
+    s.add_argument("--face-prob", type=float, default=0.98,
+                   help="judge a person only when a face this confident shows in its upper part (0 = judge everyone)")
     s.add_argument("frames", nargs="+")
     args = ap.parse_args()
     torch.set_num_threads(getattr(args, "threads", 8))
