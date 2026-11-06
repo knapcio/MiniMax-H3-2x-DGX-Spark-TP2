@@ -363,6 +363,12 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-06 16:50: voice naturalness A/B (queue101, `results/20261106-voice/`): the audio look-lock is not what makes
+  the later windows sound synthetic (window 2 of a 22 s monologue 4.05 UTMOS with the lock, 4.10 without; the lock moved
+  the audio latent std by 1 %). The hand-over itself costs 0.25-0.3 on that clip against a seed spread of 0.11, with
+  window 2 half as voiced as window 1, so the text is a confound; queue103 renders the window-2 lines alone and the
+  monologue on Ref2VA with our hand-over against upstream's. New `scripts/voice_naturalness.py` (UTMOS22 + DNSMOS + pitch
+  spread per continuation window), listed in `docs/DIALOGUE_CLIPS.md` checks.
 - 2026-11-06 15:20: the seam-identity culprit located, two guard defects fixed. Renders are deterministic at a fixed
   seed (S2 and S2c share a `framemd5`). The guard judges the raw sample inside the attempt loop and the look-lock is
   applied to the chosen window afterwards: in the seam scene the frame the guard passed (red coat, the right face) and

@@ -113,7 +113,13 @@ exactly the window in which a stranger walks in, and run live on the 22 s occlus
 ffmpeg -i clip.mp4 -af silencedetect=n=-40dB:d=1.5 -f null -                      # pauses >= 1.5 s
 ffmpeg -nostats -i clip.mp4 -vf "select=gt(scene\,0.1),showinfo" -f null - 2>&1 | grep -c pts_time   # cuts
 ~/facenv/bin/python scripts/face_drift.py clip.mp4 reference.png --json drift.json  # faces per window vs the reference
+~/facenv/bin/python scripts/voice_naturalness.py clip.mp4           # UTMOS + DNSMOS + pitch spread per window
 ```
+
+`voice_naturalness.py` prints one line per continuation window: UTMOS (a predictor of how natural speech sounds; the
+model's single windows score 4.3-4.5 in English and 4.1 in Polish, the same range as recordings), DNSMOS signal quality
+and the pitch spread. A window far below the first one is where a voice turned flat or synthetic
+(`results/20261106-voice/`).
 
 Targets met by the delivered clips: word error rate 0.005-0.054 (every line present and in order, the language never
 slipping), 0-2 pauses >= 1.5 s, 0 cuts, face similarity means 0.54-0.64 with the minima explained by profile turns, not
