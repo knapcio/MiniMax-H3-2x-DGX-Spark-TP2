@@ -363,6 +363,10 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-06 03:00: queue helper strips `H3_TP2_REF_NO_UPSCALE` and `H3_TP2_IDENTITY_*` from the head environment
+  file between queues (`scripts/queue-lib.sh`): queue91 booted with queue90's `REF_NO_UPSCALE=600` still set and
+  measured nothing new. The identity guard lives in the continuation loop, so a one-window request (up to 11 s at 277
+  frames) is never scored; its first scored run is a two-window probe (queue93) before the 60 s shop scene (queue92).
 - 2026-11-06 02:25: native-size crops closed (queue90, `results/20261105-multiref/`): `H3_TP2_REF_NO_UPSCALE=600`
   removes the crops' cost (diffuse 587 / 581 s against 726 s, same as the scene alone) and their effect with it (the
   woman after the occlusion 0.03-0.14 / 0.30-0.42 on the two seeds, against 0.42-0.70 with the crops upscaled to 1024

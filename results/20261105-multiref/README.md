@@ -121,3 +121,13 @@ she comes back small and far behind the counter on both seeds, as in arm A). A 5
 rows of a 1024 px one, and the identity effect goes with the rows, not with the pixels: the crops have to be upscaled
 to the scene's reference size to count. The option stays opt-in for anyone who wants cheaper extra references; the
 recipe keeps the default size and pays the 19-25 %.
+
+**Identity guard, first live run (queue91, 02:18-02:58): the bank, not the check.** The 11 s occlusion probe with
+`H3_TP2_IDENTITY_GUARD=0.1` logged the bank (`identity bank: 4 face(s) from 3 reference image(s): ref0.png@x=0.27,
+ref0.png@x=0.74, ref1.png@x=0.50, ref2.png@x=0.49`, the scene's two faces and one per crop) and nothing else: an 11 s
+request is one window and never enters the continuation loop where the guard sits, so no window was scored. The run
+also rendered with `H3_TP2_REF_NO_UPSCALE=600` still in the head's environment file from queue90 (the queue helper
+strips only the variables it knows; the two new ones were not on its list, fixed in `scripts/queue-lib.sh`), which is
+why its numbers equal queue90's seed 2301 to the third decimal. The guard's first real run is a two-window request
+(queue93: 22 s, she walks behind him and back), then the 60 s shop scene at 1344x768 with the events written into its
+windows (queue92).
