@@ -363,6 +363,12 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-06 05:50: the guard's empty scores explained before the validation render. The stack installs the VAE's
+  streaming uint8 decode patch by default, so `decode_latent` returns uint8 `(B, C, T, H, W)` and the guard's float
+  conversion scaled it to white (confirmed in `vae.py`); the scorer is healthy (`face_bank.py score` on five frames cut
+  from the queue93 clip with the same bank: 7 faces, all known, mean 0.83). The fix in `dd00fd7` stands; queue94 shows
+  it live. Guard cost at 1344x768 from the queue92 journal (no-op there): 67-68 s per window (decode + 8 scored frames)
+  on a 1866-1927 s diffuse phase. queue92 itself re-sampled window 3 (cut ratio 4.23 > 1.70) and finishes later.
 - 2026-11-06 03:46: identity guard diagnostics after its first scored run (queue93, two windows of the occlusion
   scene): the guard logged `0 face(s)` for both windows although the clip shows both faces in every frame, so the
   scored frames are wrong somewhere between the window's decode and the PNGs. The plugin now logs the decoded

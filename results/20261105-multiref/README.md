@@ -131,3 +131,15 @@ strips only the variables it knows; the two new ones were not on its list, fixed
 why its numbers equal queue90's seed 2301 to the third decimal. The guard's first real run is a two-window request
 (queue93: 22 s, she walks behind him and back), then the 60 s shop scene at 1344x768 with the events written into its
 windows (queue92).
+
+**Second live run (queue93, 03:14-03:40): the guard scored both windows and saw no faces.** The 22 s occlusion scene
+(960x544, seed 2301, `H3_TP2_IDENTITY_GUARD=0.1`) logged `identity check window 1/2 attempt 1: 0 face(s), 0 % unknown,
+score 0.00` while the clip itself has both faces in every frame (`face_drift.py --match embed`: man 0.893 mean, woman
+0.81 after her return). The cause (confirmed 05:50 from the code and from a scorer test, before the validation
+render): with the streaming VAE patch installed, which is the default of this stack, `decode_latent` returns **uint8**
+`(B, C, T, H, W)` frames, and the guard's conversion scaled them a second time to white. The scorer itself is fine:
+`face_bank.py score` on five frames cut from the queue93 clip with the same three-image bank finds 7 faces, all known,
+mean similarity 0.83 (min 0.64). `identity_guard.frames_to_uint8` now re-lays uint8 frames out without rescaling and
+the journal prints the decoded tensor's dtype per check; queue94 (the same request, after queue92) validates it live.
+The guard's price at 1344x768, read from the queue92 journal where it runs as a no-op: **67-68 s per window** for the
+decode plus the scorer (8 frames), against a 1866-1927 s diffuse phase (3.5 %).
