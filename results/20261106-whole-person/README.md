@@ -189,3 +189,30 @@ The Koninck landscape, 960x544, 20 steps, seed 1101, FL2VA, six windows, one boo
 The woman comes back in the red coat with her face, the voice of window 2 keeps its score, and the render reproduces the
 replay exactly, so the replays above stand for renders. Whether the cards and the guard are still needed once the lock
 no longer undoes them is queue112's question (the same scene from the frame alone, two seeds).
+
+## The frame alone on the new defaults (queue112, S4 and S4b)
+
+The seam scene from the scene frame only: no character cards, no identity guard, nothing but today's defaults (robust
+video look-lock, audio lock off), on two seeds.
+
+| | S3 (cards + guard, seed 2601) | S4 (frame only, seed 2601) | S4b (frame only, seed 2602) |
+|---|---|---|---|
+| persons w2: `changed` / colour max / mean | 0 of 35 / 11.6 / 5.7 | **0 of 32** / 12.0 / 6.5 | **0 of 30** / 10.5 / 4.7 |
+| persons w2: known / unknown | 35 / 0 | 32 / 0 | 30 / 0 |
+| faces w2: mean / min | 0.858 / 0.62 | 0.847 / 0.73 | 0.853 / 0.51 |
+| the woman's face, first 10 % -> last 10 % | 0.84 -> 0.79 | 0.85 -> 0.75 | 0.87 -> 0.84 |
+| the man's face, first 10 % -> last 10 % | 0.94 -> 0.93 | 0.91 -> 0.90 | 0.92 -> 0.89 |
+| UTMOS window 1 / window 2 | 3.33 / 3.47 | 3.40 / 3.45 | 3.72 / 3.51 |
+| cuts / render | 0 / 1908 s | 0 / **1228 s** | 0 / 1534 s |
+
+The woman comes back behind the tree as herself on both seeds with no help: every figure of window 2 is one of the two
+characters, none recoloured, faces as high as with the cards. The cards and the guard cost 25-35 % of the render here
+(the guard decodes every window) and bought nothing the robust lock does not already keep. They stay opt-in insurance
+for scenes the lock cannot carry (a character off screen for a whole window has no tail to be locked to).
+
+So the generic answer to "the character came back with different hair, a different coat" is the lock itself: the plain
+look-lock fitted the returning figure as a shift of the whole window's statistics and recoloured her; the robust fit
+treats her as an outlier of the background's drift and leaves her alone. It is on by default; nothing has to be known
+about the scene.
+
+Clips: `tree-seam-S4`, `tree-seam-S4b` (on the Mac as `~/Downloads/h3-prod-smoke/tree/tree-seam-S4*-nocards-*.mp4`).

@@ -378,6 +378,11 @@
   list named every lock variable one by one and missed the new `H3_TP2_CONT_LOCK_ROBUST`, so the robust arm of one queue
   stayed in the head's environment for the following boots (the control arm of the look-lock replay logged "robust").
   `tests/test_queue_lib_strip.py` fails when the plugin reads a continuation variable the list does not match.
+- 2026-11-07 10:10: the seam scene from the scene frame alone (queue112: no character cards, no identity guard, seeds
+  2601 and 2602) keeps the returning woman as herself on the new defaults: `changed` 0 of 32 and 0 of 30 figures in
+  window 2, faces 0.85 mean, no cut, render 1228 s and 1534 s against 1908 s with cards + guard. The robust look-lock is
+  the generic fix for a character who disappears behind something or turns away; cards and the guard stay opt-in
+  insurance (`results/20261106-whole-person/`, last section).
 - 2026-11-07 09:10: the voice loss along a continuation chain is the hard-pinned audio prefix (queue111: control
   3.87 -> 2.93 UTMOS over six windows, local RoPE time per window within 0.1 of the control, audio prefix not pinned
   3.89 -> 3.68 with the speakers as stable and the hand-overs not salient in dialogue; `results/20261106-voice/`
