@@ -3,6 +3,13 @@
 The owner hears the generated voices as robotic, "like AI", in the Polish doll clips and in the park clips. This directory
 holds the measurements that located the loss. All renders on the two-Spark TP2 stack, 960x544, 20 steps unless noted.
 
+**Answer (2026-11-07).** A single window's voice is as natural as the model gets (section 1). The loss is along a chain of
+windows: every window hard-pinned the previous window's last 0.9 s of audio for the whole sampling and inherited its
+texture, 3.87 -> 2.93 UTMOS over six windows (section 9). Since 21:35 the pin is released after 30 % of the denoise
+steps by default (section 10): 3.60 average over windows 2-6 against 3.26, the same speakers, and the quietest
+hand-overs of every variant in dialogue and in continuous ambience. Slips of the tongue in Polish are the model's own
+and the same with or without a pin.
+
 ## Two predictors
 
 - **DNSMOS** (`speechmos`, OVRL / SIG / BAK / P.808): signal quality against noise and distortion. It barely moves when a
@@ -262,3 +269,71 @@ cut would be heard) on the default and with `ramp`, scoring voice, speakers and 
 
 Clips: `voicepl-def64`, `voicepl-toff64`, `voicepl-noapin64` (64.6 s each, on the Mac as
 `~/Downloads/h3-prod-smoke/voice/lalka-chain64-*.mp4`).
+
+## 10. The soft hand-overs measured, and the default: pin released after 30 % of the steps (queue113-115)
+
+Same doll chain as section 9 (six 277-frame windows, 64.6 s, seed 3401, Ref2VA), scored per window with UTMOS22 on the
+spoken segments, WavLM x-vector cosine per speaker against window 1, and the log-mel seam distance at the five hand-overs
+against the clip's own 250 ms grid.
+
+| arm | audio prefix | per-window UTMOS | windows 2-6 mean | min |
+|---|---|---|---|---|
+| `def64` (section 9) | hard pin | 3.87 3.53 3.48 3.06 3.31 2.93 | 3.26 | 2.93 |
+| `noapin64` (section 9) | none | 3.89 3.86 3.72 3.75 3.18 3.68 | 3.64 | 3.18 |
+| `ramp64` | 0 at the seam rising to 1 | 3.88 3.47 3.48 3.40 3.65 3.57 | 3.51 | 3.40 |
+| `rows12-64` | first 12 rows pinned | 3.88 3.54 3.65 3.22 3.32 3.27 | 3.40 | 3.22 |
+| `steps30r-64` | hard pin for the first 30 % of the steps, free after | 3.87 3.70 3.60 3.26 3.70 3.75 | **3.60** | 3.26 |
+| `steps50-64` | hard pin for the first 50 % of the steps, free after | 3.88 3.56 3.36 3.00 3.07 2.96 | 3.19 | 2.96 |
+
+Speaker cosines (low voice / high voice, windows 2-6): `ramp64` 0.98/0.97, -/0.70, 0.94/0.81, 0.92/0.95, 0.96/0.98;
+`rows12-64` 0.91/0.98, 0.94/0.77, 0.93/0.95, 0.92/0.92, 0.89/0.98; `steps30r-64` 0.94/0.97, 0.95/0.95, 0.95/0.94,
+0.93/0.84, 0.97/0.98; `steps50-64` 0.96/0.96, 0.95/0.98, 0.96/0.87, 0.94/0.95, 0.91/0.85. All hold the speakers as well
+as the control does; the step release at 30 % is the only arm with every cosine at 0.84 or above.
+
+Seams (log-mel distance at the five hand-overs, then the clip's grid median and 95th percentile): `ramp64` 15.6, 28.5,
+23.4, 31.4, 11.4 against 19.3 / 45.1; `rows12-64` 15.6, 29.3, 25.1, 25.2, 11.0 against 19.2 / 43.9; `noapin64` 15.6,
+24.6, 21.1, 20.7, 7.5 against 15.7 / 36.3; `steps30r-64` 15.6, 16.8, 19.9, 25.2, 9.9 against 17.2 / 39.9; `steps50-64`
+15.6, 17.5, 24.7, 26.0, 14.5 against 19.4 / 47.4. Neither spatial soft mask makes the cut quieter than no pin at all;
+the step release at 30 % does.
+
+Reading: the ramp recovers half of the loss (3.51 against 3.26 and 3.64) and `rows:12` almost none, so the loss is not in
+the first rows after the cut: any pinned rows hand the previous window's audio texture down for the whole sampling, and
+the free sampler restores the voice as soon as the prefix is free. Splitting by time instead of by row does what the
+spatial masks cannot: the first 30 % of the steps (6 of 20) with the pinned tail fix what sounds, who speaks and how
+loud, the remaining 70 % sample the whole window free and the voice comes back to the no-pin level (3.60 against 3.64)
+with the quietest hand-overs of any arm. Holding the pin to 50 % of the steps (10 of 20) already loses what the whole-run
+pin loses (3.19): the texture that degrades along the chain is set in the middle steps.
+
+**The painting does not need the pin either.** The 60 s FL2VA Koninck painting (continuous room ambience, where a cut
+would be heard) on the four hand-overs:
+
+| arm | seam distance at the five hand-overs | grid median / p95 | light, coherence, flicker |
+|---|---|---|---|
+| `K-def` (hard pin) | 2.4 4.0 4.3 7.1 5.2 | 4.4 / 7.2 | baseline |
+| `K-ramp` | 2.4 3.6 4.6 3.5 4.1 | 4.4 / 7.1 | identical curves, no flicker |
+| `K-noapin` | 2.4 3.6 4.5 7.8 4.0 | 4.1 / 8.3 | identical curves, no flicker |
+| `K-steps30` | 2.4 3.3 4.3 5.0 4.4 | 4.5 / 7.5 | identical curves, no flicker |
+
+Every seam of every arm sits inside the clip's own grid: the ambience hands over without a pin as well as with one. The
+video is untouched by the audio pin (the framemd5 differs because the joint model samples video and audio together, the
+light and coherence curves are the same to the second digit).
+
+**The default since 2026-11-07 21:35: `H3_TP2_CONT_EDIT_AUDIO_STEPS=0.3`.** `h3_tp2/audio_pin_steps.py` wraps the denoise
+loop with an edit that is the real pinned edit before the release step and the free sampler's arithmetic from it on
+(the first build patched the step API's request state, which a render never touches, so queue114's `steps30-64` was bit
+for bit the control and is not listed). `1` restores the whole-run pin, `H3_TP2_CONT_EDIT_AUDIO=0` drops the audio pin
+altogether (the same voice, louder cuts in dialogue). Deliberate change of the audio output, not output-preserving;
+the video latents are not touched (the joint model samples both, so the frames differ too).
+
+Pronunciation is not the hand-over's doing. `scripts/script_wer.py` scores every window's transcript against that
+window's `<d>` lines: the six chains land at 0.06-0.16 mean word error rate with the same words slipping in every arm
+(`cierpliwy` -> `cierplowy` in six of six, `czynsz` -> `czynż`, a fused `dziewczyna pisze` -> `dziewczy napisze`, the
+last window worst everywhere, window 1 clean everywhere). Those are the model's Polish `sz` clusters and word boundaries
+(`docs/DIALOGUE_CLIPS.md`), the same with or without a pin.
+
+Clips: `voicepl-ramp64`, `voicepl-rows12-64`, `voicepl-steps30r-64`, `voicepl-steps50-64` (64.6 s doll chains),
+`koninck60-K-def`, `koninck60-K-ramp`, `koninck60-K-noapin`, `koninck60-K-steps30` (60 s paintings), on the Mac as
+`~/Downloads/h3-prod-smoke/voice/lalka-chain64-*.mp4` and `~/Downloads/h3-prod-smoke/painting/koninck60-K-*.mp4`.
+queue116 renders the doll chain on the defaults alone (must reproduce `steps30r-64` bit for bit) and the public shop
+scene on today's defaults.
+
