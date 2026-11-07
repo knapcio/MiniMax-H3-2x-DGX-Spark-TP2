@@ -153,7 +153,7 @@ The Koninck landscape, 960x544, 20 steps, seed 1101, FL2VA, six windows, one boo
 | K-off, no lock | 115-140 | 139 / 137 / 131 | 0.0 -0.1 -0.1 -0.0 -0.1 | none | 0 | -49.1 -43.5 -42.3 -43.2 -39.6 -45.1 | 2994 s |
 | K-lock, the plain lock | 115-142 | 142 / 138 / 139 | 0.0 -0.3 -0.2 0.0 -0.1 | none | 0 | -49.1 -43.6 -43.1 -44.6 -41.9 -48.8 | 2949 s |
 | K-robust | 115-141 | 140 / 139 / 136 | 0.0 0.0 -0.0 -0.0 0.0 | none | 0 | -49.1 -43.6 -43.1 -44.1 -41.3 -49.0 | 2957 s |
-| K-mean, mean only | (rendering) | | | | | | |
+| K-mean, mean only (`LOCK_STD=0`) | 115-143 | 143 / 137 / 139 | +0.1 -0.3 -0.4 -0.1 -0.2 | none | 0 | -49.1 -43.6 -43.2 -44.1 -41.9 -47.4 | 2936 s |
 
 - **On today's code the painting does not drift without the lock.** The light climbs from 115 to 139 inside window 1 (the
   model brightening the painting's tone, in every arm the same) and then stays between 131 and 140 for the remaining five
@@ -161,7 +161,8 @@ The Koninck landscape, 960x544, 20 steps, seed 1101, FL2VA, six windows, one boo
   lock was built against (2026-10-30) came from the plain continuation of that day; the pinned prefix, the seam and cut
   checks, the seed per window and the later-window wording have since removed it.
 - **The robust lock behaves like the plain lock where there is nothing to protect** (inliers 88-93 % of the positions; light
-  within one unit of K-lock, seams the flattest of the three), and unlike it where there is (the seam scene above). It is
+  within one unit of K-lock, seams the flattest of the four; the mean-only lock is the brightest, 143, with the largest seam
+  steps, -0.3 / -0.4), and unlike it where there is (the seam scene above). It is
   the default since 2026-11-07 (`H3_TP2_CONT_LOCK_ROBUST=1`; `0` restores the plain lock).
 - **The audio lock is off by default since the same day.** Without it the ambience of this clip moves between -39.6 and
   -49.1 dB (the step after window 1 is in every arm; window 1's tail is quiet); with it 1-4 dB less in the louder
