@@ -1,12 +1,30 @@
-"""The step-gated audio pin drops the request's audio edit at the configured fraction of the denoise steps."""
+"""The step-gated audio pin is the real edit before the release step and the free sampler from it on."""
 import types
 import unittest
+
+import torch
 
 from h3_tp2 import audio_pin_steps as aps
 
 
-def state(step, edit="EDIT", n_steps=20):
-    return types.SimpleNamespace(step_index=step, extra={aps.STATE_KEY: edit, aps.SIGMAS_KEY: [0.0] * (n_steps + 1)})
+def rf_v_to_x0(rows, velocity, t):
+    return rows - t * velocity
+
+
+class FakeEdit:
+    def __init__(self):
+        self.prepared, self.x0_calls = 0, 0
+
+    def to(self, *, device, dtype=torch.float32):
+        return self
+
+    def prepare(self, state_rows, timestep, condition_timestep, *, sigma):
+        self.prepared += 1
+        return torch.zeros_like(state_rows), torch.full((state_rows.shape[0],), 0.5)
+
+    def x0(self, model_rows, velocity, timestep):
+        self.x0_calls += 1
+        return torch.full_like(model_rows, 7.0)
 
 
 class ParseAndRelease(unittest.TestCase):
@@ -25,31 +43,49 @@ class ParseAndRelease(unittest.TestCase):
         self.assertEqual(aps.release_step(0.01, 20), 1)
         self.assertEqual(aps.release_step(0.99, 20), 19)
 
-    def test_release_due(self):
-        self.assertFalse(aps.release_due(state(5), 0.3))
-        self.assertTrue(aps.release_due(state(6), 0.3))
-        self.assertTrue(aps.release_due(state(19), 0.3))
-        self.assertFalse(aps.release_due(state(6, edit=None), 0.3))        # window 1: nothing pinned
-        self.assertFalse(aps.release_due(state(6, n_steps=1), 0.3))
 
+class Gated(unittest.TestCase):
+    def test_real_edit_before_release_then_free_sampler(self):
+        inner = FakeEdit()
+        edit = aps.gate(inner, [0.0] * 21, 0.3, rf_v_to_x0).to(device=torch.device("cpu"))
+        rows = torch.arange(6.0).reshape(3, 2)
+        vel = torch.ones_like(rows)
+        for step in range(20):
+            sigma = 1.0 - step / 20
+            model_rows, target = edit.prepare(rows, 1.0 - sigma, 0.95, sigma=sigma)
+            x0 = edit.x0(model_rows, vel, 1.0 - sigma)
+            if step < 6:
+                self.assertTrue(torch.equal(model_rows, torch.zeros_like(rows)))
+                self.assertTrue(torch.all(target == 0.5))
+                self.assertTrue(torch.all(x0 == 7.0))
+            else:
+                self.assertTrue(torch.equal(model_rows, rows))
+                self.assertTrue(torch.allclose(target, torch.full((3,), min(1.0 - sigma, 0.95))))
+                self.assertTrue(torch.allclose(x0, rows - (1.0 - sigma) * vel))
+        self.assertEqual((inner.prepared, inner.x0_calls), (6, 6))
 
-class Install(unittest.TestCase):
-    def test_wrapper_clears_the_edit_once_and_calls_upstream(self):
-        calls = []
+    def test_gate_leaves_nothing_or_one_step_alone(self):
+        self.assertIsNone(aps.gate(None, [0.0] * 21, 0.3, rf_v_to_x0))
+        inner = FakeEdit()
+        self.assertIs(aps.gate(inner, [0.0, 1.0], 0.3, rf_v_to_x0), inner)
 
-        class Pipeline:
-            def denoise_step(self, input_batch, *, states=None, **kwargs):
-                calls.append([s.extra[aps.STATE_KEY] for s in (states or input_batch.states)])
-                return "out"
-        pp = types.SimpleNamespace(MiniMaxH3Pipeline=Pipeline)
-        aps.install(pp, 0.3)
-        early, late, first = state(2), state(7), state(7, edit=None)
-        batch = types.SimpleNamespace(states=[early, late, first])
-        self.assertEqual(Pipeline().denoise_step(batch), "out")
-        self.assertEqual(calls, [["EDIT", None, None]])
-        self.assertEqual(early.extra[aps.STATE_KEY], "EDIT")
-        self.assertIsNone(late.extra[aps.STATE_KEY])
-        self.assertEqual(Pipeline.denoise_step.__wrapped__.__name__, "denoise_step")
+    def test_install_wraps_the_loop_the_pipeline_calls(self):
+        seen = {}
+
+        def loop(*, model, audio_edit=None, sigmas_audio=None, **kwargs):
+            seen.update(model=model, audio_edit=audio_edit, sigmas_audio=sigmas_audio)
+            return "rows"
+        dl = types.SimpleNamespace(minimax_h3_denoise_loop=loop, minimax_h3_rf_v_to_x0=rf_v_to_x0)
+        pp = types.SimpleNamespace(minimax_h3_denoise_loop=loop)
+        aps.install(dl, pp, 0.3)
+        inner = FakeEdit()
+        self.assertEqual(pp.minimax_h3_denoise_loop(model="m", audio_edit=inner, sigmas_audio=[0.0] * 21), "rows")
+        self.assertIsInstance(seen["audio_edit"], aps.StepGatedEdit)
+        self.assertIs(seen["audio_edit"].inner, inner)
+        self.assertEqual(seen["audio_edit"].release, 6)
+        self.assertIs(dl.minimax_h3_denoise_loop, pp.minimax_h3_denoise_loop)
+        self.assertEqual(pp.minimax_h3_denoise_loop(model="m", audio_edit=None, sigmas_audio=[0.0] * 21), "rows")
+        self.assertIsNone(seen["audio_edit"])
 
 
 if __name__ == "__main__":

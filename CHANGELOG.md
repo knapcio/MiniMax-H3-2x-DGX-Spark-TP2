@@ -378,9 +378,13 @@
   list named every lock variable one by one and missed the new `H3_TP2_CONT_LOCK_ROBUST`, so the robust arm of one queue
   stayed in the head's environment for the following boots (the control arm of the look-lock replay logged "robust").
   `tests/test_queue_lib_strip.py` fails when the plugin reads a continuation variable the list does not match.
+- 2026-11-07 16:30: the first build of the step release patched the step API's request state, which a render never
+  uses (queue114 `steps30-64` came out identical to the control, framemd5 and all); it now wraps `minimax_h3_denoise_loop`
+  and hands it a step-gated edit (`audio_pin_steps.StepGatedEdit`: the real edit before the release step, the free
+  sampler's arithmetic from it on). queue115 re-renders the doll chain with it.
 - 2026-11-07 11:40: `H3_TP2_CONT_EDIT_AUDIO_STEPS=<fraction>` (opt-in, `h3_tp2/audio_pin_steps.py`): later windows keep
-  the pinned audio prefix only for the first fraction of the denoise steps and sample the rest free (the edit is dropped
-  from the request state before `denoise_step`; the pinned rows then hold the clean tail re-noised at that sigma). The
+  the pinned audio prefix only for the first fraction of the denoise steps and sample the rest free (the pinned rows
+  then hold the clean tail re-noised at that sigma). The
   spatial mask ramp (`H3_TP2_CONT_EDIT_AUDIO=ramp`, queue113) recovered only half of the chain's voice loss
   (per-window UTMOS 3.88, 3.47, 3.48, 3.40, 3.65, 3.57 against the control's 3.87 .. 2.93 and 3.89 .. 3.68 without
   the pin). queue114 measures the step release on the doll chain and the painting.
