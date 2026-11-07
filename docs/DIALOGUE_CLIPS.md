@@ -122,7 +122,13 @@ ffmpeg -nostats -i clip.mp4 -vf "select=gt(scene\,0.1),showinfo" -f null - 2>&1 
 ~/facenv/bin/python scripts/voice_naturalness.py clip.mp4           # UTMOS + DNSMOS + pitch spread per window
 .speech-venv/bin/python scripts/speech_qa.py clip.mp4 --language pl --output speech.json
 ~/facenv/bin/python scripts/voice_naturalness.py clip.mp4 --segments speech.json   # the same per spoken line
+python3 scripts/script_wer.py --segments speech.json --extra extra.json             # word error rate per window
 ```
+
+`script_wer.py` scores every window's transcript against the `<d>` lines of that window's prompt (the
+`continuation_prompts` of the extra JSON; `--prompt file.txt --windows N` when every window shares one prompt) and lists
+the words that differ, so a slip shows up in the window and the word it happened in. Compare arms rendered from the same
+script, not absolute values: a phonetic respelling in the prompt counts as an error even when the word is spoken right.
 
 `voice_naturalness.py` prints one line per continuation window: UTMOS (a predictor of how natural speech sounds; the
 model's single windows score 4.3-4.5 in English and 3.7-4.1 in Polish, the same range as recordings), DNSMOS signal
