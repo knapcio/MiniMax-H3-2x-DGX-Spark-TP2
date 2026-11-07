@@ -83,7 +83,13 @@ A long clip can cut away in a late window (two of three samples of the 118 s Pol
 with `H3_TP2_SAVE_LATENTS` set a window that still goes wrong is re-sampled afterwards in minutes with
 `H3_TP2_REPLAY_LATENTS` + `H3_TP2_REPLAY_PARTIAL=1` and another request seed, instead of a full re-render.
 
-Identity through an occlusion or a turn-away: give the request the scene frame **and a head-and-shoulders crop per
+Identity through an occlusion or a turn-away: first, the look-lock must not undo it. A character hidden at the moment of
+a hand-over came back as another person (open orange coat instead of the closed red one, blonder, older) although the
+guard had passed the window: the plain look-lock pulled the window's statistics toward window 1's tail, a tail without
+her. Since 2026-11-07 the lock uses only the latent positions that did not change between the tail and the window
+(`H3_TP2_CONT_LOCK_ROBUST=1`, default); on the saved latents of that scene it keeps the coat and the face (0 of 35
+figures changed against 10 of 35) and on a 60 s painting it holds the brightness like the plain lock
+(`results/20261106-whole-person/`). Then give the request the scene frame **and a head-and-shoulders crop per
 character** (`scripts/make_character_cards.py scene.png --out-dir refs` prints the `H3_REF_IMAGES=` line;
 `TASK=ref2va H3_REF_IMAGES=scene.png,refs/face0.png,refs/face1.png bash scripts/render.sh ...`). On the 11 s occlusion
 probes the crops raised the returning character's face similarity by 0.1-0.2 on two seeds, with no cut, and on the

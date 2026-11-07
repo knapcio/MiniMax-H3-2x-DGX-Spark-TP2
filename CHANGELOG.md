@@ -378,6 +378,14 @@
   list named every lock variable one by one and missed the new `H3_TP2_CONT_LOCK_ROBUST`, so the robust arm of one queue
   stayed in the head's environment for the following boots (the control arm of the look-lock replay logged "robust").
   `tests/test_queue_lib_strip.py` fails when the plugin reads a continuation variable the list does not match.
+- 2026-11-07 03:20: continuation look-lock defaults: robust video lock ON (`H3_TP2_CONT_LOCK_ROBUST=1`), audio lock
+  OFF (`H3_TP2_CONT_LOCK_AUDIO=0`). Queue104 (`results/20261106-whole-person/`): the 60 s painting rendered with no lock
+  on today's code does not drift (light 115-140, seams 0.0-0.1, no flicker, colour within a unit), the robust lock holds
+  it like the plain one (115-141 vs 115-142, inliers 88-93 %) and keeps a returning character where the plain lock
+  recoloured her (queue107). The audio lock held 1-4 dB of a 10 dB ambience wobble and cost a window of speech 0.33
+  UTMOS; the 23 dB climb of 2026-10-30 does not reproduce; a level-only latent lock was analysed on three chains of saved
+  latents and dropped because the latent level does not track the decoded loudness (`results/20261106-voice/` section
+  8). README, DIALOGUE_CLIPS updated. Verified next as a real render of the seam scene (queue111 `tree-seam-S3`).
 - 2026-11-06 23:40: the voice loss of the long Polish clip is the chain's, not the lines' (queue110, `results/20261106-voice/`
   section 7): the lines of windows 4, 9 and 10 of the 118 s doll clip score 3.66-3.79 UTMOS as fresh single windows
   against 3.01 / 3.04 / 3.31 in the chain. Two candidate mechanisms go to a six-window test (queue111): the per-window

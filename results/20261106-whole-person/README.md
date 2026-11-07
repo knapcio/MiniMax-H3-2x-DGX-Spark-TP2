@@ -140,5 +140,36 @@ four frames of window 2 (13, 16, 19, 21.5 s), rows R0, R1, R3, R4.
   Followed up in `results/20261106-voice/`.
 
 What the replay cannot show is the reason the lock exists: the slow whole-frame drift over many windows. Queue104
-renders the 60 s painting clip with no lock, the default, the robust and the mean-only lock to see which of them still
+rendered the 60 s painting clip with no lock, the default, the robust and the mean-only lock to see which of them still
 holds the brightness.
+
+## The 60 s painting with and without the lock (queue104)
+
+The Koninck landscape, 960x544, 20 steps, seed 1101, FL2VA, six windows, one boot per arm, everything else the defaults
+(`clip-metrics.sh`, `luma_flicker.py`, `volumedetect` per 10 s):
+
+| arm | light per second, min-max (window 1: 115-139) | light at 30 / 45 / 60 s | seam luma steps | 17-frame flicker | cuts | audio per 10 s (dB) | render |
+|---|---|---|---|---|---|---|---|
+| K-off, no lock | 115-140 | 139 / 137 / 131 | 0.0 -0.1 -0.1 -0.0 -0.1 | none | 0 | -49.1 -43.5 -42.3 -43.2 -39.6 -45.1 | 2994 s |
+| K-lock, the plain lock | 115-142 | 142 / 138 / 139 | 0.0 -0.3 -0.2 0.0 -0.1 | none | 0 | -49.1 -43.6 -43.1 -44.6 -41.9 -48.8 | 2949 s |
+| K-robust | 115-141 | 140 / 139 / 136 | 0.0 0.0 -0.0 -0.0 0.0 | none | 0 | -49.1 -43.6 -43.1 -44.1 -41.3 -49.0 | 2957 s |
+| K-mean, mean only | (rendering) | | | | | | |
+
+- **On today's code the painting does not drift without the lock.** The light climbs from 115 to 139 inside window 1 (the
+  model brightening the painting's tone, in every arm the same) and then stays between 131 and 140 for the remaining five
+  windows; the colour means move by one unit; the five seams step 0.0-0.1 luma; no cut, no flicker. The 47 -> 88 drift the
+  lock was built against (2026-10-30) came from the plain continuation of that day; the pinned prefix, the seam and cut
+  checks, the seed per window and the later-window wording have since removed it.
+- **The robust lock behaves like the plain lock where there is nothing to protect** (inliers 88-93 % of the positions; light
+  within one unit of K-lock, seams the flattest of the three), and unlike it where there is (the seam scene above). It is
+  the default since 2026-11-07 (`H3_TP2_CONT_LOCK_ROBUST=1`; `0` restores the plain lock).
+- **The audio lock is off by default since the same day.** Without it the ambience of this clip moves between -39.6 and
+  -49.1 dB (the step after window 1 is in every arm; window 1's tail is quiet); with it 1-4 dB less in the louder
+  windows. The 23 dB climb of 2026-10-30 does not reproduce. Against that, a window of speech after a quiet tail lost
+  0.33 UTMOS to it (R0 vs R1 above). A level-only latent lock was analysed as a replacement and dropped: the quiet-step
+  floor of the audio latents is flat within 1-3 dB over every window of this clip, the seam scene and the 118 s doll
+  clip, while the decoded loudness of this clip moves 10 dB, so the latent level does not carry the loudness
+  (`results/20261106-voice/` section 8). `H3_TP2_CONT_LOCK_AUDIO=1` re-enables it.
+
+Queue111 renders the seam scene once more as a real render with the new defaults (`tree-seam-S3`, the same request and
+seed as S2c): the video should decode like R4, the voice like R1.

@@ -733,7 +733,11 @@ def _apply(role: str) -> None:
             # block, so a correction reached within a quarter of the window is a staircase of -1.5..-2.3 Y steps at 1344
             # (replay on saved latents); spread over the whole window the steps are the raw decoder's (-0.8 vs -0.6)
             _lock_ramp = float(os.environ.get("H3_TP2_CONT_LOCK_RAMP", "1.0") or 1.0)   # fraction of the free frames
-            _lock_audio = os.environ.get("H3_TP2_CONT_LOCK_AUDIO", "1").strip() == "1"   # the same lock for the audio latents
+            # audio lock default OFF since 2026-11-07: it cost a window of speech 0.33 UTMOS when window 1's tail was quiet
+            # (the park seam scene), did nothing for the Polish doll clip, and the 60 s painting clip rendered with no lock
+            # on today's code keeps its ambience within 10 dB (the 23 dB climb of 2026-10-30 does not reproduce); the
+            # latent level does not even track the decoded loudness (results/20261106-voice/ section 8). "1" re-enables.
+            _lock_audio = os.environ.get("H3_TP2_CONT_LOCK_AUDIO", "0").strip() == "1"   # the same lock for the audio latents
             _lock_std_env = os.environ.get("H3_TP2_CONT_LOCK_STD", "").strip()   # strength of the std (contrast) part; "" = same as mean
             _lock_std = float(_lock_std_env) if _lock_std_env else None
             # default "tail" since 2026-11-02: the whole first window includes the clip's dark start, so every later window was
@@ -745,8 +749,11 @@ def _apply(role: str) -> None:
             _lock_classes = os.environ.get("H3_TP2_CONT_LOCK_CLASSES", "1").strip() == "1"   # 0 = the pre-11-02 mixture affine
             # H3_TP2_CONT_LOCK_ROBUST=1: the lock's statistics from the positions that did not change between the reference
             # tail and the window (median / MAD inliers of the per-position difference), so a character who returns from
-            # behind something is not recoloured toward a reference without her (the orange coat, 2026-11-06)
-            _lock_robust = os.environ.get("H3_TP2_CONT_LOCK_ROBUST", "0").strip() == "1"
+            # behind something is not recoloured toward a reference without her (the orange coat, 2026-11-06). Default ON
+            # since 2026-11-07: on the 60 s painting clip it holds the light like the plain lock (115-141 vs 115-142, seams
+            # flat, no flicker) and on the seam scene it keeps the returning character (0 of 35 changed vs 10 of 35). "0"
+            # restores the plain per-class lock.
+            _lock_robust = os.environ.get("H3_TP2_CONT_LOCK_ROBUST", "1").strip() != "0"
             # H3_TP2_WINDOW_SEED_STEP=n inside this loop too: window k samples with seed + k*n. Upstream re-creates the
             # generators from the request seed for every window, so equal-shaped windows restart the SAME noise and tend
             # to re-stage the same camera move (the owner's "the woman shown 5-6 times", 2026-10-30 07:35).

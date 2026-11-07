@@ -189,3 +189,26 @@ Two mechanisms fit, and queue111 renders the first six windows of the scene thre
    pinned), so a window's voice can only be as good as a fresh one.
 
 Arm `def64` is the control (default hand-over; its windows 1-3 must match the 118 s clip).
+
+## 8. The audio lock: default off, and why a level-only lock was not built (queue104 latents)
+
+The 60 s painting clip rendered with no lock at all on today's code (queue104 K-off) has an ambience between -39.6 and
+-49.1 dB per 10 s; with the audio lock 1-4 dB less in the loud windows. The 23 dB climb that made the lock (2026-10-30) did
+not come back. The lock's cost is a third of a point of speech naturalness when window 1 ends quiet (section 6).
+
+The replacement in mind was a scalar level lock measured on the quiet steps, with a deadband, so that speech is never
+re-coloured. On the saved raw audio latents of three chains (`/tmp/level_lock_proto.py`: per-step RMS over (channel, dim)
+after removing each dimension's mean, floor = the 10-30 % quantile of the free steps, reference = the whole first window):
+
+| chain | floor of window 1 | floors of the later windows against it |
+|---|---|---|
+| painting, 6 windows, no lock | 0.273 | -1.0, -0.9, -0.2, +0.2, +0.6 dB |
+| park seam scene, 2 windows | 0.214 | +1.0 dB |
+| doll 118 s, 11 windows | 0.347 | -0.2 .. +2.8 dB |
+
+Every window of every chain sits within 3 dB of its reference, while the decoded painting ambience moves 10 dB between
+windows (-49.1 in window 1, -39.6 at 40 s). The latent floor, like the latent std, is nearly constant and does not carry
+the loudness the ear hears: a latent-level lock cannot hold the level, and the old lock held 1-4 dB of it only through
+its per-dimension gains, the part that hurts speech. So: `H3_TP2_CONT_LOCK_AUDIO=0` is the default since 2026-11-07,
+`1` re-enables the old lock, and a loudness problem in a delivered clip is a job for the mix (`mix_v2.sh` already
+normalises the bed).
