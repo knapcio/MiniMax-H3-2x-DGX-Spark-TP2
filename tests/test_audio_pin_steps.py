@@ -88,5 +88,11 @@ class Gated(unittest.TestCase):
         self.assertIsNone(seen["audio_edit"])
 
 
+class LoggerReachesTheWorkerLog(unittest.TestCase):
+    def test_logger_is_under_the_vllm_omni_namespace(self):
+        # the worker only configures vllm_omni.* loggers; a module-named logger dropped the release line (queue114)
+        self.assertTrue(aps.logger.name.startswith("vllm_omni."), aps.logger.name)
+
+
 if __name__ == "__main__":
     unittest.main()

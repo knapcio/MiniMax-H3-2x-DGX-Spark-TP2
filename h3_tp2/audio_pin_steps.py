@@ -23,7 +23,7 @@ import math
 
 import torch
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("vllm_omni.h3_tp2.audio_pin_steps")  # under vllm_omni so INFO reaches the worker log
 
 
 def parse_fraction(text: str | None) -> float | None:
