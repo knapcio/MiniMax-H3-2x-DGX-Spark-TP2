@@ -972,13 +972,15 @@ def _apply(role: str) -> None:
                 _ux9f.set_key_hook(_key_hook)
                 logger.warning("h3_tp2: EXPERIMENT reference key scale %s installed (changes conditioning)", _rks)
 
-    # 9h) H3_TP2_CONT_EDIT_AUDIO_STEPS=<fraction>: opt-in, NOT output-preserving: later windows keep the pinned audio
-    #     prefix (the previous tail) only for the first <fraction> of the denoise steps and sample the rest free
-    #     (h3_tp2/audio_pin_steps.py). The whole-run pin hands the tail's flaws down a chain (results/20261106-voice
-    #     section 9: 3.87 -> 2.93 UTMOS over six windows; a spatial mask ramp recovers half); the early steps fix what
-    #     sounds and how loud, the late ones the detail of the voice.  Unset or 1 = the stock whole-run pin.  Wraps the
-    #     denoise loop (the loop holds the edit as a local; the step API's request state is not what a render runs).
-    _aps_text = os.environ.get("H3_TP2_CONT_EDIT_AUDIO_STEPS", "")
+    # 9h) H3_TP2_CONT_EDIT_AUDIO_STEPS=<fraction> (default 0.3 since 2026-11-07; 1 = the stock whole-run pin): later
+    #     windows keep the pinned audio prefix (the previous tail) only for the first <fraction> of the denoise steps and
+    #     sample the rest free (h3_tp2/audio_pin_steps.py). The whole-run pin hands the tail's flaws down a chain
+    #     (results/20261106-voice sections 9-10: 3.87 -> 2.93 UTMOS over six windows; released after 30 % of the steps
+    #     the chain holds 3.60 against 3.64 with no pin at all, with the quietest hand-overs of every arm in dialogue and
+    #     in continuous ambience); the early steps fix what sounds and how loud, the late ones the detail of the voice.
+    #     Wraps the denoise loop (the loop holds the edit as a local; the step API's request state is not what a render
+    #     runs).  Deliberate change of the audio output, not output-preserving.
+    _aps_text = os.environ.get("H3_TP2_CONT_EDIT_AUDIO_STEPS", "0.3")
     if _aps_text.strip():
         from h3_tp2 import audio_pin_steps as _aps
         from vllm_omni.diffusion.models.minimax_h3 import denoise_loop as _dl9h
@@ -989,7 +991,7 @@ def _apply(role: str) -> None:
             logger.info("h3_tp2: H3_TP2_CONT_EDIT_AUDIO_STEPS=%s is a no-op", _aps_text)
         else:
             _aps.install(_dl9h, _pp9h, _aps_frac)
-            logger.warning("h3_tp2: EXPERIMENT audio pin released after %.0f %% of the denoise steps", 100 * _aps_frac)
+            logger.info("h3_tp2: continuation audio pin released after %.0f %% of the denoise steps", 100 * _aps_frac)
 
     # 10) measurement only: H3_TP2_PROFILE_STEP=<n> profiles the n-th DiT forward of this process (one denoising step
     #     on this rank) with torch.profiler and logs the top CUDA kernels; CUPTI on GB10 can be fragile, so off by default.

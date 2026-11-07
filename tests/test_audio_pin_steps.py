@@ -94,5 +94,16 @@ class LoggerReachesTheWorkerLog(unittest.TestCase):
         self.assertTrue(aps.logger.name.startswith("vllm_omni."), aps.logger.name)
 
 
+class PluginDefault(unittest.TestCase):
+    def test_the_plugin_releases_the_audio_pin_after_30_percent_by_default(self):
+        import re
+        from pathlib import Path
+        text = (Path(__file__).resolve().parents[1] / "h3_tp2" / "plugin.py").read_text()
+        m = re.search(r'os\.environ\.get\("H3_TP2_CONT_EDIT_AUDIO_STEPS", "([^"]*)"\)', text)
+        self.assertIsNotNone(m)
+        self.assertEqual(aps.parse_fraction(m.group(1)), 0.3)
+        self.assertEqual(aps.release_step(0.3, 20), 6)
+
+
 if __name__ == "__main__":
     unittest.main()

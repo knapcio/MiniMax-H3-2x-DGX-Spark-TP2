@@ -378,6 +378,13 @@
   list named every lock variable one by one and missed the new `H3_TP2_CONT_LOCK_ROBUST`, so the robust arm of one queue
   stayed in the head's environment for the following boots (the control arm of the look-lock replay logged "robust").
   `tests/test_queue_lib_strip.py` fails when the plugin reads a continuation variable the list does not match.
+- 2026-11-07 21:35: **the continuation audio pin is released after 30 % of the denoise steps by default**
+  (`H3_TP2_CONT_EDIT_AUDIO_STEPS=0.3`; `1` restores the whole-run pin). Measured on the 64.6 s Polish doll chain
+  (queue113-115, `results/20261106-voice/` section 10): windows 2-6 average 3.60 UTMOS against 3.26 with the whole-run
+  pin, 3.64 with no pin, 3.51 with the spatial ramp, 3.40 with 12 pinned rows and 3.19 when released at 50 %; speakers
+  0.84-0.98 to window 1; the quietest hand-overs of every arm in dialogue (9.9-25.2 against the clip's grid median 17.2)
+  and in the 60 s painting's continuous ambience (2.4-5.0 against 4.5). The logger of `audio_pin_steps` moved under
+  `vllm_omni.` so the per-window release line reaches the worker log. Deliberate change of the audio output.
 - 2026-11-07 18:00: `scripts/script_wer.py` (+ `tests/test_script_wer.py`): the Whisper transcript of each
   continuation window against the dialogue written in that window's prompt (`<d>` tags of `continuation_prompts`, the one
   prompt otherwise), so slips of the tongue show up per window and per word. On the six 64.6 s Polish doll chains of
