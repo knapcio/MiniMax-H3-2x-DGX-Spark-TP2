@@ -378,6 +378,9 @@
   list named every lock variable one by one and missed the new `H3_TP2_CONT_LOCK_ROBUST`, so the robust arm of one queue
   stayed in the head's environment for the following boots (the control arm of the look-lock replay logged "robust").
   `tests/test_queue_lib_strip.py` fails when the plugin reads a continuation variable the list does not match.
+- 2026-11-07 22:55: `tests/test_audio_pin_steps_loop.py`: the step-gated audio pin inside upstream's verbatim denoise loop
+  (20 steps: stock through step 5, released from step 6, logs once). queue116 confirmed the default alone reproduces
+  queue115's `steps30r-64` bit for bit; the release line is logged by the rank holding the audio rows (rank 1).
 - 2026-11-07 21:35: **the continuation audio pin is released after 30 % of the denoise steps by default**
   (`H3_TP2_CONT_EDIT_AUDIO_STEPS=0.3`; `1` restores the whole-run pin). Measured on the 64.6 s Polish doll chain
   (queue113-115, `results/20261106-voice/` section 10): windows 2-6 average 3.60 UTMOS against 3.26 with the whole-run

@@ -323,7 +323,11 @@ loop with an edit that is the real pinned edit before the release step and the f
 (the first build patched the step API's request state, which a render never touches, so queue114's `steps30-64` was bit
 for bit the control and is not listed). `1` restores the whole-run pin, `H3_TP2_CONT_EDIT_AUDIO=0` drops the audio pin
 altogether (the same voice, louder cuts in dialogue). Deliberate change of the audio output, not output-preserving;
-the video latents are not touched (the joint model samples both, so the frames differ too).
+the video latents are not touched (the joint model samples both, so the frames differ too). queue116 rendered the doll
+chain on the defaults alone: bit for bit `steps30r-64` (framemd5 652da51e); the per-window line "audio pin released at
+step 6 of 20" is written by the rank that holds the audio rows in the Ulysses split, rank 1 (`~/h3-tp2-logs/worker-rank1-*.log`
+on spark-05), not by the head's journal. `tests/test_audio_pin_steps_loop.py` runs the gate inside upstream's verbatim
+loop over 20 steps: identical to the stock loop through step 5, different from step 6 on, different from no pin.
 
 Pronunciation is not the hand-over's doing. `scripts/script_wer.py` scores every window's transcript against that
 window's `<d>` lines: the six chains land at 0.06-0.16 mean word error rate with the same words slipping in every arm
