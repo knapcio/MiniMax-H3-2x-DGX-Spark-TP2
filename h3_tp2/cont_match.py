@@ -527,3 +527,36 @@ def lock_audio_to_reference(ref_stats: tuple[torch.Tensor, torch.Tensor], new_au
 def audio_stats(audio: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     a = audio.float()
     return a.mean(dim=-1, keepdim=True), a.std(dim=-1, keepdim=True)
+
+
+def audio_pin_mask(spec: str | bool | float, rows: int, device=None) -> torch.Tensor | None:
+    """Edit-mask values for the `rows` audio latent rows of a window's hand-over prefix (H3_TP2_CONT_EDIT_AUDIO).
+
+    The upstream latent edit takes a soft mask: 0 presents the row as the clean previous tail at the condition
+    timestep and writes it back unchanged, 1 samples it free, and a value in between blends both (model input,
+    velocity and the restored row are all lerped by the mask).  Returns None when nothing is pinned.
+
+      "1" / True   hard pin of the whole prefix (the default; windows inherit the previous tail)
+      "0" / False  no audio pin (soundtrack cut at the hand-over; voice no longer inherits the chain)
+      "ramp"       0 at the seam rising linearly to 1 at the end of the prefix: continuity at the cut, free after
+      "rows:N"     hard pin of the first N rows only, the rest free
+      "0.5"        a constant soft value in (0, 1) on the whole prefix
+    """
+    text = ("1" if spec is True else "0" if spec is False else str(spec)).strip().lower() or "1"
+    if text == "0":
+        return None
+    if text == "1":
+        return torch.zeros(rows, device=device, dtype=torch.float32)
+    if text == "ramp":
+        return torch.linspace(0.0, 1.0, rows + 1, device=device, dtype=torch.float32)[:-1]
+    if text.startswith("rows:"):
+        n = max(0, min(rows, int(text[5:])))
+        if n == 0:
+            return None
+        mask = torch.ones(rows, device=device, dtype=torch.float32)
+        mask[:n] = 0.0
+        return mask
+    value = float(text)
+    if not 0.0 < value < 1.0:
+        raise ValueError(f"H3_TP2_CONT_EDIT_AUDIO={spec!r}: use 0, 1, ramp, rows:N or a value in (0, 1)")
+    return torch.full((rows,), value, device=device, dtype=torch.float32)

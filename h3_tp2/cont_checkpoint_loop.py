@@ -118,12 +118,13 @@ def run(diffuse, kwargs, *, api, options, text_conditioning=None, checkpoint=Non
                 mask = torch.ones(n_rows, device=device, dtype=torch.float32); mask[:n_guide] = 0.0
                 args['video_edit_clean_rows'], args['video_edit_mask_rows'], args['video_edit_restore_mask_rows'] = clean, mask, mask.clone()
                 ov_a, a_t = window.overlap_audio_t, args['audio_t']
-                if options.get('edit_audio', True):
+                pin_a = match.audio_pin_mask(options.get('edit_audio', True), ov_a, device)
+                if pin_a is not None:
                     clean_a = torch.zeros((2 * a_t, guide_audio.shape[1]), device=device, dtype=torch.float32)
                     mask_a = torch.ones(2 * a_t, device=device, dtype=torch.float32)
                     for channel in range(2):
                         clean_a[channel * a_t:channel * a_t + ov_a] = guide_audio[channel * ov_a:(channel + 1) * ov_a].float()
-                        mask_a[channel * a_t:channel * a_t + ov_a] = 0.0
+                        mask_a[channel * a_t:channel * a_t + ov_a] = pin_a
                     args['audio_edit_clean_rows'], args['audio_edit_mask_rows'], args['audio_edit_restore_mask_rows'] = clean_a, mask_a, mask_a.clone()
         sampled_video, sampled_audio = wrapped(**args)
         if video is None:

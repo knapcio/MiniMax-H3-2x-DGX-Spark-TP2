@@ -212,3 +212,53 @@ the loudness the ear hears: a latent-level lock cannot hold the level, and the o
 its per-dimension gains, the part that hurts speech. So: `H3_TP2_CONT_LOCK_AUDIO=0` is the default since 2026-11-07,
 `1` re-enables the old lock, and a loudness problem in a delivered clip is a job for the mix (`mix_v2.sh` already
 normalises the bed).
+
+## 9. Inheritance it is: the pinned audio tail degrades the chain (queue111, three 64.6 s chains)
+
+The first six windows of the Polish doll scene (Ref2VA, reference at 1024 px, seed 3401, the segment prompts of
+`voice/extra_pl6.json`), rendered three times on the new defaults (robust video lock, audio lock off); UTMOS per
+window is the mean over the spoken segments that start in it (`scripts/voice_naturalness.py --segments`):
+
+| window | 1 | 2 | 3 | 4 | 5 | 6 | render |
+|---|---|---|---|---|---|---|---|
+| `def64` control (default hand-over) | 3.87 | 3.53 | 3.48 | 3.06 | 3.31 | 2.93 | 3654 s |
+| `toff64` local RoPE time per window | 3.88 | 3.55 | 3.49 | 3.13 | 3.22 | 3.07 | 3654 s |
+| `noapin64` audio prefix not pinned | 3.89 | **3.86** | **3.72** | **3.75** | 3.18 | **3.68** | 3654 s |
+
+- **Position is not it.** Local time per window changes the render (different framemd5) and nothing about the voice:
+  every window within 0.1 of the control.
+- **Inheritance is.** Without the pinned audio tail every window scores like a fresh one (section 7: 3.66-3.79); the
+  control already loses 0.3 in window 2 and 0.9 by window 6. Window 5 of `noapin64` is two one-word lines ("Proszę."
+  2.0, "Dobrze." 2.6) that UTMOS rates low in any clip; its sentences score 3.4-4.1.
+- **The speakers stay themselves without the pin.** WavLM x-vector cosine of each window's segments to the window-1
+  segments of the same speaker (`scripts/speaker_drift.py`, speakers split by pitch):
+
+  | | w2 | w3 | w4 | w5 | w6 |
+  |---|---|---|---|---|---|
+  | `def64` low voice / high voice | 0.97 / 0.96 | 0.94 / 0.98 | - / 0.82 | 0.93 / 0.94 | 0.86 / 0.85 |
+  | `noapin64` low voice / high voice | 0.96 / 0.97 | 0.97 / 0.95 | 0.94 / 0.96 | 0.92 / 0.75 | 0.95 / 0.95 |
+
+  The voices are carried by the text and the scene, not by the pinned tail; the pinned chain drifts further by window 6.
+- **The cut is not salient in dialogue.** Log-mel distance across the 250 ms on each side of the five hand-overs
+  (`scripts/audio_seams.py`) against the same distance on the clip's own 250 ms grid: `noapin64` seams 15.6, 24.6, 21.1,
+  20.7, 7.5 with a grid median of 15.7 and a 95th percentile of 36.3; level jumps -4.8 to +4.4 dB. The control's seams
+  12.0-27.8 against a grid median of 19.1. In speech with pauses the free window starts where the old one stopped.
+
+So the hard pin of the previous tail (37 audio latent steps, 0.9 s) is a copy of a copy: each window matches a slightly
+worse tail and gets worse itself. The remedy has to keep continuity at the cut without handing the whole tail down.
+`H3_TP2_CONT_EDIT_AUDIO` therefore takes soft values (`h3_tp2/cont_match.py:audio_pin_mask`; the upstream latent edit
+lerps model input, velocity and the restored row by the mask value, so a soft mask is a partial condition, not a hack):
+
+| value | what later windows do with the 37-row audio prefix |
+|---|---|
+| `1` (default) | hard pin of the previous tail |
+| `ramp` | mask 0 at the seam rising linearly to 1 at the end of the prefix: continuity at the cut, free after |
+| `rows:N` | hard pin of the first N rows only (N=12 is 0.3 s) |
+| `0.5` | constant soft mask on the whole prefix |
+| `0` | no audio pin (this section's `noapin64`) |
+
+queue113 renders the doll chain with `ramp` and `rows:12` and the 60 s painting (FL2VA, continuous ambience, where a
+cut would be heard) on the default and with `ramp`, scoring voice, speakers and seams the same way.
+
+Clips: `voicepl-def64`, `voicepl-toff64`, `voicepl-noapin64` (64.6 s each, on the Mac as
+`~/Downloads/h3-prod-smoke/voice/lalka-chain64-*.mp4`).

@@ -82,7 +82,7 @@ def production_loop(options):
            '_max_ratio': options['max_ratio'], '_lock': options['lock'], '_lock_strength': options['lock_strength'],
            '_lock_ramp': options['lock_ramp'], '_lock_audio': options['lock_audio'], '_lock_std': options['lock_std'],
            '_lock_ref': options['lock_ref'], '_lock_classes': options['lock_classes'], '_seed_step': options['seed_step'],
-           '_lock_robust': options.get('lock_robust', False), '_edit_audio': options.get('edit_audio', True),
+           '_lock_robust': options.get('lock_robust', False), '_edit_audio': options.get('edit_audio', '1'),
            '_max_cut': options.get('max_cut', 0.0), '_ig_cfg': options.get('identity_cfg'),
            '_make_identity_fn': options.get('make_identity_fn', lambda _diffuse, _overlap: None)}
     module = ast.fix_missing_locations(ast.Module(body=[nodes[0]], type_ignores=[]))
@@ -192,6 +192,40 @@ class ContinuationCheckpointLoopTests(unittest.TestCase):
             self.assertEqual((later['video_edit_mask_rows'] == 0).sum().item(), video_t(22) * 1)
             self.assertIsNone(later['audio_edit_mask_rows'])
             self.assertIsNone(later['audio_condition'])
+
+    def test_edit_audio_ramp_pins_the_seam_and_frees_the_end_of_the_prefix(self):
+        kwargs, texts = request()
+        seen = []
+
+        def spy(**args):
+            seen.append({k: args.get(k) for k in ('audio_edit_mask_rows', 'audio_edit_restore_mask_rows', 'audio_t')})
+            return fake_diffuse([])(**args)
+        production_loop(options(edit_audio='ramp'))(spy, kwargs, window_frames=277, overlap_frames=22, text_conditioning=texts)
+        self.assertEqual(len(seen), 3)
+        ov_a = audio_t(22)
+        for later in seen[1:]:
+            mask, a_t = later['audio_edit_mask_rows'], later['audio_t']
+            self.assertEqual(mask.shape[0], 2 * a_t)
+            for channel in range(2):
+                prefix = mask[channel * a_t:channel * a_t + ov_a]
+                self.assertEqual(prefix[0].item(), 0.0)
+                self.assertTrue(torch.all(prefix[1:] > prefix[:-1]))
+                self.assertLess(prefix[-1].item(), 1.0)
+                self.assertTrue(torch.all(mask[channel * a_t + ov_a:(channel + 1) * a_t] == 1.0))
+            self.assertTrue(torch.equal(mask, later['audio_edit_restore_mask_rows']))
+
+    def test_audio_pin_mask_specs(self):
+        self.assertIsNone(match.audio_pin_mask('0', 37))
+        self.assertIsNone(match.audio_pin_mask(False, 37))
+        self.assertTrue(torch.equal(match.audio_pin_mask(True, 37), torch.zeros(37)))
+        self.assertTrue(torch.equal(match.audio_pin_mask('1', 37), torch.zeros(37)))
+        rows = match.audio_pin_mask('rows:12', 37)
+        self.assertEqual(((rows == 0).sum().item(), (rows == 1).sum().item()), (12, 25))
+        self.assertTrue(torch.allclose(match.audio_pin_mask('0.5', 37), torch.full((37,), 0.5)))
+        ramp = match.audio_pin_mask('ramp', 4)
+        self.assertTrue(torch.allclose(ramp, torch.tensor([0.0, 0.25, 0.5, 0.75])))
+        with self.assertRaises(ValueError):
+            match.audio_pin_mask('1.5', 37)
 
     def test_upstream_only_branch_is_refused(self):
         kwargs, texts = request()
