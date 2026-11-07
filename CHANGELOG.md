@@ -378,6 +378,14 @@
   list named every lock variable one by one and missed the new `H3_TP2_CONT_LOCK_ROBUST`, so the robust arm of one queue
   stayed in the head's environment for the following boots (the control arm of the look-lock replay logged "robust").
   `tests/test_queue_lib_strip.py` fails when the plugin reads a continuation variable the list does not match.
+- 2026-11-07 09:10: the voice loss along a continuation chain is the hard-pinned audio prefix (queue111: control
+  3.87 -> 2.93 UTMOS over six windows, local RoPE time per window within 0.1 of the control, audio prefix not pinned
+  3.89 -> 3.68 with the speakers as stable and the hand-overs not salient in dialogue; `results/20261106-voice/`
+  section 9). `H3_TP2_CONT_EDIT_AUDIO` now takes soft values through `cont_match.audio_pin_mask`: `ramp` (0 at the
+  seam rising to 1 over the prefix), `rows:N` (hard pin of the first N rows), a constant in (0, 1), `0` (none);
+  default `1` unchanged. New `scripts/audio_seams.py` (log-mel distance and level jump at every hand-over against the
+  clip's own grid) and `scripts/speaker_drift.py` (WavLM x-vector continuity per speaker across windows). queue113
+  measures `ramp` and `rows:12` on the doll chain and on the 60 s painting.
 - 2026-11-07 04:45: the new defaults verified on a real render of the seam scene (queue111 `tree-seam-S3`,
   `results/20261106-whole-person/`): video bit-identical to the robust replay (framemd5 `4908413a`), 0 of 35 figures
   changed (S2c: 10), faces 0.858, window 2 speech 3.47 UTMOS (S2c 3.14), no cut, 1908 s.
