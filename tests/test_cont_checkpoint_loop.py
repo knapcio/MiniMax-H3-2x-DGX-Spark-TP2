@@ -82,7 +82,7 @@ def production_loop(options):
            '_max_ratio': options['max_ratio'], '_lock': options['lock'], '_lock_strength': options['lock_strength'],
            '_lock_ramp': options['lock_ramp'], '_lock_audio': options['lock_audio'], '_lock_std': options['lock_std'],
            '_lock_ref': options['lock_ref'], '_lock_classes': options['lock_classes'], '_seed_step': options['seed_step'],
-           '_lock_robust': options.get('lock_robust', False),
+           '_lock_robust': options.get('lock_robust', False), '_edit_audio': options.get('edit_audio', True),
            '_max_cut': options.get('max_cut', 0.0), '_ig_cfg': options.get('identity_cfg'),
            '_make_identity_fn': options.get('make_identity_fn', lambda _diffuse, _overlap: None)}
     module = ast.fix_missing_locations(ast.Module(body=[nodes[0]], type_ignores=[]))
@@ -127,6 +127,7 @@ def fake_diffuse(calls):
         if args.get('video_edit_clean_rows') is not None:
             rows = patch_video(video, patch_size=(1, 2, 2)); mask = args['video_edit_mask_rows'].unsqueeze(1)
             video = unpack_video(rows * mask + args['video_edit_clean_rows'] * (1 - mask), args['latent_t'])
+        if args.get('audio_edit_clean_rows') is not None:
             rows = pack_audio(audio); mask = args['audio_edit_mask_rows'].unsqueeze(1)
             audio = (rows * mask + args['audio_edit_clean_rows'] * (1 - mask)).reshape(2, args['audio_t'], 32).permute(0, 2, 1).contiguous()
         return video, audio
@@ -176,6 +177,21 @@ class ContinuationCheckpointLoopTests(unittest.TestCase):
         self.assertEqual((expected_calls[0][0], expected_calls[-1][0]), (1101, 1129))
         self.assertEqual((actual[0].shape[2], actual[1].shape[-1]), (video_t(7213), audio_t(7213)))
         self.assertTrue(all(torch.equal(a, b) for a, b in zip(expected, actual)))
+
+    def test_edit_audio_off_pins_only_the_video_prefix(self):
+        kwargs, texts = request()
+        seen = []
+
+        def spy(**args):
+            seen.append({k: args.get(k) for k in ('video_edit_mask_rows', 'audio_edit_mask_rows', 'audio_condition')})
+            return fake_diffuse([])(**args)
+        production_loop(options(edit_audio=False))(spy, kwargs, window_frames=277, overlap_frames=22, text_conditioning=texts)
+        self.assertEqual(len(seen), 3)
+        for later in seen[1:]:
+            self.assertIsNotNone(later['video_edit_mask_rows'])
+            self.assertEqual((later['video_edit_mask_rows'] == 0).sum().item(), video_t(22) * 1)
+            self.assertIsNone(later['audio_edit_mask_rows'])
+            self.assertIsNone(later['audio_condition'])
 
     def test_upstream_only_branch_is_refused(self):
         kwargs, texts = request()
