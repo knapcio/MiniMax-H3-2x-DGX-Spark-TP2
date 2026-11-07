@@ -378,6 +378,9 @@
   list named every lock variable one by one and missed the new `H3_TP2_CONT_LOCK_ROBUST`, so the robust arm of one queue
   stayed in the head's environment for the following boots (the control arm of the look-lock replay logged "robust").
   `tests/test_queue_lib_strip.py` fails when the plugin reads a continuation variable the list does not match.
+- 2026-11-07 04:45: the new defaults verified on a real render of the seam scene (queue111 `tree-seam-S3`,
+  `results/20261106-whole-person/`): video bit-identical to the robust replay (framemd5 `4908413a`), 0 of 35 figures
+  changed (S2c: 10), faces 0.858, window 2 speech 3.47 UTMOS (S2c 3.14), no cut, 1908 s.
 - 2026-11-07 03:20: continuation look-lock defaults: robust video lock ON (`H3_TP2_CONT_LOCK_ROBUST=1`), audio lock
   OFF (`H3_TP2_CONT_LOCK_AUDIO=0`). Queue104 (`results/20261106-whole-person/`): the 60 s painting rendered with no lock
   on today's code does not drift (light 115-140, seams 0.0-0.1, no flicker, colour within a unit), the robust lock holds

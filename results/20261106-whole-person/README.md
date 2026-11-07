@@ -172,5 +172,20 @@ The Koninck landscape, 960x544, 20 steps, seed 1101, FL2VA, six windows, one boo
   clip, while the decoded loudness of this clip moves 10 dB, so the latent level does not carry the loudness
   (`results/20261106-voice/` section 8). `H3_TP2_CONT_LOCK_AUDIO=1` re-enables it.
 
-Queue111 renders the seam scene once more as a real render with the new defaults (`tree-seam-S3`, the same request and
-seed as S2c): the video should decode like R4, the voice like R1.
+## The real render with the new defaults (queue111, S3)
+
+`tree-seam-S3` is S2c's request once more (scene + head + body cards, guard, seed 2601) on the new defaults, no replay:
+
+| | S2c (plain lock, audio lock) | S3 (robust lock, no audio lock) |
+|---|---|---|
+| video framemd5 | `fa977861...` (= R0) | `4908413a...` (= R4, bit for bit) |
+| persons w2: `changed` / colour max / mean | 10 of 35 / 27.7 / 11.7 | **0 of 35** / 11.6 / 5.7 |
+| faces w2: mean / min | 0.829 / - | 0.858 / 0.62 |
+| the woman's face, first 10 % -> last 10 % | 0.84 -> 0.72 | 0.84 -> 0.79 |
+| UTMOS window 1 / window 2 | 3.33 / 3.14 | 3.33 / **3.47** |
+| guard | window 2 accepted (10 faces, 0 % unknown) | the same; robust inliers 82 % |
+| cuts / render | 0 / 1956 s | 0 / 1908 s |
+
+The woman comes back in the red coat with her face, the voice of window 2 keeps its score, and the render reproduces the
+replay exactly, so the replays above stand for renders. Whether the cards and the guard are still needed once the lock
+no longer undoes them is queue112's question (the same scene from the frame alone, two seeds).
