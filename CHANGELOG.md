@@ -378,6 +378,12 @@
   list named every lock variable one by one and missed the new `H3_TP2_CONT_LOCK_ROBUST`, so the robust arm of one queue
   stayed in the head's environment for the following boots (the control arm of the look-lock replay logged "robust").
   `tests/test_queue_lib_strip.py` fails when the plugin reads a continuation variable the list does not match.
+- 2026-11-07 11:40: `H3_TP2_CONT_EDIT_AUDIO_STEPS=<fraction>` (opt-in, `h3_tp2/audio_pin_steps.py`): later windows keep
+  the pinned audio prefix only for the first fraction of the denoise steps and sample the rest free (the edit is dropped
+  from the request state before `denoise_step`; the pinned rows then hold the clean tail re-noised at that sigma). The
+  spatial mask ramp (`H3_TP2_CONT_EDIT_AUDIO=ramp`, queue113) recovered only half of the chain's voice loss
+  (per-window UTMOS 3.88, 3.47, 3.48, 3.40, 3.65, 3.57 against the control's 3.87 .. 2.93 and 3.89 .. 3.68 without
+  the pin). queue114 measures the step release on the doll chain and the painting.
 - 2026-11-07 10:10: the seam scene from the scene frame alone (queue112: no character cards, no identity guard, seeds
   2601 and 2602) keeps the returning woman as herself on the new defaults: `changed` 0 of 32 and 0 of 30 figures in
   window 2, faces 0.85 mean, no cut, render 1228 s and 1534 s against 1908 s with cards + guard. The robust look-lock is
