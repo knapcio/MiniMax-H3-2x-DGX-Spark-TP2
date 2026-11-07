@@ -378,6 +378,12 @@
   list named every lock variable one by one and missed the new `H3_TP2_CONT_LOCK_ROBUST`, so the robust arm of one queue
   stayed in the head's environment for the following boots (the control arm of the look-lock replay logged "robust").
   `tests/test_queue_lib_strip.py` fails when the plugin reads a continuation variable the list does not match.
+- 2026-11-07 18:00: `scripts/script_wer.py` (+ `tests/test_script_wer.py`): the Whisper transcript of each
+  continuation window against the dialogue written in that window's prompt (`<d>` tags of `continuation_prompts`, the one
+  prompt otherwise), so slips of the tongue show up per window and per word. On the six 64.6 s Polish doll chains of
+  queue111-114 the audio hand-over does not change pronunciation (means 0.07-0.11, the same words fail in every arm:
+  `sz` clusters, one fused word boundary, the last window worst). The slips are the model's Polish, not the chain; the
+  remedy stays the phonetic respelling in `docs/DIALOGUE_CLIPS.md`.
 - 2026-11-07 16:30: the first build of the step release patched the step API's request state, which a render never
   uses (queue114 `steps30-64` came out identical to the control, framemd5 and all); it now wraps `minimax_h3_denoise_loop`
   and hands it a step-gated edit (`audio_pin_steps.StepGatedEdit`: the real edit before the release step, the free
