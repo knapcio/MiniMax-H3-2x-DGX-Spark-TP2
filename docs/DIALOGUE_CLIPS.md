@@ -53,6 +53,11 @@ python3 scripts/plan_dialogue_windows.py --seconds 60 --scene "$(cat scene.txt)"
 Add `"audio_flow_shift": 3.0` to `extra.json` (the shop scenes used it) and use the first continuation prompt as the
 main prompt. The report lists each window's lines, words and words per second; read the warnings.
 
+Prompts written by hand (or edited after the planner) get the same check from
+`python3 scripts/dialogue_lint.py --extra extra.json`: words per window and per second of the window's own time, windows
+without lines, mixed or missing language tags, an unclosed `<d>`, a line repeated in another window; exit status 1 on a
+window over the budget (`--budget`, default 30 words, the delivered clips carried 18-28) or a malformed tag.
+
 ## 4. The request
 
 Serve the v0.30.0 stack on the **Ref2VA** partition (`scripts/select-stack.sh long Ref2VA` on both Sparks, agent before
