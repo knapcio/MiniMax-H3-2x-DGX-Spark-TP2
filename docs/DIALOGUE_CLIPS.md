@@ -133,7 +133,10 @@ the words that differ, so a slip shows up in the window and the word it happened
 the whole script and each error is charged to the window of the script word it touches, so segment timings do not matter
 and the per-window errors add up to the clip's word error rate (`clip` in the output). Compare arms rendered from the same
 script, not absolute values. A phonetic respelling in the prompt would count as an error even when the word is spoken
-right, so list the respellings in a file of `prompt_spelling real_word` lines and pass it as `--respell`.
+right, so list the respellings in a file of `prompt_spelling real_word` lines and pass it as `--respell`. Every window
+also gets a character error rate with the word boundaries removed (`CER` in the output): `dziewczyna pisze` heard as
+`dziewczy napisze` is a word error rate of 1.0 and a character error rate of 0.0, so a real slip of the tongue moves
+both numbers and a word boundary Whisper placed elsewhere moves only the word rate. Count slips by the character rate.
 
 `voice_naturalness.py` prints one line per continuation window: UTMOS (a predictor of how natural speech sounds; the
 model's single windows score 4.3-4.5 in English and 3.7-4.1 in Polish, the same range as recordings), DNSMOS signal

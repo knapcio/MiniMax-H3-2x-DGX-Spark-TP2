@@ -11,6 +11,9 @@ add up to the clip's own word error rate.  Slips of the tongue, dropped or fused
 natural the voice sounds (that is `voice_naturalness.py`).  Any clip whose prompts carry `<d>` tags can be scored; the
 window geometry (for the start and end columns) is the one the clip was rendered with.  Phonetic respellings written
 into the prompt (`morze` for `może`) are mapped back to the real word with `--respell file` so they do not count.
+Every window also gets a character error rate with the word boundaries removed (`dziewczyna pisze` heard as
+`dziewczy napisze` is a word error rate of 1.0 and a character error rate of 0.0): a real slip of the tongue moves
+both, a word boundary Whisper placed elsewhere moves only the word rate.
 """
 from __future__ import annotations
 
@@ -113,35 +116,48 @@ def score(prompts: list[str], segments: list[dict], *, window_frames: int, overl
     heard = {index: 0 for index in scripted}
     missing = {index: set() for index in scripted}
     extra = {index: set() for index in scripted}
+    heard_words = {index: [] for index in scripted}
     current = scripted[0]
     for op, i, j in align(expected, actual):
         if i is not None:
             current = owner[i]
-        if op == "ok":
+        if j is not None:
             heard[current] += 1
-        elif op == "sub":
+            heard_words[current].append(actual[j])
+        if op == "sub":
             errors[current] += 1
-            heard[current] += 1
             missing[current].add(expected[i])
             extra[current].add(actual[j])
         elif op == "del":
             errors[current] += 1
             missing[current].add(expected[i])
-        else:
+        elif op == "ins":
             errors[current] += 1
-            heard[current] += 1
             extra[current].add(actual[j])
     rows = []
+    char_errors = 0
+    chars = 0
     for index in scripted:
         count = owner.count(index)
+        script_chars = "".join(word for word, who in zip(expected, owner) if who == index)
+        distance = char_distance(script_chars, "".join(heard_words[index]))
+        char_errors += distance
+        chars += len(script_chars)
         rows.append({"window": index + 1, "start_s": round(spans[index][0], 2), "end_s": round(spans[index][1], 2),
                      "script_words": count, "heard_words": heard[index],
                      "word_error_rate": round(errors[index] / count, 4),
+                     "char_error_rate": round(distance / len(script_chars), 4),
                      "missing": sorted(missing[index]), "extra": sorted(extra[index])})
     mean = sum(row["word_error_rate"] for row in rows) / len(rows)
     return {"windows": rows, "mean_word_error_rate": round(mean, 4),
             "clip_word_error_rate": round(sum(errors.values()) / len(expected), 4),
+            "clip_char_error_rate": round(char_errors / chars, 4),
             "limitations": "Whisper mishears too; compare arms rendered from the same script, not absolute values."}
+
+
+def char_distance(expected: str, actual: str) -> int:
+    """Levenshtein distance between two strings (the words of a window joined without spaces)."""
+    return sum(1 for op, _, _ in align(list(expected), list(actual)) if op != "ok")
 
 
 def load_prompts(prompt_file: Path | None, extra_json: Path | None, windows: int) -> list[str]:
@@ -175,7 +191,9 @@ def main() -> int:
                    overlap_frames=args.overlap_frames, fps=args.fps,
                    respellings=load_respellings(args.respell) if args.respell else None)
     rates = [row["word_error_rate"] for row in result["windows"]]
-    print(f"{args.label} per-window WER {rates} mean {result['mean_word_error_rate']} clip {result['clip_word_error_rate']}")
+    chars = [row["char_error_rate"] for row in result["windows"]]
+    print(f"{args.label} per-window WER {rates} mean {result['mean_word_error_rate']} clip {result['clip_word_error_rate']}"
+          f" | CER {chars} clip {result['clip_char_error_rate']}")
     for row in result["windows"]:
         if row["missing"] or row["extra"]:
             print(f"  w{row['window']} missing {row['missing']} heard {row['extra']}")

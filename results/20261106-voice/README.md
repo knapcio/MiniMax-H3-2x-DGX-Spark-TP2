@@ -419,4 +419,10 @@ release (`rows:12` scored 0.033 here, the lowest hard-pin variant, one seed), an
 window one line less. The respelling table is a generic feature of the tool now (`--respell`); without it the prompt's
 phonetic spellings inflated every Polish number in sections 10-11 by 0.02-0.03.
 
+Re-counted by characters (2026-11-08 10:00, `script_wer.py` now prints a per-window character error rate with the word
+boundaries removed): of the chain's 7 word errors, 2 are Whisper word boundaries (`dziewczyna nie` written as one word
+in window 6) and 5 are real slips (`jej`, `pożąd`, `wyjście`, `cierplawy`, `czyż`), chain character error rate 0.013
+against 0.005 for the two fresh slips (`dziewcza`, `cierplowy`). The conclusion stands, the count is 5 extra words, not
+7; `dziewczy napisze` in other arms is the same boundary effect and no slip at all.
+
 Clips: `fresh-pl6-w{2..6}` on Spark_06 (`~/h3-tp2-results/`), transcripts `voice/seg_fresh-pl6-w*.json`.

@@ -62,6 +62,17 @@ class ScriptWer(unittest.TestCase):
         fixed = script_wer.score(prompts, segments, window_frames=277, overlap_frames=22, fps=24.0, respellings=table)
         self.assertEqual(fixed["windows"][0]["word_error_rate"], 0.0)
 
+    def test_a_moved_word_boundary_moves_only_the_word_rate(self):
+        prompts = ["<d>[Polish] Dziewczyna pisze, że przyszła.</d>", "<d>[Polish] Czynsz może poczekać.</d>"]
+        segments = [{"start_s": 1.0, "end_s": 3.0, "text": "Dziewczy napisze, że przyszła."},
+                    {"start_s": 12.0, "end_s": 15.0, "text": "Czyż może poczekać."}]
+        rows = script_wer.score(prompts, segments, window_frames=277, overlap_frames=22, fps=24.0)["windows"]
+        self.assertEqual(rows[0]["word_error_rate"], 0.5)
+        self.assertEqual(rows[0]["char_error_rate"], 0.0)
+        self.assertEqual(rows[1]["word_error_rate"], round(1 / 3, 4))
+        self.assertEqual(rows[1]["char_error_rate"], round(3 / 18, 4))
+        self.assertEqual(script_wer.char_distance("czynsz", "czyż"), 3)
+
     def test_align_lists_the_edit_operations_in_order(self):
         ops = script_wer.align(["a", "b", "c"], ["a", "x", "c", "d"])
         self.assertEqual([op for op, _, _ in ops], ["ok", "sub", "ok", "ins"])
