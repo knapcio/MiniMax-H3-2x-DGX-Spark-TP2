@@ -20,8 +20,33 @@ import subprocess
 import sys
 
 import numpy as np
-import torch
 from PIL import Image
+
+
+def window_count(frames_total: int, window: int, overlap: int) -> int:
+    """How many windows of `window` frames, stepping `window - overlap`, the renderer used for `frames_total` frames."""
+    if window <= overlap or overlap < 0:
+        raise ValueError("0 <= overlap < window is required")
+    if frames_total <= window:
+        return 1
+    return -(-(frames_total - window) // (window - overlap)) + 1
+
+
+def window_of(frame: int, window: int, overlap: int, count: int) -> int:
+    """The 1-based window whose own frames hold `frame`: the overlap belongs to the earlier window, and the last window
+    keeps its tail (the final `overlap` frames are not a window of their own)."""
+    return max(1, min(frame // (window - overlap) + 1, count))
+
+
+def frame_count(path: str) -> int:
+    """Frames of the first video stream (the container's count, else counted by decoding)."""
+    for extra in ([], ["-count_frames"]):
+        key = "nb_read_frames" if extra else "nb_frames"
+        out = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", *extra, "-show_entries", f"stream={key}",
+                              "-of", "csv=p=0", path], check=True, capture_output=True, text=True).stdout.strip()
+        if out.isdigit():
+            return int(out)
+    raise RuntimeError(f"could not count the frames of {path}")
 
 
 def frames(path: str, every: float, width: int):
@@ -58,6 +83,8 @@ def main() -> int:
     ap.add_argument("--match", choices=("position", "embed"), default="position",
                     help="position: nearest horizontal position (people do not swap places); embed: greedy best similarity")
     args = ap.parse_args()
+    import torch
+
     torch.set_num_threads(args.threads)
     from facenet_pytorch import MTCNN, InceptionResnetV1
 
@@ -111,17 +138,17 @@ def main() -> int:
                     sims[i] = float(np.dot(cand["emb"], rf["emb"]))
         rows.append({"t": round(t, 2), "sims": sims})
 
-    shift = args.window - args.overlap
+    nwin = window_count(frame_count(args.clip), args.window, args.overlap)
+    for r in rows:
+        r["window"] = window_of(int(round(r["t"] * args.fps)), args.window, args.overlap, nwin)
     print("t(s)  window  " + "  ".join(f"{n:>14}" for n in names))
     for r in rows:
-        win = int(r["t"] * args.fps // shift) + 1
-        print(f"{r['t']:5.1f}  {win:>6}  " + "  ".join(f"{s:14.3f}" if s is not None else f"{'missing':>14}" for s in r["sims"]))
+        print(f"{r['t']:5.1f}  {r['window']:>6}  " + "  ".join(f"{s:14.3f}" if s is not None else f"{'missing':>14}" for s in r["sims"]))
 
     summary = {}
-    nwin = max(int(r["t"] * args.fps // shift) + 1 for r in rows)
     print("\nper window: mean / min similarity (missing count) per face")
     for w in range(1, nwin + 1):
-        sel = [r for r in rows if int(r["t"] * args.fps // shift) + 1 == w]
+        sel = [r for r in rows if r["window"] == w]
         line = f"window {w:>2} ({len(sel):>3} samples): "
         summary[w] = []
         for i in range(len(ref)):
