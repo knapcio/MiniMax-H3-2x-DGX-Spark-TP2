@@ -466,3 +466,37 @@ queue119 renders it at the same three seeds.
 
 Clips: `voicepl-{def,toff}-s{3501,3601}`, `voicepl-toff-s3401` on Spark_06 (`~/h3-tp2-results/`), transcripts and
 scores `voice/{seg,segscore,win}_voicepl-*.json`, queue `queue118-toff.sh`.
+
+## 14. Capping the RoPE shift sits exactly between (`toffcap`, queue119, 2026-11-08 15:15-19:10)
+
+`H3_TP2_ID_LOCK=toffcap` (new in `h3_tp2/identity_lock.py`) keeps every window from the third on at window 2's RoPE
+time (425 units, `H3_TP2_ID_LOCK_TOFF_CAP`) instead of upstream's growing shift (section 13's default) or zero
+(`toff0`). Windows 1 and 2 are therefore identical to the default render of the same seed (the paired lines differ by
+0.00), and the arm changes only windows 3-6. Same chain, same three seeds, same scoring as section 13.
+
+| seed | arm | real slips (words) | CER | UTMOS windows 2-6 | paired UTMOS, B - A | window 6 paired | render s |
+|---|---|---|---|---|---|---|---|
+| 3401 | default | 5 | 0.013 | 3.60 | | | 3585 |
+| 3401 | toffcap | 3: `winiem`, `cierplawy`, `czyż` | 0.0065 | 3.47 | -0.10 (A better 9 of 19) | -0.48 | 3702 |
+| 3401 | toff0 | 1 | 0.005 | 3.35 | -0.19 | -0.59 | 3633 |
+| 3501 | default | 6 | 0.025 | 3.68 | | | 3645 |
+| 3501 | toffcap | 2: `cierplowy`, `czyż` (+ an inserted `z`) | 0.0065 | 3.58 | -0.07 (A better 9 of 19) | -0.27 | 4028 |
+| 3501 | toff0 | 4 | 0.009 | 3.54 | -0.14 | -0.70 | 3649 |
+| 3601 | default | 6 | 0.014 | 3.65 | | | 3570 |
+| 3601 | toffcap | 3: `porządznie`, `czyż`, `pelłe` | 0.0079 | 3.54 | -0.105 (A better 13 of 15) | -0.29 | 3515 |
+| 3601 | toff0 | 4 | 0.009 | 3.54 | -0.11 | -0.36 | 3593 |
+
+Reading, three seeds: the cap lands between the two on every number. Slips 2-3 per chain (default 5-6, `toff0` 1-4),
+character error rate 0.0065-0.0079 (0.013-0.025 and 0.005-0.009), voice -0.07 .. -0.10 per paired line (`toff0`
+-0.11 .. -0.19), last window -0.27 .. -0.48 (`toff0` -0.36 .. -0.70). The loss again shows up two windows after the
+first window the arm changes (windows 3-4 at 0.00 .. -0.13, windows 5-6 lower), so it is the same cumulative drift as
+under `toff0`, started two windows later, not a function of how far the time was moved: once a window's prefix is placed
+at a RoPE time other than the one it was generated at, the hand-over inherits a slightly worse voice and the chain
+compounds it. The words, on the other hand, improve with how close to the text and the reference the window sits.
+
+So there is no setting of the RoPE time that gives the default's voice with fewer slips; the two modes are a dial
+between words and voice and both stay opt-in (`toffcap` when a dialogue's words matter and the voice of the last
+windows a little less; `toff0` when the words matter most). The lever that does not touch the dial is the speech guard
+(section 15): judge each window's words after sampling and re-sample the window that slipped.
+
+Clips: `voicepl-cap-s{3401,3501,3601}` on Spark_06, scores `voice/*_voicepl-cap-*.json`, queue `queue119-cap.sh`.
