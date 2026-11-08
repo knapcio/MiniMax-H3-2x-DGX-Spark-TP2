@@ -128,6 +128,12 @@ python3 scripts/script_wer.py --segments speech.json --extra extra.json [--respe
 bash scripts/voice-metrics.sh clip.mp4 --language pl --extra extra.json [--respell respell.txt]  # all of the speech checks at once
 ```
 
+`voice_pairs.py a.voice/naturalness_segments.json b.voice/naturalness_segments.json` compares two renders of the same
+script line by line: every transcribed line of A is paired with the line of B that says the same thing and the UTMOS
+difference is printed per line and per window, so a hand-over setting that keeps the words but loses the voice shows
+as a sign that holds across lines (two seeds of the same setting differ by about 0.05 per window, a setting that lets
+the voice drift by -0.6 to -0.7 in the last window).
+
 `voice-metrics.sh` runs the speech checks of this list in one go (transcript, word and character error rate per window,
 UTMOS by spoken line and by window, speaker continuity, audio seams) in the interpreters they need (`SPEECH_PY`,
 `MOS_PY`, `PY`, found under the usual paths) and prints one block; a tool whose interpreter is missing is skipped with a
