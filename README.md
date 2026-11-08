@@ -259,6 +259,9 @@ python3.12 -m venv .speech-venv
 Model download is opt-in; omit `--allow-download` once the chosen faster-whisper model is cached. The PyAV cap
 avoids an observed incompatibility between faster-whisper 1.2.1 and PyAV 19. A synthesized Polish sentence was
 transcribed with one word error out of 14 in the local smoke; that is an integration check, not a quality threshold.
+`scripts/voice-metrics.sh clip.mp4 --language pl --extra extra.json` runs this transcript together with the per-window
+word and character error rate, UTMOS, speaker continuity and audio seam checks of `docs/DIALOGUE_CLIPS.md` in one
+command.
 
 The automatic continuation prompt normally repeats the original prompt in every window, including any `<d>`
 dialogue. In one 15 s Polish scene, speech recognition found the requested line again after the window boundary;

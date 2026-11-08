@@ -125,7 +125,13 @@ ffmpeg -nostats -i clip.mp4 -vf "select=gt(scene\,0.1),showinfo" -f null - 2>&1 
 .speech-venv/bin/python scripts/speech_qa.py clip.mp4 --language pl --output speech.json
 ~/facenv/bin/python scripts/voice_naturalness.py clip.mp4 --segments speech.json   # the same per spoken line
 python3 scripts/script_wer.py --segments speech.json --extra extra.json [--respell respell.txt]  # word error rate per window
+bash scripts/voice-metrics.sh clip.mp4 --language pl --extra extra.json [--respell respell.txt]  # all of the speech checks at once
 ```
+
+`voice-metrics.sh` runs the speech checks of this list in one go (transcript, word and character error rate per window,
+UTMOS by spoken line and by window, speaker continuity, audio seams) in the interpreters they need (`SPEECH_PY`,
+`MOS_PY`, `PY`, found under the usual paths) and prints one block; a tool whose interpreter is missing is skipped with a
+note. CPU only, 1.5-4 minutes for a 60 s clip; the JSON of every step lands in `<clip>.voice/`.
 
 `script_wer.py` scores every window's transcript against the `<d>` lines of that window's prompt (the
 `continuation_prompts` of the extra JSON; `--prompt file.txt --windows N` when every window shares one prompt) and lists
@@ -142,9 +148,10 @@ both numbers and a word boundary Whisper placed elsewhere moves only the word ra
 model's single windows score 4.3-4.5 in English and 3.7-4.1 in Polish, the same range as recordings), DNSMOS signal
 quality and the pitch spread. A window far below the first one is where a voice turned flat or synthetic. Per-window
 scores mix silence and whoever speaks, so judge a long dialogue with `--segments`: one score per transcribed line, with
-the window it starts in and the speaker's median pitch. In the long Polish clips every line from the fourth window on
-scores 0.4-0.7 below the same lines rendered as a fresh single window; this is the hand-over chain, under investigation
-(`results/20261106-voice/`).
+the window it starts in and the speaker's median pitch. Before 2026-11-07 every line from the fourth window of a long
+Polish clip on scored 0.4-0.7 below the same line rendered as a fresh single window; the audio pin released after 30 % of
+the steps (the default since then) closed that gap, and the chain's windows now score at or above fresh windows
+(`results/20261106-voice/`, sections 9 and 12).
 
 Targets met by the delivered clips: word error rate 0.005-0.054 (every line present and in order, the language never
 slipping), 0-2 pauses >= 1.5 s, 0 cuts, face similarity means 0.54-0.64 with the minima explained by profile turns, not
