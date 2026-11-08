@@ -426,3 +426,43 @@ against 0.005 for the two fresh slips (`dziewcza`, `cierplowy`). The conclusion 
 7; `dziewczy napisze` in other arms is the same boundary effect and no slip at all.
 
 Clips: `fresh-pl6-w{2..6}` on Spark_06 (`~/h3-tp2-results/`), transcripts `voice/seg_fresh-pl6-w*.json`.
+
+## 13. Local RoPE time (`toff0`) halves the slips and lets the voice drift again (queue118, 2026-11-08 08:37-15:14)
+
+Upstream shifts every media row of window k by its start frame in RoPE units (window 6 of a 64.6 s clip sits 2125
+units from the reference image and the text, a 15 s training clip spans about 600). `H3_TP2_ID_LOCK=toff0`
+(`h3_tp2/identity_lock.py`) keeps every window at local time 0 instead. Under the hard audio pin it had made 3 slips
+where the default made 7 (section 10, one seed), so queue118 renders the doll chain pl6 (64.6 s 960x544 20 steps, the
+released pin of the 2026-11-07 default) default against `toff0` at three seeds. Slips are counted by the character error
+rate without word boundaries (`script_wer.py --respell`, see section 12), the voice by UTMOS of the spoken lines, the
+same lines of the two arms paired by text (`scripts/voice_pairs.py`).
+
+| seed | arm | real slips (words) | CER | clip WER | UTMOS windows 2-6 | paired UTMOS, B - A | window 6 paired | render s |
+|---|---|---|---|---|---|---|---|---|
+| 3401 | default (`voicepl-default-64`) | 5: `jej`, `pożąd`, `wyjście`, `cierplawy`, `czyż` | 0.013 | 0.047 | 3.60 | | | 3585 |
+| 3401 | toff0 | 1: `sklepie winiem` | 0.005 | 0.047 | 3.35 | -0.19 (A better 12 of 17) | -0.59 | 3633 |
+| 3501 | default | 6: `z`, `obsować`, `czekanie`, `cierplowy`, `czynż`, `mieniące` | 0.025 | 0.073 | 3.68 | | | 3645 |
+| 3501 | toff0 | 4: `pieniądzie`, `pożądnie`, `cierplowy`, `czyż` | 0.009 | 0.027 | 3.54 | -0.14 (A better 11 of 17) | -0.70 | 3649 |
+| 3601 | default | 6: `pieniądzie`, `po rządzie`, `obspoweć`, `cierplowy`, `czynż`, `pełnie` | 0.014 | 0.047 | 3.65 | | | 3570 |
+| 3601 | toff0 | 4: `porządźnie`, `czynż`, `czyż`, `pełe` | 0.009 | 0.040 | 3.54 | -0.11 (A better 12 of 15) | -0.36 | 3593 |
+
+Reading, three seeds, all in the same direction: `toff0` cuts the real slips of windows 2-6 from 5-6 to 1-4 (character
+error rate 0.005-0.009 against 0.013-0.025; the words that slip under both arms are the `sz` clusters of section 10,
+`cierpliwy` and `czynsz`) and costs the voice 0.11-0.19 UTMOS per paired line, the loss growing along the chain to
+-0.36 .. -0.70 in the last window. Two default seeds differ by +0.06 per line and +0.02 in the last window
+(`voice_pairs.py default-64 def-s3501`), so the drift is the arm's, not the seed's: with local time the voice
+degrades window by window as it did under the hard pin (section 9), and the released audio pin does not rescue it
+(`toff0` on the released pin scores like `toff64` on the hard pin, 3.07-3.12 in window 6). Speakers hold under both
+arms (cosine to window 1 at 0.91-0.98; the `toff-s3601` high voice reads 0.87 already in window 1 because one of the
+man's window-1 lines landed on the high side of the 150 Hz pitch split and mixed into the woman's reference, so its
+0.85-0.89 is a reference artefact, not a drift), seams sit inside the clip's own grid spread, render time
+is equal. The digests differ per arm and per seed, as they must.
+
+So the RoPE time is a real lever on the words but not a free one: a window at time 0 is sampled as the start of a clip,
+and its voice, pinned to a tail that was spoken "later", drifts. `toff0` stays opt-in (fewer slips in a dialogue where
+the words matter more than the last window's timbre). The middle ground is `H3_TP2_ID_LOCK=toffcap` (new, same module):
+every later window sits at window 2's RoPE time (425 units, inside a training clip's span, not at an opening);
+queue119 renders it at the same three seeds.
+
+Clips: `voicepl-{def,toff}-s{3501,3601}`, `voicepl-toff-s3401` on Spark_06 (`~/h3-tp2-results/`), transcripts and
+scores `voice/{seg,segscore,win}_voicepl-*.json`, queue `queue118-toff.sh`.
