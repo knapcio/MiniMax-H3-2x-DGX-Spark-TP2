@@ -363,6 +363,10 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-08 03:05: the video side of the released audio pin measured on the three doll chains (hard pin / released /
+  no pin): motion, detail, coherence within a unit, video seams 0.33-0.80 / 0.34-0.58 / 0.43-1.10 of the local motion,
+  luma steps <= 0.2, no cut, no flicker, faces 0.813 / 0.818 / 0.823 and 0.707 / 0.700 / 0.701. The digest differs
+  (joint sampling), the picture does not measurably. `results/20261106-voice/` section 10.
 - 2026-11-08 02:50: `scripts/script_wer.py` scores by alignment, not by segment timing: the whole transcript is aligned
   word by word to the whole script and each error is charged to the window of the script word it touches (an insertion to
   the window heard before it). The midpoint rule put a Whisper segment that fused the last line of one window with the

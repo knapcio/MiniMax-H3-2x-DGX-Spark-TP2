@@ -329,6 +329,15 @@ step 6 of 20" is written by the rank that holds the audio rows in the Ulysses sp
 on spark-05), not by the head's journal. `tests/test_audio_pin_steps_loop.py` runs the gate inside upstream's verbatim
 loop over 20 steps: identical to the stock loop through step 5, different from step 6 on, different from no pin.
 
+The video side of the release (2026-11-08, `clip-metrics.sh` and `face_drift.py` on the three doll chains). The
+model samples video and audio jointly, so freeing the audio rows changes the video digest too (`def64` ea7560b2,
+`steps30r-64` 652da51e, `noapin64` bbd22ba9; window 1 identical in all three). The pictures are the same clip: motion,
+detail and coherence per second within a unit of each other, the five video seams 0.33-0.80 of the local motion (hard
+pin) vs 0.34-0.58 (released) vs 0.43-1.10 (no pin), luma steps at the seams <= 0.2 in every arm, no cut, no
+17-frame flicker; faces vs the reference (embedding match, every second) 0.813 / 0.707 (hard pin), 0.818 / 0.700
+(released), 0.823 / 0.701 (no pin) for the two figures, minima 0.46 / 0.29 / 0.44 for the second figure from one
+turned-head sample each. Nothing the default changes in the picture is measurable.
+
 Pronunciation is not the hand-over's doing. `scripts/script_wer.py` scores every window's transcript against that
 window's `<d>` lines: the six chains land at 0.05-0.10 word error rate over the clip (per-window means 0.06-0.11,
 re-scored 2026-11-08 with the aligned tool, see below) with the same words slipping in every arm
