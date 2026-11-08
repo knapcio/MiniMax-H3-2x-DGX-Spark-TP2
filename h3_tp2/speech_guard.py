@@ -17,7 +17,14 @@ tag of the lines (``H3_TP2_SPEECH_LANGUAGE`` overrides it).  A window whose prom
 
 This module holds the parts that run without a GPU: configuration, the script of a window, the subprocess call, the
 distance and the verdict.  The plugin decodes the audio and broadcasts rank 0's verdict.  Cost: one audio decode and
-one transcription (about 10-20 s of CPU for an 11.5 s window with the ``small`` model) per attempt.
+one transcription (3-4 s of CPU for an 11.5 s window with the ``small`` model) per attempt.
+
+Both TP ranks must install the guard whenever the variable is set, because the re-sample decision is a collective
+(rank 0 judges, rank 1 waits for the broadcast): a rank that silently ran without it would sample the next window
+while the other re-samples this one, and the two ranks hang on mismatched collectives (2026-11-08 queue120, when the
+respelling file existed on the head only).  So ``config_from_env`` reads only the environment, which is forwarded to
+every rank, and never touches the file system; files are opened by rank 0 at scoring time, and a scoring error
+accepts the window on both ranks.
 """
 
 from __future__ import annotations
@@ -53,7 +60,7 @@ class Config:
     model: str = "small"           # faster-whisper model
     language: str = ""             # language code override ("" = the [Language] tag of the lines, else detection)
     threads: int = 6
-    respellings: dict = field(default_factory=dict)
+    respell_file: str = ""         # `prompt_spelling real_word` lines, read by rank 0 when it first scores
     min_words: int = 2             # a window whose script has fewer words is not judged
 
 
@@ -66,7 +73,6 @@ def config_from_env(env=None) -> Config | None:  # noqa: ANN001
     if not 0.0 < max_cer <= 1.0:
         raise ValueError("H3_TP2_SPEECH_GUARD must be a fraction in (0, 1]: the tolerated character error rate of a window's lines")
     here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    respell_file = (env.get("H3_TP2_SPEECH_RESPELL") or "").strip()
     return Config(
         max_cer=max_cer,
         python=(env.get("H3_TP2_SPEECH_PY") or _default_python()),
@@ -74,16 +80,13 @@ def config_from_env(env=None) -> Config | None:  # noqa: ANN001
         model=(env.get("H3_TP2_SPEECH_MODEL") or "small"),
         language=(env.get("H3_TP2_SPEECH_LANGUAGE") or "").strip().lower(),
         threads=max(1, int(env.get("H3_TP2_SPEECH_THREADS") or 6)),
-        respellings=load_respellings(respell_file) if respell_file else {},
+        respell_file=(env.get("H3_TP2_SPEECH_RESPELL") or "").strip(),
         min_words=max(1, int(env.get("H3_TP2_SPEECH_MIN_WORDS") or 2)),
     )
 
 
 def _default_python() -> str:
-    for cand in ("~/speech-venv/bin/python", "~/.speech-venv/bin/python"):
-        p = os.path.expanduser(cand)
-        if os.path.exists(p):
-            return p
+    # a fixed default, the same on every rank; whether it exists only matters on the rank that scores
     return os.path.expanduser("~/speech-venv/bin/python")
 
 
@@ -187,6 +190,14 @@ class Guard:
         self.prompts: list[str] = list(prompts or [])
         self.dir = tempfile.mkdtemp(prefix="h3-speech-")
         self.windows = 0
+        self._respellings: dict | None = None
+
+    @property
+    def respellings(self) -> dict:
+        """The respelling table, read on first use (a missing file raises here, on the scoring rank, never at boot)."""
+        if self._respellings is None:
+            self._respellings = load_respellings(self.cfg.respell_file) if self.cfg.respell_file else {}
+        return self._respellings
 
     def set_prompts(self, prompts) -> None:  # noqa: ANN001
         self.prompts = [str(p) for p in (prompts or [])]
@@ -196,7 +207,7 @@ class Guard:
         if not self.prompts:
             return [], None
         prompt = self.prompts[min(max(index, 1), len(self.prompts)) - 1]
-        script, language = script_of(prompt, self.cfg.respellings)
+        script, language = script_of(prompt, self.respellings)
         return script, (self.cfg.language or language or None)
 
     def score(self, index: int, waveform, sample_rate: int) -> dict:  # noqa: ANN001

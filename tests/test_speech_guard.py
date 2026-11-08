@@ -42,11 +42,20 @@ class SpeechGuardText(unittest.TestCase):
                 f.write("# phonetic spellings\nmorze może\npieniondze pieniądze\n")
             cfg = sg.config_from_env({"H3_TP2_SPEECH_GUARD": "0.02", "H3_TP2_SPEECH_RESPELL": path,
                                       "H3_TP2_SPEECH_LANGUAGE": "PL", "H3_TP2_SPEECH_MODEL": "medium"})
-        self.assertEqual((cfg.max_cer, cfg.language, cfg.model), (0.02, "pl", "medium"))
-        self.assertEqual(cfg.respellings, {"morze": "może", "pieniondze": "pieniądze"})
+            self.assertEqual((cfg.max_cer, cfg.language, cfg.model), (0.02, "pl", "medium"))
+            self.assertEqual(sg.Guard(cfg).respellings, {"morze": "może", "pieniondze": "pieniądze"})
         self.assertTrue(cfg.script.endswith(os.path.join("scripts", "speech_qa.py")))
         with self.assertRaises(ValueError):
             sg.config_from_env({"H3_TP2_SPEECH_GUARD": "1.5"})
+
+    def test_config_never_touches_the_file_system(self):
+        # the worker rank has no respelling file and maybe no whisper interpreter: its config must still match rank 0's
+        cfg = sg.config_from_env({"H3_TP2_SPEECH_GUARD": "0.01", "H3_TP2_SPEECH_RESPELL": "/nowhere/respell.txt",
+                                  "H3_TP2_SPEECH_PY": "/nowhere/python"})
+        self.assertEqual((cfg.max_cer, cfg.respell_file, cfg.python), (0.01, "/nowhere/respell.txt", "/nowhere/python"))
+        g = sg.Guard(cfg, ["<d>[Polish] Dobrze. A teraz proszę spojrzeć.</d>"])
+        with self.assertRaises(FileNotFoundError):
+            g.score(1, [0.0] * 160, 16000)  # the scoring rank fails loudly; the plugin accepts the window on both ranks
 
     def test_guard_script_per_window_and_skips_windows_without_lines(self):
         cfg = sg.Config(max_cer=0.02, min_words=2)
