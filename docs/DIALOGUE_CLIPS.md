@@ -124,7 +124,7 @@ ffmpeg -nostats -i clip.mp4 -vf "select=gt(scene\,0.1),showinfo" -f null - 2>&1 
 ~/facenv/bin/python scripts/voice_naturalness.py clip.mp4           # UTMOS + DNSMOS + pitch spread per window
 .speech-venv/bin/python scripts/speech_qa.py clip.mp4 --language pl --output speech.json
 ~/facenv/bin/python scripts/voice_naturalness.py clip.mp4 --segments speech.json   # the same per spoken line
-python3 scripts/script_wer.py --segments speech.json --extra extra.json             # word error rate per window
+python3 scripts/script_wer.py --segments speech.json --extra extra.json [--respell respell.txt]  # word error rate per window
 ```
 
 `script_wer.py` scores every window's transcript against the `<d>` lines of that window's prompt (the
@@ -132,7 +132,8 @@ python3 scripts/script_wer.py --segments speech.json --extra extra.json         
 the words that differ, so a slip shows up in the window and the word it happened in. The whole transcript is aligned to
 the whole script and each error is charged to the window of the script word it touches, so segment timings do not matter
 and the per-window errors add up to the clip's word error rate (`clip` in the output). Compare arms rendered from the same
-script, not absolute values: a phonetic respelling in the prompt counts as an error even when the word is spoken right.
+script, not absolute values. A phonetic respelling in the prompt would count as an error even when the word is spoken
+right, so list the respellings in a file of `prompt_spelling real_word` lines and pass it as `--respell`.
 
 `voice_naturalness.py` prints one line per continuation window: UTMOS (a predictor of how natural speech sounds; the
 model's single windows score 4.3-4.5 in English and 3.7-4.1 in Polish, the same range as recordings), DNSMOS signal

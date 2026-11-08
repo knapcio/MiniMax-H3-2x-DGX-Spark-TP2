@@ -9,7 +9,8 @@ touches (an inserted word to the window of the script word heard before it).  Se
 segment that fuses the last line of one window with the first of the next costs nothing by itself; the per-window errors
 add up to the clip's own word error rate.  Slips of the tongue, dropped or fused words raise it; it says nothing about how
 natural the voice sounds (that is `voice_naturalness.py`).  Any clip whose prompts carry `<d>` tags can be scored; the
-window geometry (for the start and end columns) is the one the clip was rendered with.
+window geometry (for the start and end columns) is the one the clip was rendered with.  Phonetic respellings written
+into the prompt (`morze` for `może`) are mapped back to the real word with `--respell file` so they do not count.
 """
 from __future__ import annotations
 
@@ -73,14 +74,33 @@ def align(expected: list[str], actual: list[str]) -> list[tuple[str, int | None,
     return ops
 
 
-def score(prompts: list[str], segments: list[dict], *, window_frames: int, overlap_frames: int, fps: float) -> dict:
-    """Per-window word error rate plus the words that differ, for every window whose prompt has spoken lines."""
+def load_respellings(path: Path) -> dict[str, str]:
+    """`prompt_spelling real_word` per line (`#` comments allowed): the phonetic respellings written into the prompt."""
+    table: dict[str, str] = {}
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if not line:
+            continue
+        parts = line.split()
+        if len(parts) != 2:
+            raise ValueError(f"respelling line needs two words: {raw!r}")
+        table[words(parts[0])[0]] = words(parts[1])[0]
+    return table
+
+
+def score(prompts: list[str], segments: list[dict], *, window_frames: int, overlap_frames: int, fps: float,
+          respellings: dict[str, str] | None = None) -> dict:
+    """Per-window word error rate plus the words that differ, for every window whose prompt has spoken lines.
+
+    `respellings` maps a phonetic spelling used in the prompt to the real word, so the word the model was meant to say
+    is what the transcript is scored against (`morze` written for `może` is not an error when `może` is heard).
+    """
     spans = window_spans(len(prompts), window_frames, overlap_frames, fps)
     expected: list[str] = []
     owner: list[int] = []
     scripted = []
     for index, prompt in enumerate(prompts):
-        script = words(" ".join(script_lines(prompt)))
+        script = [(respellings or {}).get(word, word) for word in words(" ".join(script_lines(prompt)))]
         if script:
             scripted.append(index)
             expected.extend(script)
@@ -148,10 +168,12 @@ def main() -> int:
     parser.add_argument("--overlap-frames", type=int, default=22)
     parser.add_argument("--fps", type=float, default=24.0)
     parser.add_argument("--label", default="")
+    parser.add_argument("--respell", type=Path, help="file of `prompt_spelling real_word` lines (phonetic respellings in the prompt)")
     args = parser.parse_args()
     data = json.loads(args.segments.read_text(encoding="utf-8"))
     result = score(load_prompts(args.prompt, args.extra, args.windows), data["segments"], window_frames=args.window_frames,
-                   overlap_frames=args.overlap_frames, fps=args.fps)
+                   overlap_frames=args.overlap_frames, fps=args.fps,
+                   respellings=load_respellings(args.respell) if args.respell else None)
     rates = [row["word_error_rate"] for row in result["windows"]]
     print(f"{args.label} per-window WER {rates} mean {result['mean_word_error_rate']} clip {result['clip_word_error_rate']}")
     for row in result["windows"]:

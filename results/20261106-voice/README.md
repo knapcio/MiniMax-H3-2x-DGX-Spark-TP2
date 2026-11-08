@@ -339,13 +339,14 @@ pin) vs 0.34-0.58 (released) vs 0.43-1.10 (no pin), luma steps at the seams <= 0
 turned-head sample each. Nothing the default changes in the picture is measurable.
 
 Pronunciation is not the hand-over's doing. `scripts/script_wer.py` scores every window's transcript against that
-window's `<d>` lines: the six chains land at 0.05-0.10 word error rate over the clip (per-window means 0.06-0.11,
-re-scored 2026-11-08 with the aligned tool, see below) with the same words slipping in every arm
+window's `<d>` lines: the six chains land at 0.03-0.07 word error rate over the clip (re-scored 2026-11-08 with the
+aligned tool and the respelling table, see below; the prompt's phonetic `morze` / `pieniondze` are not errors when
+`może` / `pieniądze` is heard) with the same words slipping in every arm
 (`cierpliwy` -> `cierplowy` in six of six, `czynsz` -> `czynż`, a fused `dziewczyna pisze` -> `dziewczy napisze`, the
 last window worst everywhere, window 1 clean everywhere). Those are the model's Polish `sz` clusters and word boundaries
 (`docs/DIALOGUE_CLIPS.md`), the same with or without a pin. The default (`default-64`, = `steps30r-64`) scores
-0.073 over the clip, the hard pin (`def64`) 0.073, no pin 0.093, ramp 0.100, rows:12 0.067, 50 % release 0.053: one
-seed, one script, a spread of 0.05 across arms that differ only in the hand-over, so no arm is better at the words.
+0.047 over the clip, the hard pin (`def64`) 0.047, no pin 0.060, ramp 0.067, rows:12 0.033, 50 % release 0.027: one
+seed, one script, a spread of 0.04 across arms that differ only in the hand-over, so no arm is better at the words.
 
 (2026-11-08) The first version of `script_wer.py` put each Whisper segment into the window that held its midpoint;
 a segment that fused the last line of one window with the first line of the next charged the whole fusion to one
@@ -388,3 +389,34 @@ changes in the defaults. Note the per-window WER here is the single-window word 
 text's (section 10) but no hand-over arm removed them either.
 
 Clips: `pron-{P20,P30,S2}-w{4,9,10}-s{3600,3700}` on Spark_06 (`~/h3-tp2-results/`), transcripts `voice/seg_pron-*.json`.
+
+## 12. The chain adds a few slips the fresh windows do not make (queue117, 2026-11-08 06:22-07:43)
+
+Windows 2-6 of the 64.6 s doll chain (`voicepl-default-64`) rendered as fresh single 11.5 s windows from the same
+reference with the chain's own seeds (3401 + k - 1, the same initial noise) and the same per-window prompt, so the only
+difference is the hand-over context (the pinned 22-frame video tail, the audio prefix released at 30 %). Scored with
+the respelling table (`voice/respell_pl.txt`: `morze może`, `pieniondze pieniądze`, `porzondnie porządnie`), so only
+words the model got wrong count.
+
+| window | chain WER (slips) | fresh WER (slips) | UTMOS chain / fresh |
+|---|---|---|---|
+| 2 | 0.000 | 0.038 (`dziewczyna` -> `dziewcza`) | 3.70 / 3.23 |
+| 3 | 0.080 (`i` -> `jej`, `porządnie` -> `pożąd`) | 0.000 | 3.60 / 3.48 |
+| 4 | 0.042 (`wyjścia` -> `wyjście`) | 0.000 | 3.26 / 3.37 |
+| 5 | 0.000 | 0.000 | 3.70 / 3.48 |
+| 6 | 0.200 (`cierpliwy` -> `cierplawy`, `czynsz` -> `czyż`, `dziewczyna nie` fused) | 0.050 (`cierpliwy` -> `cierplowy`) | 3.75 / 3.21 |
+| windows 2-6 | 7 slips in 121 words (0.058) | 2 slips in 121 words (0.017) | 3.60 / 3.35 |
+
+Reading, one seed: the words that slip in every render (`cierpliwy`) slip here too; on top of them the chain adds
+five slips the fresh windows do not make, four of them in the last window (the pattern of section 10: the last window
+worst in every arm). The voice, on the other hand, is not worse in the chain: with the released pin the chain's
+windows score 3.60 UTMOS against 3.35 for the same lines rendered fresh (the chain inherits the first window's clear
+voice; a fresh window draws its own). So after the 2026-11-07 default the chain costs words, not timbre, and only a
+little: about 4 words in 120 on this script. What in the hand-over context causes the slips is open (the pinned video
+tail, the 30 % audio prefix, or simply more speech in the model's context); the sampler levers are ruled out
+(section 11). Candidates for a later test, each a 64.6 s chain per arm: a shorter audio prefix together with the step
+release (`rows:12` scored 0.033 here, the lowest hard-pin variant, one seed), and the text lever of giving the last
+window one line less. The respelling table is a generic feature of the tool now (`--respell`); without it the prompt's
+phonetic spellings inflated every Polish number in sections 10-11 by 0.02-0.03.
+
+Clips: `fresh-pl6-w{2..6}` on Spark_06 (`~/h3-tp2-results/`), transcripts `voice/seg_fresh-pl6-w*.json`.

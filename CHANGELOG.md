@@ -363,6 +363,12 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-08 07:45: the chain adds a few slips of the tongue the fresh windows do not make (queue117,
+  `results/20261106-voice/` section 12): windows 2-6 of the doll chain rendered fresh with the chain's seeds make 2 slips
+  in 121 words against the chain's 7 (one seed, four of the five extra slips in the last window), while the chain's voice
+  scores higher than the fresh windows' (3.60 vs 3.35 UTMOS) now that the pin is released. `scripts/script_wer.py
+  --respell file`: phonetic respellings written into the prompt (`morze` for `może`) are scored as the real word; the
+  Polish numbers of sections 10-11 were 0.02-0.03 too high without it. Defaults unchanged.
 - 2026-11-08 05:55: sampling levers ruled out for Polish pronunciation (queue116 part 3, `results/20261106-voice/`
   section 11): 30 steps (1.47x the time) and `audio_flow_shift` 2.0 give the same words, slip for slip, as the default on
   three scripts x two seeds (mean WER 0.044 in all three, UTMOS within 0.1). The text is the lever (phonetic respelling),

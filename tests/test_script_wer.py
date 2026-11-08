@@ -49,6 +49,19 @@ class ScriptWer(unittest.TestCase):
         self.assertEqual(rows[0]["extra"], ["proszę"])
         self.assertEqual(rows[0]["missing"], [])
 
+    def test_respellings_in_the_prompt_are_scored_as_the_real_word(self):
+        import tempfile
+        prompts = ["<d>[Polish] Morze byli zajęci.</d>"]
+        segments = [{"start_s": 0.5, "end_s": 2.0, "text": "Może byli zajęci."}]
+        plain = script_wer.score(prompts, segments, window_frames=277, overlap_frames=22, fps=24.0)["windows"][0]
+        self.assertEqual(plain["word_error_rate"], round(1 / 3, 4))
+        with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as handle:
+            handle.write("# prompt spelling, real word\nmorze może\npieniondze pieniądze\n")
+        table = script_wer.load_respellings(Path(handle.name))
+        self.assertEqual(table, {"morze": "może", "pieniondze": "pieniądze"})
+        fixed = script_wer.score(prompts, segments, window_frames=277, overlap_frames=22, fps=24.0, respellings=table)
+        self.assertEqual(fixed["windows"][0]["word_error_rate"], 0.0)
+
     def test_align_lists_the_edit_operations_in_order(self):
         ops = script_wer.align(["a", "b", "c"], ["a", "x", "c", "d"])
         self.assertEqual([op for op, _, _ in ops], ["ok", "sub", "ok", "ins"])
