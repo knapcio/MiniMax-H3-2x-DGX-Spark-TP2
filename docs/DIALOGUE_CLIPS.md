@@ -28,6 +28,8 @@ invented face is a must for anything public: do not prompt a real actor.
   on every seed. Write those words phonetically in the prompt only (`morze`, `pieniondze`, `porzondnie`) and keep the
   real spelling in the speech-QA reference: the 60 s Polish scene went from WER 0.082 to 0.035 with no other change
   (`results/20261105-polish-pacing/`, PL5). `sz` clusters (`czynsz`, `lepszym`) still slip; the language itself holds.
+  More steps (30) or a lower `audio_flow_shift` (2.0) do not change the spoken words at all (the same slips at every
+  seed, `results/20261106-voice/` section 11); the sampler is not the lever, the text is.
 
 ## 3. One prompt per window, the composition in every one of them
 
@@ -161,4 +163,4 @@ mean), the speech (WER 0.14 against 0.08) and, with no line in the 2.4 s tail, a
 ## What is still open
 
 - Polish `sz` clusters (`czynsz` -> `czynż`, `lepszym` -> `lepsym`) survive the respelling that fixed the nasal
-  vowels; no respelling for them has been tried (`czynsz` is already phonetic).
+  vowels; no respelling for them has been tried (`czynsz` is already phonetic). Steps and `audio_flow_shift` were ruled out as levers (2026-11-08).

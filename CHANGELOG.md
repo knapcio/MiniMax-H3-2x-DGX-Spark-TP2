@@ -363,6 +363,10 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-08 05:55: sampling levers ruled out for Polish pronunciation (queue116 part 3, `results/20261106-voice/`
+  section 11): 30 steps (1.47x the time) and `audio_flow_shift` 2.0 give the same words, slip for slip, as the default on
+  three scripts x two seeds (mean WER 0.044 in all three, UTMOS within 0.1). The text is the lever (phonetic respelling),
+  not the sampler. Defaults unchanged. Queue116 ended with FL2VA restored and the GPU free.
 - 2026-11-08 02:21: `scripts/face_drift.py` counts the clip's windows the way the renderer did (`window_count`,
   `window_of`): the final overlap frames stay in the last window instead of printing a "window 7 (1 sample)" row for a
   six-window clip; the sample rows carry their window in the JSON. `tests/test_face_drift_windows.py`.

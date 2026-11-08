@@ -360,3 +360,31 @@ Clips: `voicepl-ramp64`, `voicepl-rows12-64`, `voicepl-steps30r-64`, `voicepl-st
 queue116 renders the doll chain on the defaults alone (must reproduce `steps30r-64` bit for bit) and the public shop
 scene on today's defaults.
 
+## 11. Sampling levers do not move Polish pronunciation (queue116 part 3, 2026-11-08 02:07-05:35)
+
+Three Polish windows from the doll script (`voice/pl_w{4,9,10}.txt`, three lines each), two seeds each, rendered as
+single 11.5 s 960x544 Ref2VA windows from the generic reference 2208 under three settings: P20 = the default 20 steps,
+P30 = 30 steps, S2 = `audio_flow_shift` 2.0 (default 3.0). Whole-window word error rate (faster-whisper small, Polish)
+and UTMOS22 per window.
+
+| script, seed | P20 WER / UTMOS | P30 WER / UTMOS | S2 WER / UTMOS | the slip |
+|---|---|---|---|---|
+| w4, 3600 | 0.042 / 3.02 | 0.042 / 2.99 | 0.042 / 3.07 | `wyjścia` -> `wyjście` |
+| w4, 3700 | 0.083 / 3.16 | 0.083 / 3.03 | 0.125 / 3.09 | `dlatego` -> `dla tego`; S2 adds a stutter `ty tylko` |
+| w9, 3600 | 0.000 / 3.28 | 0.000 / 3.26 | 0.000 / 3.36 | clean |
+| w9, 3700 | 0.043 / 3.31 | 0.043 / 3.41 | 0.000 / 3.25 | `dziewczyna` -> `dzieczyna` |
+| w10, 3600 | 0.048 / 3.39 | 0.048 / 3.36 | 0.048 / 3.42 | `długo` -> `dłongo` (nasal) |
+| w10, 3700 | 0.048 / 3.39 | 0.048 / 3.34 | 0.048 / 3.39 | `długo` -> `dłongo` |
+| mean | 0.044 / 3.26 | 0.044 / 3.23 | 0.044 / 3.26 | |
+| render per window | 584 s | 857 s (1.47x) | 584 s | |
+
+Reading: the transcripts of the three settings are the same words, slip for slip, at every seed (the two S2 deviations
+are one slip less and one stutter more, a wash); 30 steps costs 1.47x the time and buys nothing, a lower audio flow
+shift buys nothing. UTMOS within 0.1. Pronunciation is decided by the text and the seed, not by the sampler: the
+nasal vowel (`długo`) and the word boundary (`dlatego`) are the known Polish weaknesses, and the prompt-side phonetic
+respelling (`docs/DIALOGUE_CLIPS.md`) remains the only lever that moved it (0.082 -> 0.035 on the 60 s scene). Nothing
+changes in the defaults. Note the per-window WER here is the single-window word error rate; the same windows inside the
+64.6 s chains scored 0.0-0.35 per window with the last window worst, so the chain adds slips of its own on top of the
+text's (section 10) but no hand-over arm removed them either.
+
+Clips: `pron-{P20,P30,S2}-w{4,9,10}-s{3600,3700}` on Spark_06 (`~/h3-tp2-results/`), transcripts `voice/seg_pron-*.json`.
