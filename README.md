@@ -156,6 +156,9 @@ but comes with the model's own cuts. Since 2026-11-03 the dialogue scenes (`resu
 `results/20261103-xclip/`) render 60 s without a cut when every window prompt restates the composition (camera
 position, who stands where, faces three-quarter): six 60 s renders, four clean, one insert cut (the hidden-anchor arm C) and one
 cut in the X clip's first version whose first window ignored the reference composition.
+The X clip re-rendered on the 2026-11-07 defaults alone (1024 px reference, robust look-lock, audio pin released after
+30 % of the steps) came out equal to the 2026-11-04 version within one seed's noise: 18/18 lines, no pause over 1.5 s,
+no cut, faces 0.68 / 0.64, UTMOS 3.82 over windows 2-6 (`results/20261103-xclip/` section v4).
 
 ### A painting that comes alive (locked camera, the picture as the first frame): the request
 

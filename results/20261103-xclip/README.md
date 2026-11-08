@@ -117,9 +117,45 @@ mix is below -40 dB for 1 s). Lower the dialogue (or raise the beds to about -27
 
 06:20: the quieter set, dialogue -8 dB (a plain gain, no limiter or loudness processing; video stream copied): `xclip120_raw_-21LUFS_1344x768_ref2va_20261105.mp4` (-21.2 LUFS, like v2), `xclip120_ambience_-21LUFS_1344x768_20261105.mp4` (bed -37 LUFS, -21.3 LUFS mix) and `xclip120_piano_-21LUFS_1344x768_20261105.mp4` (bed -40 LUFS, -21.2 LUFS mix): the beds now sit 16 / 19 dB under the speech, the v2 balance. Pick either set for X; the frames are identical.
 
+## v4: the same clip on the 2026-11-07 defaults (queue116, 2026-11-07 22:44 - 2026-11-08 02:07)
+
+The v2 recipe re-rendered with nothing set: Ref2VA, the 1024 px reference (the default since 2026-11-04, v2 used
+2048), the robust look-lock (default since 2026-11-07) and the continuation audio pin released after 30 % of the
+denoise steps (default since 2026-11-07, `results/20261106-voice/` section 10). Same prompts (`xclip/prompt_en2.txt`,
+`xclip/extra_en2.json`), reference 2208, seed 2304, 60 s 1344x768 20 steps. The point of the run: the defaults that
+fixed the Polish chains must not cost the English showcase anything.
+
+| item | v2 (2026-11-04, hard audio pin, 2048 px reference) | v4 (2026-11-08, defaults) |
+|---|---|---|
+| render | 12 030.6 s, peak head 75.3 GB | 12 095.5 s (diffuse 1827 / 2076 / 2112 / 2159 / 2179 / 1107 s, decode 339 s) |
+| speech (faster-whisper small, whole clip vs the 18-line script) | WER 0.005, 18/18 lines in order | WER 0.016, 18/18 lines in order; "Nowak" -> "Novak" (as in v2), "owes" -> "overs", the first word of the last line clipped at 59 s |
+| voice naturalness (UTMOS22, windows 1 / 2-6) | 4.14 / 3.87, 3.77, 3.81, 4.06, 3.72 (mean 3.85) | 4.26 / 3.89, 3.78, 3.86, 3.76, 3.81 (mean 3.82) |
+| speaker similarity to window 1 (WavLM, low / high voice) | 0.86-0.92 / 0.79-0.87 | 0.84-0.95 / 0.76-0.90 |
+| audio seams (spectral distance at the five hand-overs vs the clip's own grid) | not measured | 12.7, 38.0, 10.1, 13.4, 16.5 (grid median 18.9, p95 38.8) |
+| pauses (raw, < -40 dB for >= 1.5 s) | 2 (1.5, 1.7 s) | **0** |
+| scene cuts (score > 0.1) | 0 | 0 |
+| faces vs the reference, per window (position match) | man 0.77 / 0.57 / 0.65 / 0.54 / 0.63 / 0.68; woman 0.76 / 0.47 / 0.59 / 0.54 / 0.58 / 0.76 | man 0.78 / 0.64 / 0.63 / 0.59 / 0.68 / 0.77; woman 0.67 / 0.58 / 0.65 / 0.58 / 0.63 / 0.70 |
+| overall mean / min | man 0.64 / 0.44, woman 0.62 / 0.37 | man 0.68 / 0.43, woman 0.64 / 0.34 |
+| dialogue level | -21.1 LUFS | -17.8 LUFS |
+
+Reading: equal within one seed's noise on every count. The English voices were already natural under the hard pin
+(3.85 vs 3.82 over windows 2-6), so the released pin that lifted the Polish chains from 3.26 to 3.60 changes nothing
+here, and the 1024 px reference holds the faces as well as the 2048 px one did (the woman's "missing" samples are
+again the seconds she turns to the man). The six-frame grid (every 10 s) shows one composition from the first frame to
+the last. The three transcript slips are two proper-noun or near-homophone misreadings and a last line that starts
+at 59 s in a 60 s clip; write the last line shorter or give the final window one line less when the end matters.
+
+The per-window WER of `scripts/script_wer.py` (0.03 / 0.13 / 0.11 / 0.00 / 0.04 / 0.04) over-counts here: Whisper
+merges a line that ends one window with the line that opens the next into one segment, and the segment lands in one
+window. The whole-clip number above is the one to compare with v2; the per-window tool is for finding which window
+slipped, not for scoring.
+
+Delivered (`~/Downloads/h3-prod-smoke/xclip/`): `xclip60v4_raw_1344x768_ref2va_20261108.mp4`,
+`xclip60v4_ambience_1344x768_20261108.mp4` (bed at -37 LUFS), `xclip60v4_piano_1344x768_20261108.mp4` (bed at -40 LUFS).
+
 ## Files on Spark_06 (`~/h3-tp2-results/`)
 
-`xclip60/` (render, timing, memory CSVs), `xclip/` (prompts, references 2201-2208, `dialogue_en*.txt`, `drift*.txt`,
-`speech_qa*.txt`, `mix_v2.sh`, mixes), `xclip120/` (the failed render), `xclip120r/` (the replayed clip), `latents/`
+`xclip60/`, `xclip60v2/`, `xclip60v4/` (render, timing, memory CSVs), `xclip/` (prompts, references 2201-2208, `dialogue_en*.txt`, `drift*.txt`,
+`speech_qa*.txt`, `mix_v2.sh`, mixes), `voice/{seg,segscore,win}_xclip60v{2,4}.json` (the v2/v4 voice measurements), `xclip120/` (the failed render), `xclip120r/` (the replayed clip), `latents/`
 (the saved window latents), `xclip-ambience/`, `xclip-music/`, `queue60b-xclip.sh`, `queue68-xclip2.sh`,
-`queue70-xclip120.sh`, `queue72-xclip120-replay.sh`.
+`queue70-xclip120.sh`, `queue72-xclip120-replay.sh`, `queue116-night.sh` (v4).

@@ -363,21 +363,11 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
-- 2026-11-06 17:00: robust look-lock, opt-in `H3_TP2_CONT_LOCK_ROBUST=1` (`h3_tp2/cont_match.py` `robust_params`): the lock's
-  per-channel mean/std on both sides come from the positions that did not change between the reference tail and the
-  window (median / MAD inliers of the per-position temporal-mean difference), so a character who returns from behind
-  something no longer moves the correction. On the saved S2c window latents the plain lock shifted channels by up to
-  0.40 std and squeezed one channel's std to 0.62 with the two figures as the outlier positions; the inlier estimate
-  shifts 0.31 max and keeps the gains at 0.86-1.05. Checkpoint state carries the reference maps (`match.maps_*`). Under
-  measurement in queue102 (replay) before any default changes.
-- 2026-11-06 19:45: voice controls (queue103, `results/20261106-voice/` section 4). The second pair of lines of the
-  monologue scores UTMOS 4.25-4.26 as a window of its own against 4.40-4.45 for the first pair, so about half of the
-  FL2VA window-2 drop is the text and 0.15-0.2 the hand-over. On Ref2VA the hand-over costs 0.09 with our loop and 0.12
-  with upstream's. The speaker's median pitch moves at the hand-over: -2.6 semitones with our loop, -7 with upstream's.
-- 2026-11-06 20:00: `scripts/queue-lib.sh` strips `H3_TP2_CONT_LOCK*` and `H3_TP2_CONT_CUT_RATIO` between boots. The strip
-  list named every lock variable one by one and missed the new `H3_TP2_CONT_LOCK_ROBUST`, so the robust arm of one queue
-  stayed in the head's environment for the following boots (the control arm of the look-lock replay logged "robust").
-  `tests/test_queue_lib_strip.py` fails when the plugin reads a continuation variable the list does not match.
+- 2026-11-08 02:20: the 60 s shop showcase re-rendered on the 2026-11-07 defaults alone (1024 px reference, robust
+  look-lock, audio pin released at 30 %): equal to the 2026-11-04 clip within one seed's noise (whole-clip WER 0.016 vs
+  0.005 with the same two slips plus a clipped last word, UTMOS windows 2-6 3.82 vs 3.85, faces 0.68 / 0.64 vs 0.64 /
+  0.62, no pause over 1.5 s, no cut, 12 096 s vs 12 031 s). The defaults that fixed the Polish chains cost the English
+  clip nothing. `results/20261103-xclip/` section v4.
 - 2026-11-07 22:55: `tests/test_audio_pin_steps_loop.py`: the step-gated audio pin inside upstream's verbatim denoise loop
   (20 steps: stock through step 5, released from step 6, logs once). queue116 confirmed the default alone reproduces
   queue115's `steps30r-64` bit for bit; the release line is logged by the rank holding the audio rows (rank 1).
@@ -439,6 +429,21 @@
   default lock is what changes the returning character (10 of 35 figures `changed`, colour distance 27.7; the coat goes
   red -> orange along the window); off, mean-only and the robust lock keep her (0 changed, 10.5 / 10.7 / 11.6). The
   audio lock costs the same window 0.33 UTMOS (3.47 -> 3.14). Defaults unchanged until the 60 s drift arms are in.
+- 2026-11-06 20:00: `scripts/queue-lib.sh` strips `H3_TP2_CONT_LOCK*` and `H3_TP2_CONT_CUT_RATIO` between boots. The strip
+  list named every lock variable one by one and missed the new `H3_TP2_CONT_LOCK_ROBUST`, so the robust arm of one queue
+  stayed in the head's environment for the following boots (the control arm of the look-lock replay logged "robust").
+  `tests/test_queue_lib_strip.py` fails when the plugin reads a continuation variable the list does not match.
+- 2026-11-06 19:45: voice controls (queue103, `results/20261106-voice/` section 4). The second pair of lines of the
+  monologue scores UTMOS 4.25-4.26 as a window of its own against 4.40-4.45 for the first pair, so about half of the
+  FL2VA window-2 drop is the text and 0.15-0.2 the hand-over. On Ref2VA the hand-over costs 0.09 with our loop and 0.12
+  with upstream's. The speaker's median pitch moves at the hand-over: -2.6 semitones with our loop, -7 with upstream's.
+- 2026-11-06 17:00: robust look-lock, opt-in `H3_TP2_CONT_LOCK_ROBUST=1` (`h3_tp2/cont_match.py` `robust_params`): the lock's
+  per-channel mean/std on both sides come from the positions that did not change between the reference tail and the
+  window (median / MAD inliers of the per-position temporal-mean difference), so a character who returns from behind
+  something no longer moves the correction. On the saved S2c window latents the plain lock shifted channels by up to
+  0.40 std and squeezed one channel's std to 0.62 with the two figures as the outlier positions; the inlier estimate
+  shifts 0.31 max and keeps the gains at 0.86-1.05. Checkpoint state carries the reference maps (`match.maps_*`). Under
+  measurement in queue102 (replay) before any default changes.
 - 2026-11-06 16:50: voice naturalness A/B (queue101, `results/20261106-voice/`): the audio look-lock is not what makes
   the later windows sound synthetic (window 2 of a 22 s monologue 4.05 UTMOS with the lock, 4.10 without; the lock moved
   the audio latent std by 1 %). The hand-over itself costs 0.25-0.3 on that clip against a seed spread of 0.11, with
