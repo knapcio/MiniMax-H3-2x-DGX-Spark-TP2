@@ -725,6 +725,80 @@ def _apply(role: str) -> None:
             else:
                 def _make_identity_fn(diffuse, overlap_frames):  # noqa: ANN001
                     return None
+            # H3_TP2_SPEECH_GUARD=<max CER>: opt-in speech guard of every window (h3_tp2/speech_guard.py): the window's audio
+            # latents are decoded, transcribed on the CPU (scripts/speech_qa.py in H3_TP2_SPEECH_PY) and compared with the
+            # <d> lines of that window's prompt; a window whose lines come out with a character error rate above the limit
+            # is re-sampled like a seam or cut failure. Rank 0 judges, the verdict is broadcast. 2026-11-08 against the
+            # slips of the tongue a dialogue chain adds (results/20261106-voice sections 12-13).
+            _sg_cfg = None
+            _sg_state = {"guard": None}
+            try:
+                from h3_tp2 import speech_guard as _sg
+
+                _sg_cfg = _sg.config_from_env()
+            except Exception as e:  # noqa: BLE001
+                logger.warning("h3_tp2: speech guard not configured (%s)", e)
+            if _sg_cfg is not None:
+                from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _ppsg
+
+                _cls_sg = _ppsg.MiniMaxH3Pipeline
+                _orig_plc_sg = _cls_sg._prepare_local_conditioning
+
+                def _plc_sg(self, raw_prompt, sampling, *a, **kw):  # noqa: ANN001
+                    out = _orig_plc_sg(self, raw_prompt, sampling, *a, **kw)
+                    try:  # after the inner call: the per-window prompt helper may have filled continuation_prompts
+                        ea = getattr(sampling, "extra_args", None)
+                        prompts = list(ea.get("continuation_prompts") or ()) if isinstance(ea, dict) else []
+                        if not prompts:
+                            base, _ = self._extract_prompt(raw_prompt)
+                            prompts = [base] if isinstance(base, str) else []
+                        g = _sg.Guard(_sg_cfg, prompts)
+                        _sg_state["guard"] = g
+                        logger.info("h3_tp2 speech guard: %d window prompt(s), %s", len(prompts),
+                                    ", ".join(f"w{i + 1} {len(g.script(i + 1)[0])} words" for i in range(len(prompts))))
+                    except Exception as e:  # noqa: BLE001
+                        logger.warning("h3_tp2 speech guard: prompts not captured (%s)", e)
+                        _sg_state["guard"] = None
+                    return out
+
+                _cls_sg._prepare_local_conditioning = _plc_sg
+
+                def _make_speech_fn(diffuse):  # noqa: ANN001
+                    pipe = getattr(diffuse, "__self__", None)
+                    if pipe is None or not hasattr(pipe, "audio_vae"):
+                        logger.warning("h3_tp2 speech guard: no pipeline behind diffuse, guard off for this request")
+                        return None
+                    import torch.distributed as _dist
+
+                    def _fn(audio, index):  # noqa: ANN001
+                        group, rank, world = _ppsg._dit_rank_world()
+                        with pipe._component_on_device(pipe.audio_vae):
+                            wav = pipe.audio_vae.decode_latent(audio)
+                        wav_np = wav.detach().float().cpu().numpy()
+                        del wav
+                        if wav_np.ndim == 3:
+                            wav_np = wav_np[0]
+                        out = torch.zeros(3, dtype=torch.float32, device=audio.device)
+                        if rank == 0:
+                            try:  # rank 1 waits in the broadcast below: a scorer failure must still reach it
+                                g = _sg_state["guard"]
+                                summary = g.score(int(index), wav_np, int(_ppsg.MINIMAX_H3_AUDIO_SAMPLE_RATE)) if g is not None else {}
+                                out[0] = float(summary.get("score") or 0.0)
+                                out[1] = float(summary.get("cer") or 0.0)
+                                out[2] = float(summary.get("chars") or 0)
+                            except Exception as e:  # noqa: BLE001
+                                logger.warning("h3_tp2 speech check failed on rank 0 (%s); the window is accepted", e)
+                        if world > 1:
+                            _dist.broadcast(out, src=0, group=group)
+                        return [float(x) for x in out.tolist()]
+
+                    return _fn
+
+                logger.warning("h3_tp2: EXPERIMENT speech guard on (re-sample above CER %.3f, model %s, language %s)",
+                               _sg_cfg.max_cer, _sg_cfg.model, _sg_cfg.language or "from the lines")
+            else:
+                def _make_speech_fn(diffuse):  # noqa: ANN001
+                    return None
             # H3_TP2_CONT_LOCK=first (+ H3_TP2_CONT_LOCK_STRENGTH, default 1.0): per-channel latent look-lock of every
             # later window's free frames to the first window's statistics, against the compounding drift.
             _lock = os.environ.get("H3_TP2_CONT_LOCK", "first").strip().lower()
@@ -810,6 +884,7 @@ def _apply(role: str) -> None:
                     diffuse = _cm.wrap_diffuse(diffuse, apply=_apply_match, max_cut=_max_cut, overlap_v_hint=_ct._video_t(overlap_frames),
                                                identity_fn=_make_identity_fn(diffuse, overlap_frames),
                                                max_unknown=(_ig_cfg.max_unknown if _ig_cfg is not None else 0.0),
+                                               speech_fn=_make_speech_fn(diffuse), max_cer=(_sg_cfg.max_cer if _sg_cfg is not None else 0.0),
                                                retries=_retries, max_ratio=_max_ratio, lock=_lock, lock_strength=_lock_strength, lock_ramp=_lock_ramp, lock_audio=_lock_audio, lock_std=_lock_std, lock_ref=_lock_ref, lock_classes=_lock_classes,
                                                lock_robust=_lock_robust)
                     windows = _ct.plan_continuation_windows(kwargs["num_frames"], window_frames, overlap_frames)

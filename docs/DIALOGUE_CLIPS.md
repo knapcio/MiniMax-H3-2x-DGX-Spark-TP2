@@ -114,6 +114,18 @@ unknown frame (a stranger who stays, but also a blurred pass-by), 0.2 tolerates 
 exactly the window in which a stranger walks in, and run live on the 22 s occlusion probe
 (`results/20261106-identity-guard-calibration/`).
 
+A slip of the tongue is what the **speech guard** catches (opt-in, 2026-11-08): `H3_TP2_SPEECH_GUARD=0.01` with
+`H3_TP2_SPEECH_RESPELL=respell.txt` when the prompt uses phonetic spellings (needs faster-whisper in `~/speech-venv`,
+the interpreter of `scripts/speech_qa.py`; `H3_TP2_SPEECH_PY` names another). After every window the guard decodes
+its audio, transcribes it on the CPU (the `small` model, 3-4 s per window; `H3_TP2_SPEECH_MODEL` picks another) and
+compares the transcript with the `<d>` lines of that window's prompt as a character error rate with the word
+boundaries removed and free speech before and after the lines (the hand-over tail of the previous window is in the
+audio too). A window above the limit is re-sampled with another seed, up to `H3_TP2_CONT_RETRY` times, and the best
+attempt is kept, so a slip the model makes at every seed costs time, not the clip. One slipped word is 1-3 characters
+of 110-130 in an 11.5 s Polish window (0.008-0.026), so 0.01 re-samples on most single slips and 0.02 on two; Whisper's
+own mishearings count against the limit as well, which is why the limit is not 0. The language comes from the
+`[Polish]` tag of the lines (`H3_TP2_SPEECH_LANGUAGE` overrides). Calibration: `results/20261106-voice/` section 15.
+
 ## 5. Checks before anyone sees it
 
 ```bash

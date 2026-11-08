@@ -134,7 +134,10 @@ same-seed frame digest (`h3_tp2 frames sha256` in the head journal, framemd5 in 
   from the request's reference images, re-sampled when more than the fraction of the frames show a face that matches
   no reference face; `h3_tp2/identity_guard.py`, `scripts/face_bank.py`; `H3_TP2_IDENTITY_GROW=<similarity>` lets the
   bank grow after every accepted window by the faces that matched it at least that well, at most
-  `H3_TP2_IDENTITY_GROW_MAX` of them, default 24; `H3_TP2_IDENTITY_PERSON_SIM=<similarity>` adds a whole-person check:
+  `H3_TP2_IDENTITY_GROW_MAX` of them, default 24; `H3_TP2_SPEECH_GUARD=<max CER>` (every window's audio decoded,
+  transcribed with `scripts/speech_qa.py` in `H3_TP2_SPEECH_PY` and compared with the `<d>` lines of its prompt as a
+  character error rate without word boundaries, re-sampled above the limit; `h3_tp2/speech_guard.py`;
+  `H3_TP2_SPEECH_RESPELL`, `H3_TP2_SPEECH_LANGUAGE`, `H3_TP2_SPEECH_MODEL`); `H3_TP2_IDENTITY_PERSON_SIM=<similarity>` adds a whole-person check:
   the people in the scored frames, found by a person detector, are embedded with DINOv2 as figures and upper parts and
   compared with the character cards, the reference images after the scene frame, so hair, hats and clothes count and
   not only the face; a person is judged only when a confident face shows in its upper part, and a judged person whose
