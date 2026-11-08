@@ -363,6 +363,12 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-08 02:50: `scripts/script_wer.py` scores by alignment, not by segment timing: the whole transcript is aligned
+  word by word to the whole script and each error is charged to the window of the script word it touches (an insertion to
+  the window heard before it). The midpoint rule put a Whisper segment that fused the last line of one window with the
+  first of the next into one window and charged the other for the missing words (shop clip v4: 0.13 / 0.11 in windows 2-3,
+  0.0 / 0.0 aligned). The per-window errors now add up to the clip's own `speech_qa.py` rate (`clip` in the output).
+  Doll chains re-scored: 0.05-0.10 over the clip, the same slips in every hand-over arm. Tests updated (6).
 - 2026-11-08 02:20: the 60 s shop showcase re-rendered on the 2026-11-07 defaults alone (1024 px reference, robust
   look-lock, audio pin released at 30 %): equal to the 2026-11-04 clip within one seed's noise (whole-clip WER 0.016 vs
   0.005 with the same two slips plus a clipped last word, UTMOS windows 2-6 3.82 vs 3.85, faces 0.68 / 0.64 vs 0.64 /

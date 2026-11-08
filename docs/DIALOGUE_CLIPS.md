@@ -127,7 +127,9 @@ python3 scripts/script_wer.py --segments speech.json --extra extra.json         
 
 `script_wer.py` scores every window's transcript against the `<d>` lines of that window's prompt (the
 `continuation_prompts` of the extra JSON; `--prompt file.txt --windows N` when every window shares one prompt) and lists
-the words that differ, so a slip shows up in the window and the word it happened in. Compare arms rendered from the same
+the words that differ, so a slip shows up in the window and the word it happened in. The whole transcript is aligned to
+the whole script and each error is charged to the window of the script word it touches, so segment timings do not matter
+and the per-window errors add up to the clip's word error rate (`clip` in the output). Compare arms rendered from the same
 script, not absolute values: a phonetic respelling in the prompt counts as an error even when the word is spoken right.
 
 `voice_naturalness.py` prints one line per continuation window: UTMOS (a predictor of how natural speech sounds; the

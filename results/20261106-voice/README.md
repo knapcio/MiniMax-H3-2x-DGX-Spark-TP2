@@ -330,10 +330,20 @@ on spark-05), not by the head's journal. `tests/test_audio_pin_steps_loop.py` ru
 loop over 20 steps: identical to the stock loop through step 5, different from step 6 on, different from no pin.
 
 Pronunciation is not the hand-over's doing. `scripts/script_wer.py` scores every window's transcript against that
-window's `<d>` lines: the six chains land at 0.06-0.16 mean word error rate with the same words slipping in every arm
+window's `<d>` lines: the six chains land at 0.05-0.10 word error rate over the clip (per-window means 0.06-0.11,
+re-scored 2026-11-08 with the aligned tool, see below) with the same words slipping in every arm
 (`cierpliwy` -> `cierplowy` in six of six, `czynsz` -> `czynż`, a fused `dziewczyna pisze` -> `dziewczy napisze`, the
 last window worst everywhere, window 1 clean everywhere). Those are the model's Polish `sz` clusters and word boundaries
-(`docs/DIALOGUE_CLIPS.md`), the same with or without a pin.
+(`docs/DIALOGUE_CLIPS.md`), the same with or without a pin. The default (`default-64`, = `steps30r-64`) scores
+0.073 over the clip, the hard pin (`def64`) 0.073, no pin 0.093, ramp 0.100, rows:12 0.067, 50 % release 0.053: one
+seed, one script, a spread of 0.05 across arms that differ only in the hand-over, so no arm is better at the words.
+
+(2026-11-08) The first version of `script_wer.py` put each Whisper segment into the window that held its midpoint;
+a segment that fused the last line of one window with the first line of the next charged the whole fusion to one
+window and the other window for the missing words (the shop clip read 0.13 and 0.11 in windows 2 and 3 that way,
+against 0.0 and 0.0 after the fix). The tool now aligns the whole transcript to the whole script and charges each
+error to the window of the script word it touches, so the per-window errors add up to the clip's own word error rate
+(`clip` in the output, equal to `speech_qa.py` on the same transcript).
 
 Clips: `voicepl-ramp64`, `voicepl-rows12-64`, `voicepl-steps30r-64`, `voicepl-steps50-64` (64.6 s doll chains),
 `koninck60-K-def`, `koninck60-K-ramp`, `koninck60-K-noapin`, `koninck60-K-steps30` (60 s paintings), on the Mac as
