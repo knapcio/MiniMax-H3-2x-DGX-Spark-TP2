@@ -13,6 +13,13 @@ reference faces without ever showing the return to the reference pose ("hidden e
 ``toff0`` (Ref2VA continuation only): every window keeps local RoPE time (``temporal_offset`` 0) so the static reference
 image stays as close in time to window 6 as to window 1.  The older ``H3_TP2_WINDOW_TEMPORAL_OFFSET`` switch wraps
 upstream's loop, which the default edited loop (``H3_TP2_CONT_EDIT=2``) replaces, so it is a no-op on the current stack.
+2026-11-08 (results/20261106-voice/ section 13): on Polish dialogue chains ``toff0`` halves the real slips of the tongue
+of windows 2-6 but the voice drifts along the chain again (UTMOS -0.15 to -0.25 over windows 2-6, growing).
+
+``toffcap`` (Ref2VA continuation only): the same shift capped at ``H3_TP2_ID_LOCK_TOFF_CAP`` RoPE units (default 425,
+the shift of window 2 at 24 fps: 255 frames * 40 / 24), so every later window sits where window 2 sits, inside the
+time span of a training clip and still not at a clip's opening.  The middle ground between upstream's shift (window 6
+at 2125 units, 3.5 training clips away from its reference) and ``toff0``.
 
 ``stats`` / ``blend`` (latent face lock, post-hoc on the returned window, after the look-lock): inside the face boxes
 (``H3_TP2_ID_LOCK_BOXES``, normalised x0,y0,x1,y1 per face, ``;``-separated) each free token of a later window is
@@ -39,7 +46,7 @@ import torch.nn.functional as F
 logger = logging.getLogger("vllm_omni.h3_tp2.identity_lock")
 
 BLOCK_TOKENS = 5          # VAE: 5 latent tokens per 17-frame block, token 5k is the padded block-start token
-MODES = ("end", "toff0", "stats", "blend", "measure")
+MODES = ("end", "toff0", "toffcap", "stats", "blend", "measure")
 
 
 def video_t(frames: int) -> int:
@@ -56,6 +63,7 @@ class Config:
     feather: int = 2                      # cosine falloff outside the box, latent cells
     ramp: float = 0.25                    # fraction of the free frames until full strength (block-constant steps)
     lowpass: bool = True
+    toff_cap: float = 425.0               # toffcap: the largest per-window RoPE shift, units of 40/24 per frame
 
     @property
     def active(self) -> bool:
@@ -76,7 +84,12 @@ class Config:
         boxes = parse_boxes(environ.get("H3_TP2_ID_LOCK_BOXES", ""))
         if modes & {"stats", "blend", "measure"} and not boxes:
             raise ValueError("H3_TP2_ID_LOCK stats/blend/measure need H3_TP2_ID_LOCK_BOXES")
-        return cls(modes=modes, extend=extend, boxes=boxes,
+        if {"toff0", "toffcap"} <= modes:
+            raise ValueError("H3_TP2_ID_LOCK: toff0 and toffcap exclude each other")
+        toff_cap = float(environ.get("H3_TP2_ID_LOCK_TOFF_CAP", "425") or 425)
+        if toff_cap < 0:
+            raise ValueError("H3_TP2_ID_LOCK_TOFF_CAP must be >= 0")
+        return cls(modes=modes, extend=extend, boxes=boxes, toff_cap=toff_cap,
                    strength=float(environ.get("H3_TP2_ID_LOCK_STRENGTH", "0.3") or 0.3),
                    radius=int(environ.get("H3_TP2_ID_LOCK_RADIUS", "2") or 2),
                    feather=int(environ.get("H3_TP2_ID_LOCK_FEATHER", "2") or 2),
@@ -149,6 +162,8 @@ def wrap_inner(diffuse, cfg: Config):
                 state["ref"] = {"rows": args["visual_condition"], "shape": shape}
         if "toff0" in cfg.modes and args.get("task") == "ref2va" and args.get("temporal_offset"):
             args = {**args, "temporal_offset": 0.0}
+        if "toffcap" in cfg.modes and args.get("task") == "ref2va" and (args.get("temporal_offset") or 0) > cfg.toff_cap:
+            args = {**args, "temporal_offset": float(cfg.toff_cap)}
         if "end" in cfg.modes and state["ref"] is not None and _later_window(args):
             a, crop = end_anchor_args(args, state["ref"], cfg.extend)
             logger.info("h3_tp2 identity end anchor (call %d, seed %s): reference as last keyframe, canvas %d -> %d frames",
@@ -347,6 +362,6 @@ def install(cm_module, environ=os.environ) -> bool:
 
     cm_module.wrap_diffuse = wrap_diffuse
     cm_module._h3_tp2_identity_lock = True
-    logger.warning("h3_tp2: EXPERIMENT identity lock %s (end extend %d, boxes %d, strength %.2f, radius %d, lowpass %s; changes outputs)",
-                   ",".join(sorted(cfg.modes)), cfg.extend, len(cfg.boxes), cfg.strength, cfg.radius, cfg.lowpass)
+    logger.warning("h3_tp2: EXPERIMENT identity lock %s (end extend %d, boxes %d, strength %.2f, radius %d, lowpass %s, toff cap %.0f; changes outputs)",
+                   ",".join(sorted(cfg.modes)), cfg.extend, len(cfg.boxes), cfg.strength, cfg.radius, cfg.lowpass, cfg.toff_cap)
     return True

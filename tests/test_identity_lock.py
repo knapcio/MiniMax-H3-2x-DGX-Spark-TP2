@@ -122,6 +122,22 @@ def test_toff0_only_touches_ref2va_windows():
     assert calls[0]["temporal_offset"] == 0.0 and calls[1]["temporal_offset"] == 425.0 and calls[1]["task"] == "t2va"
 
 
+def test_toffcap_caps_the_shift_of_later_ref2va_windows():
+    calls = []
+    d = il.wrap_inner(fake_diffuse(calls), cfg(modes=frozenset({"toffcap"}), toff_cap=425.0))
+    for shift in (0.0, 425.0, 850.0, 2125.0):
+        a = window_args(1); a.update(task="ref2va", temporal_offset=shift)
+        d(**a)
+    b = window_args(1); b["temporal_offset"] = 2125.0
+    d(**b)
+    assert [c["temporal_offset"] for c in calls] == [0.0, 425.0, 425.0, 425.0, 2125.0]
+    c = il.Config.from_env({"H3_TP2_ID_LOCK": "toffcap", "H3_TP2_ID_LOCK_TOFF_CAP": "850"})
+    assert c.toff_cap == 850.0 and c.modes == {"toffcap"}
+    assert il.Config.from_env({"H3_TP2_ID_LOCK": "toffcap"}).toff_cap == 425.0
+    with pytest.raises(ValueError):
+        il.Config.from_env({"H3_TP2_ID_LOCK": "toff0,toffcap"})
+
+
 def test_end_anchor_needs_a_first_frame_request():
     calls = []
     d = il.wrap_inner(fake_diffuse(calls), cfg(modes=frozenset({"end"})))
