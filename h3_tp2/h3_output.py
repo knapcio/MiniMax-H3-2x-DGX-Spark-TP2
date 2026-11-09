@@ -294,9 +294,10 @@ def install(pipeline_module, api_utils_module, convert_u8: bool = True) -> None:
             finally:
                 _sync()
                 logger.info("h3_tp2 phase diffuse %.1f s%s", time.monotonic() - t0, " (replayed)" if replayed is not None else "")
-                _log_digest("latents", out)
-                if replayed is None:
-                    _save_latents(out)
+                if out is not None:   # a sampling that raised (cancelled, or given up early by the speech guard) has no latents
+                    _log_digest("latents", out)
+                    if replayed is None:
+                        _save_latents(out)
 
         cls.decode = decode
         cls.encode_prompt = encode_prompt

@@ -165,6 +165,36 @@ class EarlyMeasurementTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             sg.config_from_env({"H3_TP2_SPEECH_GUARD": "0.5", "H3_TP2_SPEECH_EARLY": "half"})
 
+    def test_the_early_stops_come_from_the_environment_only(self):
+        cfg = sg.config_from_env({"H3_TP2_SPEECH_GUARD": "0.01", "H3_TP2_SPEECH_EARLY_STOP": "12, 10:0.03"})
+        self.assertEqual(cfg.early_stops, ((10, 0.03), (12, None)))
+        self.assertEqual(sg.config_from_env({"H3_TP2_SPEECH_GUARD": "0.01"}).early_stops, ())
+        with self.assertRaises(ValueError):
+            sg.config_from_env({"H3_TP2_SPEECH_GUARD": "0.01", "H3_TP2_SPEECH_EARLY_STOP": "10:5"})
+
+    def test_a_peek_takes_its_own_limit(self):
+        original, sg.transcribe = sg.transcribe, lambda cfg, wav, language, out_json, model=None: ["Dziewcza pisze, że przyszła."]
+        try:
+            guard = sg.Guard(sg.Config(max_cer=0.01), ["<d>[Polish] Dziewczyna pisze, że przyszła.</d>"])
+            strict = guard.peek(1, [0.0] * 160, 16000)
+            loose = guard.peek(1, [0.0] * 160, 16000, max_cer=0.2)
+        finally:
+            sg.transcribe = original
+        self.assertEqual(strict["cer"], loose["cer"])
+        self.assertEqual((strict["ok"], loose["ok"]), (False, True))
+
+    def test_the_summary_shows_an_attempt_that_was_given_up_early(self):
+        heard = iter([["Dziewczyna pisze, że przyszła."], ["Dziewczyna pisze, że przyszła."]])
+        original, sg.transcribe = sg.transcribe, lambda cfg, wav, language, out_json, model=None: next(heard)
+        try:
+            guard = sg.Guard(sg.Config(max_cer=0.01), ["<d>[Polish] Dziewczyna pisze, że przyszła.</d>"] * 2)
+            guard.score(1, [0.0] * 160, 16000)
+            guard.given_up(2, 10, 0.052)
+            guard.score(2, [0.0] * 160, 16000)
+        finally:
+            sg.transcribe = original
+        self.assertEqual(guard.summary(), "2 windows judged, 1 re-sampled (w2 0.052 at step 10 > 0.000), best attempts CER max 0.000")
+
     def test_a_peek_judges_like_a_score_and_leaves_no_trace_in_the_summary(self):
         original, sg.transcribe = sg.transcribe, lambda cfg, wav, language, out_json, model=None: ["Dziewcza pisze, że przyszła."]
         try:

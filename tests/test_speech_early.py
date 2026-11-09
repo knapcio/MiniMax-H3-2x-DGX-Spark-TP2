@@ -32,6 +32,14 @@ class ParseTests(unittest.TestCase):
         self.assertEqual(se.parse_steps("10, 6,8,6"), (6, 8, 10))
         self.assertEqual(se.parse_steps(""), ())
 
+    def test_stops_carry_their_own_limit_or_the_guards(self):
+        self.assertEqual(se.parse_stops("14, 10:0.03"), {10: 0.03, 14: None})
+        self.assertEqual(list(se.parse_stops("14,10:0.03")), [10, 14])
+        self.assertEqual(se.parse_stops(""), {})
+        for bad in ("ten", "0:0.1", "10:2", "10:0", "10:x"):
+            with self.assertRaises(ValueError):
+                se.parse_stops(bad)
+
     def test_bad_steps_are_named(self):
         with self.assertRaisesRegex(ValueError, "'x'"):
             se.parse_steps("6,x")
@@ -92,6 +100,20 @@ class TapTests(unittest.TestCase):
                 out = dl.loop(2)
         self.assertEqual(len(out), 4)
         self.assertIn("skipped at step 1", logs.output[0])
+
+    def test_a_stop_from_the_sink_ends_the_loop(self):
+        dl = loop_module()
+        se.install(dl)
+
+        def sink(step, x0):
+            raise se.Stop(step, 0.052, 0.01)
+
+        with self.assertRaises(se.Stop) as caught:
+            with se.tapping((2,), sink):
+                dl.loop(5)
+        self.assertEqual((caught.exception.step, caught.exception.cer, caught.exception.limit), (2, 0.052, 0.01))
+        self.assertEqual(len(dl.calls), 3)   # video 1, audio 1, video 2: the audio update of step 2 was not made
+        self.assertIsNone(se._ACTIVE)
 
     def test_the_block_ends_the_tap_when_the_sampling_raises(self):
         dl = loop_module()

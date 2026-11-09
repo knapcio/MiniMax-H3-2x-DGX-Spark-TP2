@@ -216,9 +216,11 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
     ``speech_fn(audio, index)`` (with ``max_cer`` > 0) adds the speech guard (``h3_tp2.speech_guard``): it returns
     ``(score, cer, chars)`` for the window's decoded and transcribed audio against the lines of its prompt; a score
     > 1.0 means the lines came out with more than the tolerated character error rate, and the window is re-sampled.
-    ``early_fn(x0, index, attempt, step, args)`` (with ``early_steps``, 1-based denoising steps) is a measurement: it is
-    handed the loop's clean estimate of the audio rows at those steps of every sampling (``h3_tp2.speech_early``) and
-    changes nothing.
+    ``early_fn(x0, index, attempt, step, args, may_stop)`` (with ``early_steps``, 1-based denoising steps) is handed
+    the loop's clean estimate of the audio rows at those steps of every sampling (``h3_tp2.speech_early``).  It may
+    raise ``speech_early.Stop`` when ``may_stop`` is true (another attempt can follow): the sampling ends there, the
+    attempt counts as failed and the window is sampled again with the next seed.  A sampling that is not stopped is
+    untouched.
     ``lock_robust`` estimates the look-lock's statistics on the positions that did not change between the reference
     tail and the new window (``robust_params``), so a character who returns from behind something is not recoloured.
     """
@@ -259,18 +261,30 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
         ov = _overlap(args) if state["prev"] is not None else None
         best = None
         forced = state["index"] in force
-        for attempt in range(1 + max(retries if (ov or guard) else 0, 1 if forced else 0)):
+        attempts = 1 + max(retries if (ov or guard) else 0, 1 if forced else 0)
+        for attempt in range(attempts):
             a = dict(args)
             offset = 7919 * attempt + shift.get(state["index"], 0)
             if offset and "seed" in a and a["seed"] is not None:
                 a["seed"] = int(a["seed"]) + offset
+            # giving an attempt up early needs an attempt after it; a forced re-sample is a measurement and runs whole
+            may_stop = attempt < attempts - 1 and not forced
             listen = None
             if early_fn is not None and early_steps:
-                def listen(step, x0, a=a, n=attempt + 1):  # noqa: ANN001
-                    early_fn(x0, state["index"], n, step, a)
+                def listen(step, x0, a=a, n=attempt + 1, may_stop=may_stop):  # noqa: ANN001
+                    early_fn(x0, state["index"], n, step, a, may_stop)
             started = _pace.clock()
-            with _early.tapping(early_steps, listen):
-                video, audio = diffuse(**a)
+            try:
+                with _early.tapping(early_steps, listen):
+                    video, audio = diffuse(**a)
+            except _early.Stop as stop:
+                if not may_stop:
+                    raise RuntimeError(f"h3_tp2: window {state['index']} attempt {attempt + 1} was stopped early with no "
+                                       "attempt left to follow it") from stop
+                logger.warning("h3_tp2 speech check window %d attempt %d (seed %s): given up at step %d, the lines already came "
+                               "out with a character error rate of %.4f (limit %.3f); re-sampling with another seed",
+                               state["index"], attempt + 1, a.get("seed"), stop.step, stop.cer, stop.limit)
+                continue
             _pace.report(state["index"], attempt + 1, a, _pace.clock() - started)   # wall time only, see h3_tp2/pace.py
             drop = forced and attempt == 0   # the checks still run on the dropped attempt, as they do before a real retry
             if drop:

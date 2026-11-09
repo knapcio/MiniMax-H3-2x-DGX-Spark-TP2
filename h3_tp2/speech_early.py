@@ -1,14 +1,17 @@
-"""Listening to a window before its sampling is over (MEASUREMENT, observe only).
+"""Listening to a window before its sampling is over.
 
 The speech guard (``h3_tp2/speech_guard.py``) judges a window after its last denoising step, so a window that slips
 costs a whole sampling before it is sampled again.  Every step of the denoising loop already computes the clean
 estimate of the audio rows (``x0``) and hands it to ``minimax_h3_euler_eta0_step``; this module taps that call, so the
-estimate of chosen steps can be decoded and transcribed while the sampling goes on.  Whether a slip is already audible
-at step 8 or 10 of 20 is what the tap is for: if it is, a later lever can stop a failing attempt early.
+estimate of chosen steps can be decoded and transcribed while the sampling goes on.
+
+Two uses.  ``H3_TP2_SPEECH_EARLY=<steps>`` only observes (measurement: is a slip already audible at step 8 or 10 of
+20?).  ``H3_TP2_SPEECH_EARLY_STOP=<step>[:<max CER>][,...]`` acts on it: a sink may raise ``Stop`` and the sampling in
+progress ends there, so an attempt the guard would refuse costs the steps up to the check, not all of them.
 
 The tap only reads: the update function is called with the same arguments and its result is returned untouched, so a
-render with the tap is the render without it bit for bit.  It is installed once per process and does nothing outside
-``tapping``.
+sampling that is not stopped is the sampling without the tap bit for bit.  It is installed once per process and does
+nothing outside ``tapping``.
 
 Pure Python apart from the tensors it passes through.
 """
@@ -25,6 +28,34 @@ CALLS_PER_STEP = 2
 AUDIO_CALL = 2
 
 _ACTIVE: "Tap | None" = None
+
+
+class Stop(Exception):
+    """Raised by a sink: give this sampling up at ``step`` (its lines came out with ``cer`` above ``limit``)."""
+
+    def __init__(self, step: int, cer: float, limit: float):
+        super().__init__(f"sampling given up at step {step}: CER {cer:.4f} > {limit:g}")
+        self.step, self.cer, self.limit = int(step), float(cer), float(limit)
+
+
+def parse_stops(text: str) -> dict[int, float | None]:
+    """``"10:0.03,14"`` -> {10: 0.03, 14: None}: denoising steps (from 1) at which a failing attempt is given up, each
+    with its own tolerated character error rate (None: the guard's limit)."""
+    out: dict[int, float | None] = {}
+    for item in (text or "").replace(" ", "").split(","):
+        if not item:
+            continue
+        key, _, value = item.partition(":")
+        try:
+            step, limit = int(key), float(value) if value else None
+        except ValueError:
+            raise ValueError(f"expected <step>[:<max CER>] items separated by commas, got {item!r}") from None
+        if step < 1:
+            raise ValueError(f"denoising steps start at 1, got {item!r}")
+        if limit is not None and not 0.0 < limit <= 1.0:
+            raise ValueError(f"the tolerated character error rate is a fraction in (0, 1], got {item!r}")
+        out[step] = limit
+    return dict(sorted(out.items()))
 
 
 def parse_steps(text: str) -> tuple[int, ...]:
@@ -60,7 +91,9 @@ class Tap:
             return
         try:
             self.sink(step, x0)
-        except Exception as e:  # noqa: BLE001  (a measurement never breaks a render)
+        except Stop:
+            raise
+        except Exception as e:  # noqa: BLE001  (a failing check never breaks a render)
             logger.warning("h3_tp2 speech early check skipped at step %d (%s)", step, e)
 
 

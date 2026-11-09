@@ -63,6 +63,7 @@ class Config:
     respell_file: str = ""         # `prompt_spelling real_word` lines, read by rank 0 when it first scores
     min_words: int = 2             # a window whose script has fewer words is not judged
     early_steps: tuple = ()        # MEASUREMENT: also judge the loop's clean audio estimate at these denoising steps
+    early_stops: tuple = ()        # ((step, max CER or None), ...): give a failing attempt up at these denoising steps
 
 
 def config_from_env(env=None) -> Config | None:  # noqa: ANN001
@@ -84,6 +85,7 @@ def config_from_env(env=None) -> Config | None:  # noqa: ANN001
         respell_file=(env.get("H3_TP2_SPEECH_RESPELL") or "").strip(),
         min_words=max(1, int(env.get("H3_TP2_SPEECH_MIN_WORDS") or 2)),
         early_steps=_early_steps(env.get("H3_TP2_SPEECH_EARLY") or ""),
+        early_stops=_early_stops(env.get("H3_TP2_SPEECH_EARLY_STOP") or ""),
     )
 
 
@@ -91,6 +93,12 @@ def _early_steps(text: str) -> tuple:
     from h3_tp2 import speech_early
 
     return speech_early.parse_steps(text)
+
+
+def _early_stops(text: str) -> tuple:
+    from h3_tp2 import speech_early
+
+    return tuple(speech_early.parse_stops(text).items())
 
 
 def _default_python() -> str:
@@ -312,6 +320,7 @@ class Guard:
         self.windows = 0
         self.history: list[tuple[int, float]] = []   # (window, cer) of every judged attempt, in order
         self.slips: dict[int, list[dict[int, str]]] = {}   # window -> per attempt {script word index: word} misheard
+        self.attempts: dict[int, list[str]] = {}   # window -> every attempt in order, as the summary prints it
         self._respellings: dict | None = None
 
     @property
@@ -344,6 +353,7 @@ class Guard:
         seconds = write_wav(wav, waveform, sample_rate)
         out, heard, heard_words = judge_wav(self.cfg, script, language, wav, d)
         self.history.append((int(index), float(out["cer"])))
+        self.attempts.setdefault(int(index), []).append(f"{float(out['cer']):.3f}")
         self.slips.setdefault(int(index), []).append({k: word for k, word, _got in out.get("misheard", [])})
         wrong = "; ".join(f"{a} > {b or '-'}" for a, b in phrases(out.get("misheard", [])))
         out.update({"window": index, "seconds": round(seconds, 2), "language": language, "script_words": len(script),
@@ -355,9 +365,10 @@ class Guard:
             shutil.rmtree(os.path.join(self.dir, old), ignore_errors=True)
         return out
 
-    def peek(self, index: int, waveform, sample_rate: int, tag: str = "early") -> dict:  # noqa: ANN001
+    def peek(self, index: int, waveform, sample_rate: int, tag: str = "early", max_cer: float | None = None) -> dict:  # noqa: ANN001
         """Judge a waveform against the lines of window ``index`` without recording it: nothing enters the summary, the
-        stubborn words or the window count.  The wav and transcripts stay in ``<dir>/<tag>`` ({} without lines)."""
+        stubborn words or the window count.  The wav and transcripts stay in ``<dir>/<tag>`` ({} without lines).
+        ``max_cer`` replaces the guard's limit for this verdict."""
         script, language = self.script(index)
         if len(script) < self.cfg.min_words:
             return {}
@@ -365,10 +376,14 @@ class Guard:
         os.makedirs(d, exist_ok=True)
         wav = os.path.join(d, "window.wav")
         seconds = write_wav(wav, waveform, sample_rate)
-        out, heard, heard_words = judge_wav(self.cfg, script, language, wav, d)
+        out, heard, heard_words = judge_wav(self.cfg, script, language, wav, d, max_cer=max_cer)
         out.update({"window": index, "seconds": round(seconds, 2), "language": language, "script_words": len(script),
                     "heard_words": len(heard_words), "heard": " ".join(heard).strip()[:200], "dir": d})
         return out
+
+    def given_up(self, index: int, step: int, cer: float) -> None:
+        """Record an attempt of window ``index`` that was stopped at denoising step ``step`` (for the summary)."""
+        self.attempts.setdefault(int(index), []).append(f"{float(cer):.3f} at step {int(step)}")
 
     def summary(self) -> str:
         """One line for the end of a request: the attempts of every re-sampled window and the worst of the windows' best rates
@@ -379,8 +394,9 @@ class Guard:
         per: dict[int, list[float]] = {}
         for window, cer in self.history:
             per.setdefault(window, []).append(cer)
-        again = {w: v for w, v in per.items() if len(v) > 1}
-        detail = "; ".join(f"w{w} " + " > ".join(f"{c:.3f}" for c in v) for w, v in sorted(again.items()))
+        shown = {w: self.attempts.get(w) or [f"{c:.3f}" for c in v] for w, v in per.items()}
+        again = {w: v for w, v in shown.items() if len(v) > 1}
+        detail = "; ".join(f"w{w} " + " > ".join(v) for w, v in sorted(again.items()))
         over = sorted(w for w, v in per.items() if min(v) > self.cfg.max_cer)
         text = (f"{len(per)} windows judged, {len(again)} re-sampled" + (f" ({detail})" if detail else "")
                 + f", best attempts CER max {max(min(v) for v in per.values()):.3f}")

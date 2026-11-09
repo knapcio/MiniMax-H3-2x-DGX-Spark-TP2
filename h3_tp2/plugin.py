@@ -797,10 +797,17 @@ def _apply(role: str) -> None:
                 logger.warning("h3_tp2: EXPERIMENT speech guard on (re-sample above CER %.3f, model %s, language %s)",
                                _sg_cfg.max_cer, _sg_cfg.model, _sg_cfg.language or "from the lines")
 
-                # MEASUREMENT, observe only: H3_TP2_SPEECH_EARLY=<steps> also judges the loop's clean estimate of the
-                # audio at those denoising steps of every sampling (h3_tp2/speech_early.py).  Rank 0 listens and logs,
-                # no verdict is taken, so there is nothing to broadcast and the render is the one without the variable.
-                _early_steps = tuple(_sg_cfg.early_steps)
+                # Listening before the sampling is over (h3_tp2/speech_early.py): the loop's clean estimate of the audio at a
+                # denoising step is decoded and judged like the finished window.
+                #   H3_TP2_SPEECH_EARLY=<steps>: MEASUREMENT, observe only.  Rank 0 listens and logs, no verdict is taken,
+                #   so there is nothing to broadcast and the render is the one without the variable.
+                #   H3_TP2_SPEECH_EARLY_STOP=<step>[:<max CER>][,...]: an attempt whose lines are already wrong at that
+                #   step is given up there and the window is sampled again (never the last attempt a window has).  Rank 0
+                #   judges and the verdict is broadcast, so both ranks leave the loop at the same step; both ranks take
+                #   part whenever the variable is set, whatever else they know (the rule of the guard itself).
+                _early_watch = tuple(_sg_cfg.early_steps)
+                _early_stops = dict(_sg_cfg.early_stops)
+                _early_steps = tuple(sorted(set(_early_watch) | set(_early_stops)))
                 if _early_steps:
                     try:
                         from h3_tp2 import speech_early as _se
@@ -814,9 +821,12 @@ def _apply(role: str) -> None:
                     except Exception as e:  # noqa: BLE001
                         logger.warning("h3_tp2 speech early check not installed (%s)", e)
                         _early_steps = ()
-                if _early_steps:
+                if _early_steps and _early_watch:
                     logger.warning("h3_tp2: MEASUREMENT speech early check at denoising steps %s (observe only)",
-                                   ",".join(str(k) for k in _early_steps))
+                                   ",".join(str(k) for k in _early_watch))
+                if _early_steps and _early_stops:
+                    logger.warning("h3_tp2: EXPERIMENT speech early stop: an attempt is given up at denoising step %s",
+                                   ", ".join(f"{k} above CER {_sg_cfg.max_cer if v is None else v:g}" for k, v in _early_stops.items()))
 
                 def _make_early_fn(diffuse):  # noqa: ANN001
                     pipe = getattr(diffuse, "__self__", None)
@@ -824,11 +834,9 @@ def _apply(role: str) -> None:
                         return None
                     import time as _time
 
-                    def _fn(x0, index, attempt, step, args):  # noqa: ANN001
-                        _group, rank, _world = _ppsg._dit_rank_world()
-                        g = _sg_state["guard"]
-                        if rank != 0 or g is None:
-                            return
+                    import torch.distributed as _dist
+
+                    def _listen(x0, index, attempt, step, args, limit):  # noqa: ANN001
                         t0 = _time.perf_counter()
                         with torch.no_grad():
                             latent = _ppsg.minimax_h3_unpack_audio_tokens(x0, audio_t=int(args["audio_t"]) * 2, audio_channel=2)
@@ -838,12 +846,36 @@ def _apply(role: str) -> None:
                         del wav, latent
                         if wav_np.ndim == 3:
                             wav_np = wav_np[0]
-                        out = g.peek(int(index), wav_np, int(_ppsg.MINIMAX_H3_AUDIO_SAMPLE_RATE),
-                                     tag=f"early-w{int(index)}-a{int(attempt)}-s{int(step)}")
+                        out = _sg_state["guard"].peek(int(index), wav_np, int(_ppsg.MINIMAX_H3_AUDIO_SAMPLE_RATE),
+                                                      tag=f"early-w{int(index)}-a{int(attempt)}-s{int(step)}", max_cer=limit)
                         if out:
                             logger.info("h3_tp2 speech early check window %d attempt %d step %d of %s: CER %.4f (%d of %d chars), %.1f s: %s",
                                         index, attempt, step, args.get("num_steps"), out["cer"], out["distance"], out["chars"],
                                         _time.perf_counter() - t0, out["heard"][:120])
+                        return out
+
+                    def _fn(x0, index, attempt, step, args, may_stop):  # noqa: ANN001
+                        group, rank, world = _ppsg._dit_rank_world()
+                        if not (may_stop and step in _early_stops):
+                            if rank == 0 and step in _early_watch and _sg_state["guard"] is not None:
+                                _listen(x0, index, attempt, step, args, None)
+                            return
+                        limit = _early_stops[step]
+                        limit = float(_sg_cfg.max_cer if limit is None else limit)
+                        out = torch.zeros(2, dtype=torch.float32, device=x0.device)   # [stop, cer]
+                        if rank == 0:
+                            try:  # rank 1 waits in the broadcast below: a failure here must still reach it
+                                verdict = _listen(x0, index, attempt, step, args, limit) if _sg_state["guard"] is not None else {}
+                                if verdict and not verdict["ok"]:
+                                    out[0], out[1] = 1.0, float(verdict["cer"])
+                                    _sg_state["guard"].given_up(int(index), int(step), float(verdict["cer"]))
+                            except Exception as e:  # noqa: BLE001
+                                logger.warning("h3_tp2 speech early check failed on rank 0 (%s); the attempt goes on", e)
+                                out.zero_()
+                        if world > 1:
+                            _dist.broadcast(out, src=0, group=group)
+                        if float(out[0]) > 0.0:
+                            raise _se.Stop(int(step), float(out[1]), limit)
 
                     return _fn
             else:
