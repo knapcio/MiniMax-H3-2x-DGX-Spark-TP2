@@ -16,7 +16,9 @@ export H3_TP2_REF_SHORT_EDGE=1024'
 restart_head() {
   # skip when the head is healthy and the env file already carries exactly the requested experiment lines (a queue
   # that ends with a restoring restart followed by one that starts with the same restart cost a 13-minute double boot)
-  if [ "$(health)" = 200 ]; then
+  # (H3_FORCE_RESTART=1 skips the shortcut: restart_head_gated sets it after a slow probe, when "the same env on a
+  # healthy head" is exactly the boot it wants to replace)
+  if [ -z "${H3_FORCE_RESTART:-}" ] && [ "$(health)" = 200 ]; then
     grep -v -E "$STRIP" ~/.h3-tp2.env > /tmp/h3env.want; printf "%s\n" "$BASEENV" >> /tmp/h3env.want; [ -n "$1" ] && printf "%s\n" "$1" >> /tmp/h3env.want
     # ... and only when the running head loaded the currently synced code (queue52 skipped a restart that was meant to
     # bring a new default into serving, 2026-11-02 21:15)
@@ -38,10 +40,10 @@ restart_head() {
 # restart_head_gated "env": restart, then the boot probe; a slow boot is restarted again (up to 3 boots)
 restart_head_gated() {
   for attempt in 1 2 3; do
-    restart_head "$1"
+    restart_head "$1"; unset H3_FORCE_RESTART
     bash ~/h3-tp2/scripts/boot-probe.sh ${PROBE_REF:-8.65} ${PROBE_TOL:-0.08}; rc=$?
     [ $rc -eq 0 ] && return 0
-    [ $rc -eq 2 ] && { echo "=== slow boot (attempt $attempt), restarting"; continue; }
+    [ $rc -eq 2 ] && { echo "=== slow boot (attempt $attempt), restarting"; H3_FORCE_RESTART=1; continue; }
     echo "=== probe failed (rc $rc), keeping this boot"; return 1
   done
   echo "=== three slow boots in a row, keeping the last"; return 2
