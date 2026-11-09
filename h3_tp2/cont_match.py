@@ -180,6 +180,23 @@ def _log_post_correction_seam(video: torch.Tensor, overlap_v: int, index: int) -
             pass
 
 
+def window_map(text: str) -> dict[int, int]:
+    """``"3,5"`` -> {3: 1, 5: 1} and ``"3:7919,5:11"`` -> {3: 7919, 5: 11}: window indices (from 1) with an optional value."""
+    out: dict[int, int] = {}
+    for item in (text or "").replace(" ", "").split(","):
+        if not item:
+            continue
+        key, _, value = item.partition(":")
+        try:
+            index, number = int(key), int(value) if value else 1
+        except ValueError:
+            raise ValueError(f"expected <window>[:<number>] items separated by commas, got {item!r}") from None
+        if index < 1:
+            raise ValueError(f"window indices start at 1, got {item!r}")
+        out[index] = number
+    return out
+
+
 def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, retries: int = 0, max_ratio: float = 2.0,
                  lock: str = "", lock_strength: float = 1.0, lock_ramp: float = 1.0, lock_audio: bool = False,
                  lock_std: float | None = None, lock_ref: str = "window", lock_classes: bool = False,
@@ -203,6 +220,12 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
     # Read once per request wrapper, covering both plugin continuation routes.
     # Disabled: no extra tensor operations, measurements or log records.
     postcheck = os.environ.get("H3_TP2_SEAM_POSTCHECK", "0").strip() == "1"
+    # Measurement only (they change the output): H3_TP2_CONT_RETRY_FORCE=<k[,k]> samples those windows a second time
+    # whatever the checks say and drops the first attempt; H3_TP2_CONT_RETRY_SEED_SHIFT=<k:n[,k:n]> adds n to the seed of
+    # window k's attempts.  FORCE=3 and SEED_SHIFT=3:7919 must give the same clip: a retry is a first attempt with
+    # another seed and nothing else.  Read from the environment only, so every rank decides alike.
+    force = set(window_map(os.environ.get("H3_TP2_CONT_RETRY_FORCE", "")))
+    shift = window_map(os.environ.get("H3_TP2_CONT_RETRY_SEED_SHIFT", ""))
 
     def _overlap_audio(args):  # noqa: ANN001
         lengths = args.get("audio_condition_lengths") or []
@@ -229,11 +252,17 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
         state["index"] += 1
         ov = _overlap(args) if state["prev"] is not None else None
         best = None
-        for attempt in range(1 + (retries if (ov or guard) else 0)):
+        forced = state["index"] in force
+        for attempt in range(1 + max(retries if (ov or guard) else 0, 1 if forced else 0)):
             a = dict(args)
-            if attempt and "seed" in a and a["seed"] is not None:
-                a["seed"] = int(a["seed"]) + 7919 * attempt
+            offset = 7919 * attempt + shift.get(state["index"], 0)
+            if offset and "seed" in a and a["seed"] is not None:
+                a["seed"] = int(a["seed"]) + offset
             video, audio = diffuse(**a)
+            if forced and attempt == 0:
+                logger.warning("h3_tp2 MEASUREMENT window %d: forced re-sample (H3_TP2_CONT_RETRY_FORCE), the first attempt is dropped",
+                               state["index"])
+                continue
             if not (ov or guard) or not (isinstance(video, torch.Tensor) and video.dim() == 5):
                 best = (video, audio, 0.0)
                 break

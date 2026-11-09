@@ -84,7 +84,9 @@ def production_loop(options):
            '_lock_ref': options['lock_ref'], '_lock_classes': options['lock_classes'], '_seed_step': options['seed_step'],
            '_lock_robust': options.get('lock_robust', False), '_edit_audio': options.get('edit_audio', '1'),
            '_max_cut': options.get('max_cut', 0.0), '_ig_cfg': options.get('identity_cfg'),
-           '_make_identity_fn': options.get('make_identity_fn', lambda _diffuse, _overlap: None)}
+           '_make_identity_fn': options.get('make_identity_fn', lambda _diffuse, _overlap: None),
+           '_sg_cfg': options.get('speech_cfg'), '_sg_state': {'guard': None},
+           '_make_speech_fn': options.get('make_speech_fn', lambda _diffuse: None)}
     module = ast.fix_missing_locations(ast.Module(body=[nodes[0]], type_ignores=[]))
     exec(compile(module, str(ROOT / 'h3_tp2/plugin.py'), 'exec'), env)  # actual function body, synthetic dependencies
     return env['_dc']

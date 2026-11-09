@@ -137,7 +137,10 @@ same-seed frame digest (`h3_tp2 frames sha256` in the head journal, framemd5 in 
   `H3_TP2_IDENTITY_GROW_MAX` of them, default 24; `H3_TP2_SPEECH_GUARD=<max CER>` (every window's audio decoded,
   transcribed with `scripts/speech_qa.py` in `H3_TP2_SPEECH_PY` and compared with the `<d>` lines of its prompt as a
   character error rate without word boundaries, re-sampled above the limit; `h3_tp2/speech_guard.py`;
-  `H3_TP2_SPEECH_RESPELL`, `H3_TP2_SPEECH_LANGUAGE`, `H3_TP2_SPEECH_MODEL`); `H3_TP2_IDENTITY_PERSON_SIM=<similarity>` adds a whole-person check:
+  `H3_TP2_SPEECH_RESPELL`, `H3_TP2_SPEECH_LANGUAGE`, `H3_TP2_SPEECH_MODEL`); measurement only:
+  `H3_TP2_CONT_RETRY_FORCE=<k[,k]>` samples window k a second time whatever the checks say and drops the first attempt,
+  `H3_TP2_CONT_RETRY_SEED_SHIFT=<k:n[,k:n]>` adds n to the seed of window k (FORCE=3 and SEED_SHIFT=3:7919 must give the
+  same clip: a retry is a first attempt with another seed and nothing else); `H3_TP2_IDENTITY_PERSON_SIM=<similarity>` adds a whole-person check:
   the people in the scored frames, found by a person detector, are embedded with DINOv2 as figures and upper parts and
   compared with the character cards, the reference images after the scene frame, so hair, hats and clothes count and
   not only the face; a person is judged only when a confident face shows in its upper part, and a judged person whose
