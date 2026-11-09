@@ -68,6 +68,29 @@ class SpeechGuardText(unittest.TestCase):
         self.assertEqual(g.score(2, [0.0] * 160, 16000), {})  # one word < min_words
 
 
+    def test_several_judges_fail_a_window_only_when_all_hear_the_error(self):
+        heard = {"small": ["Dziewcza pisze, że przyszła."], "medium": ["Dziewczyna pisze, że przyszła."]}
+        calls = []
+
+        def fake(cfg, wav, language, out_json, model=None):
+            calls.append(model)
+            return heard[model]
+
+        original, sg.transcribe = sg.transcribe, fake
+        try:
+            prompts = ["<d>[Polish] Dziewczyna pisze, że przyszła.</d>"]
+            one = sg.Guard(sg.Config(max_cer=0.01, model="small"), prompts).score(1, [0.0] * 160, 16000)
+            both = sg.Guard(sg.Config(max_cer=0.01, model="small,medium"), prompts).score(1, [0.0] * 160, 16000)
+            agree = sg.Guard(sg.Config(max_cer=0.01, model="medium, small"), prompts).score(1, [0.0] * 160, 16000)
+        finally:
+            sg.transcribe = original
+        self.assertFalse(one["ok"])
+        self.assertTrue(both["ok"])
+        self.assertEqual(both["rates"], [one["cer"], 0.0])
+        self.assertEqual(agree["rates"], [0.0])      # the first judge heard it right: the second is not asked
+        self.assertEqual(calls, ["small", "small", "medium", "medium"])
+        self.assertEqual(sg.models_of(sg.Config(max_cer=0.01, model=" ")), ["small"])
+
     def test_summary_lists_resampled_windows_and_what_stayed_above_the_limit(self):
         g = sg.Guard(sg.Config(max_cer=0.01))
         self.assertEqual(g.summary(), "no window with spoken lines was judged")

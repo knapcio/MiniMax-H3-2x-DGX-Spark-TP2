@@ -57,7 +57,7 @@ class Config:
     max_cer: float                 # re-sample when the script's character error rate exceeds this
     python: str = ""               # interpreter with faster-whisper (default ~/speech-venv/bin/python)
     script: str = ""               # scripts/speech_qa.py (default: next to this package)
-    model: str = "small"           # faster-whisper model
+    model: str = "small"           # faster-whisper model, or several separated by commas (all must hear the error)
     language: str = ""             # language code override ("" = the [Language] tag of the lines, else detection)
     threads: int = 6
     respell_file: str = ""         # `prompt_spelling real_word` lines, read by rank 0 when it first scores
@@ -167,11 +167,16 @@ def write_wav(path: str, waveform, sample_rate: int, target_rate: int = 16000) -
     return x.size / target_rate
 
 
-def transcribe(cfg: Config, wav: str, language: str | None, out_json: str) -> list[str]:
-    """Run ``speech_qa.py`` on the wav; returns the segment texts in order."""
+def models_of(cfg: Config) -> list[str]:
+    """The judges: ``H3_TP2_SPEECH_MODEL`` may list several models (``small,medium``)."""
+    return [m.strip() for m in cfg.model.split(",") if m.strip()] or ["small"]
+
+
+def transcribe(cfg: Config, wav: str, language: str | None, out_json: str, model: str | None = None) -> list[str]:
+    """Run ``speech_qa.py`` on the wav with one model; returns the segment texts in order."""
     if os.path.exists(out_json):
         os.remove(out_json)
-    cmd = [cfg.python, cfg.script, wav, "--model", cfg.model, "--threads", str(cfg.threads), "--output", out_json]
+    cmd = [cfg.python, cfg.script, wav, "--model", model or models_of(cfg)[0], "--threads", str(cfg.threads), "--output", out_json]
     if language:
         cmd += ["--language", language]
     res = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
@@ -180,6 +185,30 @@ def transcribe(cfg: Config, wav: str, language: str | None, out_json: str) -> li
     with open(out_json, encoding="utf-8") as f:
         data = json.load(f)
     return [str(s.get("text", "")) for s in data.get("segments", [])]
+
+
+def judge_wav(cfg: Config, script: list[str], language: str | None, wav: str, directory: str,
+              max_cer: float | None = None) -> tuple[dict, list[str], list[str]]:
+    """(verdict, heard segment texts, heard words) of one window's wav against its script.
+
+    With several judges (``Config.model`` = ``small,medium``) the window fails only when every one of them hears the
+    lines wrong, so the verdict is the lowest rate and a judge that hears them right settles it: two Whisper sizes
+    disagree by 1-4 characters on about a third of the windows (2026-11-09), which is the noise of a single judge.
+    ``verdict["rates"]`` lists the rate of every judge that was asked.
+    """
+    limit = cfg.max_cer if max_cer is None else max_cer
+    out, heard, heard_words, rates = None, [], [], []
+    for model in models_of(cfg):
+        texts = transcribe(cfg, wav, language, os.path.join(directory, f"speech-{model.replace('/', '_')}.json"), model)
+        tokens = [w for text in texts for w in words(text)]
+        verdict = judge(script, tokens, limit)
+        rates.append(verdict["cer"])
+        if out is None or verdict["cer"] < out["cer"]:
+            out, heard, heard_words = verdict, texts, tokens
+        if verdict["ok"]:
+            break
+    out["rates"] = rates
+    return out, heard, heard_words
 
 
 class Guard:
@@ -221,9 +250,7 @@ class Guard:
         os.makedirs(d, exist_ok=True)
         wav = os.path.join(d, "window.wav")
         seconds = write_wav(wav, waveform, sample_rate)
-        heard = transcribe(self.cfg, wav, language, os.path.join(d, "speech.json"))
-        heard_words = [w for text in heard for w in words(text)]
-        out = judge(script, heard_words, self.cfg.max_cer)
+        out, heard, heard_words = judge_wav(self.cfg, script, language, wav, d)
         self.history.append((int(index), float(out["cer"])))
         out.update({"window": index, "seconds": round(seconds, 2), "language": language, "script_words": len(script),
                     "heard_words": len(heard_words), "heard": " ".join(heard).strip()[:200], "dir": d})

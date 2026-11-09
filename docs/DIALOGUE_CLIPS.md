@@ -130,6 +130,10 @@ attempt is kept, so a slip the model makes at every seed costs time, not the cli
 of 110-130 in an 11.5 s Polish window (0.008-0.026), so 0.01 re-samples on most single slips and 0.02 on two; Whisper's
 own mishearings count against the limit as well, which is why the limit is not 0. The language comes from the
 `[Polish]` tag of the lines (`H3_TP2_SPEECH_LANGUAGE` overrides). Calibration: `results/20261106-voice/` section 15.
+Two judges are steadier than one: `H3_TP2_SPEECH_MODEL=small,medium` re-samples a window only when both models hear
+the lines wrong (the lowest rate counts; `medium` adds about 8 s per window and is asked only when `small` objects). On
+finished clips the two sizes disagree by 1-4 characters on about a third of the windows, so a single judge's rate has
+that much noise in it.
 `scripts/speech_guard_dryrun.py clip.mp4 --extra extra.json [--respell respell.txt]` runs the same judgement on a
 finished clip, window by window, and lists which windows each limit would have re-sampled; use it on clips you already
 have before choosing a limit. A name Whisper spells its own way (`Nowak` heard as `Novak`) costs a character in every

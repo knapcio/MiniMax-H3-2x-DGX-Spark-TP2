@@ -61,7 +61,7 @@ def main() -> int:
     parser.add_argument("--window", type=int, default=277)
     parser.add_argument("--overlap", type=int, default=22)
     parser.add_argument("--fps", type=float, default=24.0)
-    parser.add_argument("--model", default="small")
+    parser.add_argument("--model", default="small", help="faster-whisper model, or several separated by commas (the lowest rate counts)")
     parser.add_argument("--language", default="", help="override the [Language] tag of the lines")
     parser.add_argument("--python", default=sys.executable, help="interpreter with faster-whisper")
     parser.add_argument("--limits", default="0.005,0.01,0.02")
@@ -91,14 +91,16 @@ def main() -> int:
                 continue
             wav = os.path.join(tmp, f"w{index}.wav")
             cut_wav(args.clip, start / args.fps, count / args.fps, wav)
-            heard = sg.transcribe(cfg, wav, language, os.path.join(tmp, f"w{index}.json"))
-            heard_words = [w for text in heard for w in sg.words(text)]
-            verdict = sg.judge(script, heard_words, 1.0)
+            wdir = os.path.join(tmp, f"w{index}")
+            os.makedirs(wdir, exist_ok=True)
+            # limit 0: every judge is asked, the verdict is the lowest rate (what the live guard compares with its limit)
+            verdict, heard, heard_words = sg.judge_wav(cfg, script, language, wav, wdir, max_cer=0.0)
             row = {"window": index, "judged": True, "cer": verdict["cer"], "distance": verdict["distance"],
-                   "chars": verdict["chars"], "script_words": len(script), "heard_words": len(heard_words),
-                   "heard": " ".join(heard).strip()}
+                   "chars": verdict["chars"], "rates": verdict["rates"], "script_words": len(script),
+                   "heard_words": len(heard_words), "heard": " ".join(heard).strip()}
             rows.append(row)
-            print(f"w{index}: CER {row['cer']:.4f} ({row['distance']} of {row['chars']} chars), script {row['script_words']} "
+            judges = f" judges {verdict['rates']}" if len(verdict["rates"]) > 1 else ""
+            print(f"w{index}: CER {row['cer']:.4f} ({row['distance']} of {row['chars']} chars){judges}, script {row['script_words']} "
                   f"words, heard {row['heard_words']}: {row['heard'][:110]}")
     judged = [r for r in rows if r.get("judged")]
     summary = {f"{limit:g}": [r["window"] for r in judged if r["cer"] > limit] for limit in limits}
