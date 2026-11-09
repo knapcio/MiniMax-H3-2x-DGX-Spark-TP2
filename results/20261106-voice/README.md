@@ -571,9 +571,11 @@ Reading:
 **English, one clip** (the 60 s 1344x768 showcase chain, seed 2304, limit 0.01): one re-sample, window 5
 (0.019 > 0.000). Wrong characters by the guard's method 5 -> 1 of 713 (the one left is `Novak` for `Nowak`, a spelling
 of the judge: put names in the respelling table). Paired UTMOS +0.02 (windows 5-6 +0.03, +0.05), so no voice loss
-here. The whole-clip rate went 0.0084 -> 0.0168 because the re-sampled chain adds two free words after its last line
-(`Still cannot.`): the guard lets speech before and after the lines pass on purpose (a window starts inside the
-previous window's tail), so an ad-lib after the script is not its business.
+here. The whole-clip rate reads 0.0084 -> 0.0168, and that is the transcriber, not the clip: transcribing the whole
+clip, `small` writes a `Still cannot.` between the last two lines of window 6 that the same model does not hear when
+it is given window 6 alone (there it returns the script word for word, and `medium` one different word). A single
+whole-clip transcription moves by more than the guard does on a clip this clean; the per-window reading with two
+judges is the steadier one.
 
 **Recommendation.** Opt-in, `H3_TP2_SPEECH_GUARD=0.01`, with `H3_TP2_SPEECH_MODEL=small,medium` and a respelling table
 for names and phonetic prompt spellings. Run the dry run on a clip you already have first: it names the words, and a
