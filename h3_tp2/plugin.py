@@ -219,6 +219,23 @@ def _apply(role: str) -> None:
             _cls.decode = _decode
             logger.info("h3_tp2: empty_cache before decode enabled")
 
+    # 5a) opt-in, MEASUREMENT / EXPERIMENT: watch or keep the allocator's pool at the stage boundaries
+    #     (h3_tp2/keep_pool.py).  ``observe`` logs every release and changes nothing; a number is a MemAvailable floor in
+    #     GiB above which a release is skipped, so the pool keeps its physical pages across stages and requests.  Runs in
+    #     both rank processes (the variable is forwarded).  No tensor arithmetic is touched.
+    from h3_tp2 import keep_pool as _kp
+
+    _keep = _kp.parse(os.environ.get("H3_TP2_KEEP_POOL"))
+    if _keep is not None:
+        import torch as _torch_kp
+
+        _kp.install(_torch_kp, *_keep)
+        if _keep[0] == "observe":
+            logger.warning("h3_tp2: MEASUREMENT pool watch: every allocator release is logged, nothing is changed")
+        else:
+            logger.warning("h3_tp2: EXPERIMENT keep pool: allocator releases are skipped while MemAvailable >= %.1f GiB",
+                           _keep[1])
+
     # 5b) opt-in, EXPERIMENTAL: per-request step caches (speed plan item 7; h3_tp2/step_cache.py).  Inside each
     #     diffuse() call the RoPE table and the text token refiner output are computed on the first step and reused
     #     (cleared at the start and end of every diffuse), and the loop's constant update/audio_update masks become
