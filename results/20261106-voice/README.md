@@ -547,6 +547,9 @@ Reading:
 - **A word the model slips on at every seed is not fixed by re-sampling.** Window 4 of seed 3501 said `zaprośmy ją`
   wrong in all three attempts (the guard's summary line now names such words: `still above 0.01 after every attempt:
   w4 (zaprośmy ją)`). Two samplings spent, nothing gained: rewrite or respell the line.
+- **Two retries are the right number.** Three windows failed their first two attempts (one of them in the void
+  queue120, whose verdicts were right); two of the three passed on the third (0.015 > 0.052 > 0.000 and
+  0.046 > 0.053 > 0.000), so stopping after one retry would have kept two slips.
 - **Cost.** One extra sampling of one window per re-sample (about 9.3 min at 960x544 and 20 steps): 1, 3 and 3 extra
   samplings on a 6-window chain, +17 % and +45 % render time on seeds 3401 and 3501. Seed 3601 ran its nine samplings
   at 34.7 s per step instead of 27.8 (the host was in a slow state for that whole render, the rate is unrelated to the
