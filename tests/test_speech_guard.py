@@ -68,6 +68,14 @@ class SpeechGuardText(unittest.TestCase):
         self.assertEqual(g.score(2, [0.0] * 160, 16000), {})  # one word < min_words
 
 
+    def test_summary_lists_resampled_windows_and_what_stayed_above_the_limit(self):
+        g = sg.Guard(sg.Config(max_cer=0.01))
+        self.assertEqual(g.summary(), "no window with spoken lines was judged")
+        g.history = [(1, 0.0), (2, 0.0), (3, 0.037), (3, 0.0), (4, 0.046), (4, 0.053), (4, 0.0), (5, 0.0076), (6, 0.02), (6, 0.03), (6, 0.017)]
+        self.assertEqual(g.summary(), "6 windows judged, 3 re-sampled (w3 0.037 > 0.000; w4 0.046 > 0.053 > 0.000; w6 0.020 > 0.030 > 0.017), "
+                                      "best attempts CER max 0.017, still above 0.01 after every attempt: w6")
+
+
 class SpeechGuardWav(unittest.TestCase):
     def test_write_wav_downmixes_and_resamples(self):
         import numpy as np

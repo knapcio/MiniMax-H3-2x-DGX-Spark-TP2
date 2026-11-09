@@ -961,6 +961,8 @@ def _apply(role: str) -> None:
                     assert video is not None and audio is not None
                     if video.shape[2] != kwargs["latent_t"] or audio.shape[-1] != kwargs["audio_t"]:
                         raise RuntimeError("MiniMax H3 continuation produced inconsistent cumulative AV lengths")
+                    if _sg_cfg is not None and _sg_state["guard"] is not None and _sg_state["guard"].history:
+                        logger.warning("h3_tp2 speech guard summary: %s", _sg_state["guard"].summary())
                     return video, audio
             else:
                 def _dc(diffuse, kwargs, *, _original_dc=_orig_match_dc, **kw):  # noqa: ANN001

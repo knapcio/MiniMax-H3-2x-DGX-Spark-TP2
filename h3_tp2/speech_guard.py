@@ -190,6 +190,7 @@ class Guard:
         self.prompts: list[str] = list(prompts or [])
         self.dir = tempfile.mkdtemp(prefix="h3-speech-")
         self.windows = 0
+        self.history: list[tuple[int, float]] = []   # (window, cer) of every judged attempt, in order
         self._respellings: dict | None = None
 
     @property
@@ -223,6 +224,7 @@ class Guard:
         heard = transcribe(self.cfg, wav, language, os.path.join(d, "speech.json"))
         heard_words = [w for text in heard for w in words(text)]
         out = judge(script, heard_words, self.cfg.max_cer)
+        self.history.append((int(index), float(out["cer"])))
         out.update({"window": index, "seconds": round(seconds, 2), "language": language, "script_words": len(script),
                     "heard_words": len(heard_words), "heard": " ".join(heard).strip()[:200], "dir": d})
         logger.info("h3_tp2 speech window %d: %.1f s, %s, script %d words, heard %d, CER %.4f (%d of %d chars), score %.2f: %s",
@@ -231,3 +233,21 @@ class Guard:
         for old in sorted(x for x in os.listdir(self.dir) if x.startswith("w"))[:-KEEP_WINDOWS]:
             shutil.rmtree(os.path.join(self.dir, old), ignore_errors=True)
         return out
+
+    def summary(self) -> str:
+        """One line for the end of a request: the attempts of every re-sampled window and the worst of the windows' best rates
+        (the retry loop keeps the attempt with the lowest score), e.g.
+        ``6 windows judged, 2 re-sampled (w3 0.037 > 0.000; w4 0.046 > 0.053 > 0.000), best attempts CER max 0.009``."""
+        if not self.history:
+            return "no window with spoken lines was judged"
+        per: dict[int, list[float]] = {}
+        for window, cer in self.history:
+            per.setdefault(window, []).append(cer)
+        again = {w: v for w, v in per.items() if len(v) > 1}
+        detail = "; ".join(f"w{w} " + " > ".join(f"{c:.3f}" for c in v) for w, v in sorted(again.items()))
+        over = sorted(w for w, v in per.items() if min(v) > self.cfg.max_cer)
+        text = (f"{len(per)} windows judged, {len(again)} re-sampled" + (f" ({detail})" if detail else "")
+                + f", best attempts CER max {max(min(v) for v in per.values()):.3f}")
+        if over:
+            text += f", still above {self.cfg.max_cer:g} after every attempt: " + ", ".join(f"w{w}" for w in over)
+        return text
