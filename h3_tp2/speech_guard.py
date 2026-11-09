@@ -139,13 +139,96 @@ def partial_distance(expected: str, heard: str) -> int:
     return min(previous)
 
 
+def misheard(script: list[str], heard: list[str]) -> list[tuple[int, str, str]]:
+    """(index, script word, what was heard in its place) for every script word that did not come out letter for letter.
+
+    The same alignment as ``partial_distance`` (word boundaries ignored, speech before and after the script free), read
+    back: every script character is matched, replaced or missing, and a heard character with no partner is charged to
+    the script word before it.  Among the alignments of that least distance the one that touches the fewest script
+    words is taken, so a word that was not said is reported whole instead of being smeared over the letters it shares
+    with a neighbour ("pisze że" heard as "pisze", "czynsz zalegają" heard as "czyż zalegają").  A word that was never
+    said comes back with an empty string.
+    """
+    expected, said = "".join(script), "".join(heard)
+    n, m = len(expected), len(said)
+    if n == 0:
+        return []
+    owner = [k for k, word in enumerate(script) for _ in word]   # script character -> word index
+    far = (1 << 30, 0)
+    # cost[j][f] = (distance, script words touched) of the script so far against a stretch of speech ending at j, with
+    # f = 1 when the word of the last script character already has an error; back[i][j][f] = (step, previous f)
+    cost = [[(0, 0), far] for _ in range(m + 1)]
+    back = []
+    for i in range(1, n + 1):
+        first = i == 1 or owner[i - 2] != owner[i - 1]   # this character opens a word
+        row = [[far, far] for _ in range(m + 1)]
+        steps = [[None, None] for _ in range(m + 1)]
+        for j in range(m + 1):
+            for f in (0, 1):
+                was = 0 if first else f
+                c = cost[j][f]                          # the script character was not said
+                if c[0] < far[0] and (c[0] + 1, c[1] + 1 - was) < row[j][1]:
+                    row[j][1], steps[j][1] = (c[0] + 1, c[1] + 1 - was), ("missing", f)
+                if j == 0:
+                    continue
+                c = cost[j - 1][f]                      # matched or replaced
+                if c[0] >= far[0]:
+                    continue
+                if expected[i - 1] == said[j - 1]:
+                    if c < row[j][was]:
+                        row[j][was], steps[j][was] = c, ("pair", f)
+                elif (c[0] + 1, c[1] + 1 - was) < row[j][1]:
+                    row[j][1], steps[j][1] = (c[0] + 1, c[1] + 1 - was), ("pair", f)
+            if j:
+                for f in (0, 1):                        # a heard character with no partner, charged to this word
+                    c = row[j - 1][f]
+                    if c[0] < far[0] and (c[0] + 1, c[1] + 1 - f) < row[j][1]:
+                        row[j][1], steps[j][1] = (c[0] + 1, c[1] + 1 - f), ("extra", f)
+        cost = row
+        back.append(steps)
+    chunks = [[] for _ in script]
+    wrong = [False] * len(script)
+    i = n
+    j, f = min(((j, f) for j in range(m + 1) for f in (0, 1)), key=lambda at: cost[at[0]][at[1]])
+    while i > 0:
+        step, f_before = back[i - 1][j][f]
+        word = owner[i - 1]
+        if step == "pair":
+            chunks[word].append(said[j - 1])
+            wrong[word] = wrong[word] or expected[i - 1] != said[j - 1]
+            i, j = i - 1, j - 1
+        elif step == "missing":
+            wrong[word] = True
+            i -= 1
+        else:
+            chunks[word].append(said[j - 1])
+            wrong[word] = True
+            j -= 1
+        f = f_before
+    return [(k, script[k], "".join(reversed(chunks[k]))) for k in range(len(script)) if wrong[k]]
+
+
+def phrases(items: list[tuple[int, str, str]]) -> list[tuple[str, str]]:
+    """Neighbouring misheard words joined: [(3, "zaprośmy", "zapróś"), (4, "ją", "nio")] -> [("zaprośmy ją", "zapróśnio")]."""
+    out: list[list] = []
+    last = None
+    for index, word, got in items:
+        if last is not None and index == last + 1:
+            out[-1][0] += " " + word
+            out[-1][1] += got
+        else:
+            out.append([word, got])
+        last = index
+    return [(a, b) for a, b in out]
+
+
 def judge(script: list[str], heard: list[str], max_cer: float) -> dict:
-    """{"cer", "score", "chars", "ok"}: score = cer / max_cer (> 1.0 fails)."""
+    """{"cer", "score", "chars", "ok", "misheard"}: score = cer / max_cer (> 1.0 fails); misheard as ``misheard``."""
     expected = "".join(script)
     distance = partial_distance(expected, "".join(heard))
     cer = distance / max(len(expected), 1)
     return {"cer": round(cer, 4), "distance": distance, "chars": len(expected), "score": cer / max(max_cer, 1e-9),
-            "ok": cer <= max_cer}
+            "ok": cer <= max_cer, "misheard": misheard(script, heard) if distance else []}
 
 
 def write_wav(path: str, waveform, sample_rate: int, target_rate: int = 16000) -> float:  # noqa: ANN001
@@ -220,6 +303,7 @@ class Guard:
         self.dir = tempfile.mkdtemp(prefix="h3-speech-")
         self.windows = 0
         self.history: list[tuple[int, float]] = []   # (window, cer) of every judged attempt, in order
+        self.slips: dict[int, list[dict[int, str]]] = {}   # window -> per attempt {script word index: word} misheard
         self._respellings: dict | None = None
 
     @property
@@ -252,11 +336,13 @@ class Guard:
         seconds = write_wav(wav, waveform, sample_rate)
         out, heard, heard_words = judge_wav(self.cfg, script, language, wav, d)
         self.history.append((int(index), float(out["cer"])))
+        self.slips.setdefault(int(index), []).append({k: word for k, word, _got in out.get("misheard", [])})
+        wrong = "; ".join(f"{a} > {b or '-'}" for a, b in phrases(out.get("misheard", [])))
         out.update({"window": index, "seconds": round(seconds, 2), "language": language, "script_words": len(script),
                     "heard_words": len(heard_words), "heard": " ".join(heard).strip()[:200], "dir": d})
-        logger.info("h3_tp2 speech window %d: %.1f s, %s, script %d words, heard %d, CER %.4f (%d of %d chars), score %.2f: %s",
+        logger.info("h3_tp2 speech window %d: %.1f s, %s, script %d words, heard %d, CER %.4f (%d of %d chars), score %.2f: %s%s",
                     index, seconds, language or "auto", len(script), len(heard_words), out["cer"], out["distance"], out["chars"],
-                    out["score"], out["heard"][:120])
+                    out["score"], out["heard"][:120], f" | misheard: {wrong}" if wrong else "")
         for old in sorted(x for x in os.listdir(self.dir) if x.startswith("w"))[:-KEEP_WINDOWS]:
             shutil.rmtree(os.path.join(self.dir, old), ignore_errors=True)
         return out
@@ -276,5 +362,16 @@ class Guard:
         text = (f"{len(per)} windows judged, {len(again)} re-sampled" + (f" ({detail})" if detail else "")
                 + f", best attempts CER max {max(min(v) for v in per.values()):.3f}")
         if over:
-            text += f", still above {self.cfg.max_cer:g} after every attempt: " + ", ".join(f"w{w}" for w in over)
+            text += f", still above {self.cfg.max_cer:g} after every attempt: " + ", ".join(f"w{w}{self.stubborn(w)}" for w in over)
         return text
+
+    def stubborn(self, window: int) -> str:
+        """`` (word word)``: the script words of ``window`` that came out wrong in every attempt, the ones to rewrite or
+        respell in the prompt; empty when the attempts slipped on different words (or nothing was recorded)."""
+        attempts = self.slips.get(window) or []
+        if not attempts:
+            return ""
+        common = set(attempts[0])
+        for attempt in attempts[1:]:
+            common &= set(attempt)
+        return f" ({' '.join(attempts[0][k] for k in sorted(common))})" if common else ""

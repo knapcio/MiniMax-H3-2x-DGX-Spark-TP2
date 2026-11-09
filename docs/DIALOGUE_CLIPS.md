@@ -138,6 +138,10 @@ that much noise in it.
 finished clip, window by window, and lists which windows each limit would have re-sampled; use it on clips you already
 have before choosing a limit. A name Whisper spells its own way (`Nowak` heard as `Novak`) costs a character in every
 window that says it: put it in the respelling table too (`nowak novak`), or it eats the limit's margin.
+Both name the words: the dry run prints `misheard: zaprośmy > zapróczmi` next to a window's rate, and the live guard's
+summary line ends with the windows that stayed above the limit and the words that came out wrong in every attempt
+(`still above 0.01 after every attempt: w4 (zaprośmy ją)`). A word the model slips on at every seed is not fixed by
+re-sampling: rewrite the line around it or respell it phonetically in the prompt (section 2), then render again.
 
 ## 5. Checks before anyone sees it
 

@@ -97,11 +97,13 @@ def main() -> int:
             verdict, heard, heard_words = sg.judge_wav(cfg, script, language, wav, wdir, max_cer=0.0)
             row = {"window": index, "judged": True, "cer": verdict["cer"], "distance": verdict["distance"],
                    "chars": verdict["chars"], "rates": verdict["rates"], "script_words": len(script),
-                   "heard_words": len(heard_words), "heard": " ".join(heard).strip()}
+                   "heard_words": len(heard_words), "heard": " ".join(heard).strip(),
+                   "misheard": [list(pair) for pair in sg.phrases(verdict.get("misheard", []))]}
             rows.append(row)
             judges = f" judges {verdict['rates']}" if len(verdict["rates"]) > 1 else ""
+            wrong = "; ".join(f"{a} > {b or '-'}" for a, b in row["misheard"])
             print(f"w{index}: CER {row['cer']:.4f} ({row['distance']} of {row['chars']} chars){judges}, script {row['script_words']} "
-                  f"words, heard {row['heard_words']}: {row['heard'][:110]}")
+                  f"words, heard {row['heard_words']}" + (f", misheard: {wrong}" if wrong else "") + f": {row['heard'][:110]}")
     judged = [r for r in rows if r.get("judged")]
     summary = {f"{limit:g}": [r["window"] for r in judged if r["cer"] > limit] for limit in limits}
     print("re-sampled at limit: " + "; ".join(f"{k}: {('w' + ', w'.join(map(str, v))) if v else 'none'}" for k, v in summary.items()))

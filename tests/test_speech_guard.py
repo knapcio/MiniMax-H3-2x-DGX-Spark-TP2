@@ -112,5 +112,50 @@ class SpeechGuardWav(unittest.TestCase):
         self.assertAlmostEqual(seconds, 1.0)
 
 
+class MisheardTests(unittest.TestCase):
+    def test_the_misheard_words_are_named_with_what_was_heard(self):
+        script = ["najpierw", "zaprośmy", "ją", "na", "rozmowę"]
+        heard = ["no", "najpierw", "zapróśnio", "na", "rozmowę", "tak"]   # speech around the script is free
+        items = sg.misheard(script, heard)
+        self.assertEqual([k for k, _w, _g in items], [1, 2])
+        self.assertEqual("".join(g for _k, _w, g in items), "zapróśnio")
+        self.assertEqual(sg.phrases(items), [("zaprośmy ją", "zapróśnio")])
+        self.assertEqual(sg.judge(script, heard, 0.02)["misheard"], items)
+
+    def test_a_moved_word_boundary_is_not_a_slip_and_a_missing_word_is(self):
+        script = ["dziewczyna", "pisze", "że", "przyszła"]
+        self.assertEqual(sg.misheard(script, ["dziewczy", "napisze", "że", "przyszła"]), [])
+        self.assertEqual(sg.judge(script, ["dziewczy", "napisze", "że", "przyszła"], 0.02)["misheard"], [])
+        self.assertEqual(sg.misheard(script, ["dziewczyna", "pisze", "przyszła"]), [(2, "że", "")])
+        self.assertEqual(sg.misheard([], ["cokolwiek"]), [])
+
+    def test_the_errors_charged_to_words_add_up_to_the_distance(self):
+        script = ["widzę", "czynsz", "zalegają", "już", "dwa", "pełne", "miesiące"]
+        heard = ["widzę", "czyż", "zalegają", "już", "dwa", "pełne", "mieniące"]
+        items = sg.misheard(script, heard)
+        self.assertEqual([w for _k, w, _g in items], ["czynsz", "miesiące"])
+        self.assertEqual([g for _k, _w, g in items], ["czyż", "mieniące"])
+        self.assertEqual(sg.partial_distance("".join(script), "".join(heard)), 4)
+
+    def test_what_was_heard_in_place_of_the_words_rebuilds_the_speech(self):
+        cases = [(["a", "jeśli", "przyjdzie", "tylko", "dlatego"], ["jeśli", "przydzie", "tylko", "dla", "tego", "że"]),
+                 (["czynsz", "może", "poczekać", "dziewczyna", "nie"], ["czyż", "morze", "poczekać", "dziewczynanie"]),
+                 (["sklep", "jest", "jej", "winien", "przeprosiny"], ["sklep", "jej", "winiem", "przeprosiny", "i"])]
+        for script, heard in cases:
+            items = sg.misheard(script, heard)
+            got = {k: g for k, _w, g in items}
+            self.assertIn("".join(got.get(k, w) for k, w in enumerate(script)), "".join(heard))
+            self.assertTrue(all(w != g for _k, w, g in items))
+        self.assertEqual([w for _k, w, _g in sg.misheard(*cases[2])], ["jest", "winien"])
+
+    def test_the_summary_names_the_words_that_failed_in_every_attempt(self):
+        g = sg.Guard(sg.Config(max_cer=0.01))
+        g.history = [(1, 0.0), (4, 0.046), (4, 0.046), (4, 0.030), (6, 0.02), (6, 0.03)]
+        g.slips = {1: [{}], 4: [{20: "zaprośmy", 21: "ją"}, {20: "zaprośmy", 21: "ją", 3: "wyjścia"}, {20: "zaprośmy", 21: "ją"}],
+                   6: [{2: "czynsz"}, {9: "cierpliwy"}]}
+        self.assertEqual(g.summary(), "3 windows judged, 2 re-sampled (w4 0.046 > 0.046 > 0.030; w6 0.020 > 0.030), best attempts CER max 0.030, "
+                                      "still above 0.01 after every attempt: w4 (zaprośmy ją), w6")
+
+
 if __name__ == "__main__":
     unittest.main()
