@@ -8,7 +8,8 @@ windows: every window hard-pinned the previous window's last 0.9 s of audio for 
 texture, 3.87 -> 2.93 UTMOS over six windows (section 9). Since 21:35 the pin is released after 30 % of the denoise
 steps by default (section 10): 3.60 average over windows 2-6 against 3.26, the same speakers, and the quietest
 hand-overs of every variant in dialogue and in continuous ambience. Slips of the tongue in Polish are the model's own
-and the same with or without a pin.
+and the same with or without a pin. The opt-in speech guard re-samples the window that slipped: a third of the wrong
+characters are left on three Polish chains, for 17-48 % more render time and 0.1 UTMOS (section 15).
 
 ## Two predictors
 
@@ -500,3 +501,87 @@ windows a little less; `toff0` when the words matter most). The lever that does 
 (section 15): judge each window's words after sampling and re-sample the window that slipped.
 
 Clips: `voicepl-cap-s{3401,3501,3601}` on Spark_06, scores `voice/*_voicepl-cap-*.json`, queue `queue119-cap.sh`.
+
+## 15. The speech guard: re-sample the window that slipped (queue121-123, 2026-11-09 00:53-11:37)
+
+`H3_TP2_SPEECH_GUARD=<max CER>` (`h3_tp2/speech_guard.py`, `docs/DIALOGUE_CLIPS.md`): after a window is sampled its
+audio is decoded, transcribed on the CPU and compared with the `<d>` lines of that window's prompt as a character error
+rate without word boundaries; above the limit the window is sampled again with another seed (two retries, the best
+attempt is kept). It does not touch the sampling itself, so a window that passes is the default render bit for bit:
+windows 1-2 of the guarded clips below have the video and audio hashes of the plain clips of the same seed.
+
+**Which limit (dry run on finished clips).** `scripts/speech_guard_dryrun.py` on the 18 chains of sections 9-14
+(108 windows, the `small` judge):
+
+| share of windows above the limit | 0.005 | 0.01 | 0.02 |
+|---|---|---|---|
+| Polish, 90 windows | 40 % | 22 % | 11 % |
+| English, 18 windows | 28 % | 11 % | 6 % |
+
+A window holds 100-135 script characters, so 0.01 is "at most one wrong character", 0.005 is "none" (and pays for
+Whisper's own mishearings), 0.02 lets a one-word slip through. Two judges: on 48 windows scored by both `small` and
+`medium`, each alone puts 11 above 0.01 and both agree on 8, so three of every eleven re-samples a single judge orders
+are its own hearing (`H3_TP2_SPEECH_MODEL=small,medium`: the lowest rate counts, `medium` is asked only when `small`
+objects).
+
+**Live, three seeds** (the 64.6 s Polish chain of section 13, 6 windows, 764 script characters, limit 0.01, one judge,
+against the default render of the same seed):
+
+| seed | arm | re-sampled | wrong characters (both judges) | whole-clip CER | UTMOS windows 2-6 | paired UTMOS, B - A | render s |
+|---|---|---|---|---|---|---|---|
+| 3401 | default | | 2 | 0.0131 | 3.60 | | 3585 |
+| 3401 | guard | w3: 0.037 > 0.000 | 1 | 0.0026 | 3.49 | -0.09 (A better 9 of 19) | 4207 |
+| 3501 | default | | 13 | 0.0249 | 3.68 | | 3645 |
+| 3501 | guard | w4: 0.046 > 0.046 > 0.030 (kept), w6: 0.017 > 0.009 | 5 | 0.0131 | 3.52 | -0.13 (A better 10 of 19) | 5289 |
+| 3601 | default | | 6 | 0.0144 | 3.65 | | 3570 |
+| 3601 | guard | w3: 0.015 > 0.052 > 0.000, w4: 0.038 > 0.000 | 1 | 0.0013 | 3.55 | -0.11 (A better 14 of 17) | 6571 (slow host, see below) |
+
+"Wrong characters" is the guard's own method on the finished clip with two judges (`dry2_*.json`); the whole-clip rate
+is `script_wer.py` on one transcription of the whole clip, an independent reading.
+
+Reading:
+
+- **Words.** 21 wrong characters in the three default clips, 7 in the guarded ones; whole-clip character error rate
+  0.0175 -> 0.0057 on average. What is left is `cierplowy` for `cierpliwy` in window 6 of all three (one character, under
+  the limit) and window 4 of seed 3501.
+- **A word the model slips on at every seed is not fixed by re-sampling.** Window 4 of seed 3501 said `zaprośmy ją`
+  wrong in all three attempts (the guard's summary line now names such words: `still above 0.01 after every attempt:
+  w4 (zaprośmy ją)`). Two samplings spent, nothing gained: rewrite or respell the line.
+- **Cost.** One extra sampling of one window per re-sample (about 9.3 min at 960x544 and 20 steps): 1, 3 and 3 extra
+  samplings on a 6-window chain, +17 % and +45 % render time on seeds 3401 and 3501. Seed 3601 ran its nine samplings
+  at 34.7 s per step instead of 27.8 (the host was in a slow state for that whole render, the rate is unrelated to the
+  guard: the second chain of queue119 did the same for three windows, 4028 s in section 14); at the normal rate it is
+  about 5300 s, +48 %.
+- **Voice.** UTMOS falls by 0.09-0.13 per paired line, and the loss sits in the windows after the first re-sampled
+  one, not in the re-sampled window itself:
+
+  | seed | first re-sampled | paired UTMOS per window, guard - default (w1 .. w6) | paired DNSMOS SIG, clip |
+  |---|---|---|---|
+  | 3401 | w3 | 0.00, 0.00, +0.04, +0.03, -0.37, -0.27 | +0.07 |
+  | 3501 | w4 | -0.03, 0.00, 0.00, -0.40, -0.24, -0.27 | -0.01 |
+  | 3601 | w3 | -0.09, -0.05, +0.12, -0.32, -0.07, -0.14 | -0.05 |
+
+  Windows 1-2 are the same audio in both arms, so their -0.03 .. -0.09 is the noise of pairing two or three lines per
+  window. The three default seeds agree within 0.1 in windows 5-6 (3.70-3.81), the three guarded clips sit at
+  3.32-3.66 there. Speaker similarity to window 1 stays within 0.03 of the default clips (the second voice of seed 3601
+  is scored against another reference line and cannot be compared). The same shape appeared when the RoPE time was
+  changed (sections 13-14). Whether this is what any re-sampled window does to the chain behind it, or what picking the
+  cleanest-spoken attempt does, is queue125 (a window re-sampled with no selection, against the same seed), below.
+
+**English, one clip** (the 60 s 1344x768 showcase chain, seed 2304, limit 0.01): one re-sample, window 5
+(0.019 > 0.000). Wrong characters by the guard's method 5 -> 1 of 713 (the one left is `Novak` for `Nowak`, a spelling
+of the judge: put names in the respelling table). Paired UTMOS +0.02 (windows 5-6 +0.03, +0.05), so no voice loss
+here. The whole-clip rate went 0.0084 -> 0.0168 because the re-sampled chain adds two free words after its last line
+(`Still cannot.`): the guard lets speech before and after the lines pass on purpose (a window starts inside the
+previous window's tail), so an ad-lib after the script is not its business.
+
+**Recommendation.** Opt-in, `H3_TP2_SPEECH_GUARD=0.01`, with `H3_TP2_SPEECH_MODEL=small,medium` and a respelling table
+for names and phonetic prompt spellings. Run the dry run on a clip you already have first: it names the words, and a
+word that is wrong there in every clip belongs in the prompt, not in the guard. Expect about one re-sample per five
+Polish windows and one per nine English ones.
+
+queue120 (2026-11-08 19:11-00:30) is void: the respelling table existed on the head only, rank 1 ran without the guard
+and the ranks hung on mismatched collectives (fixed: the guard is configured from the forwarded environment only).
+
+Clips: `voicepl-guard01b-s3401`, `voicepl-guard01c-s{3501,3601}`, `xclip60guard` on Spark_06; scores
+`voice/dry2_*.json`, `voice/segscore_*.json`; queues `queue121-xguard.sh`, `queue122-guard.sh`, `queue123-guard.sh`.

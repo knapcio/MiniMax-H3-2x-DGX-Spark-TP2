@@ -129,7 +129,11 @@ audio too). A window above the limit is re-sampled with another seed, up to `H3_
 attempt is kept, so a slip the model makes at every seed costs time, not the clip. One slipped word is 1-3 characters
 of 110-130 in an 11.5 s Polish window (0.008-0.026), so 0.01 re-samples on most single slips and 0.02 on two; Whisper's
 own mishearings count against the limit as well, which is why the limit is not 0. The language comes from the
-`[Polish]` tag of the lines (`H3_TP2_SPEECH_LANGUAGE` overrides). Calibration: `results/20261106-voice/` section 15.
+`[Polish]` tag of the lines (`H3_TP2_SPEECH_LANGUAGE` overrides). Measured on three 64.6 s Polish chains at 0.01
+(`results/20261106-voice/` section 15): 21 wrong characters of 2292 without the guard, 7 with it, for one to three
+extra window samplings per chain (+17 to +48 % render time) and about 0.1 UTMOS in the windows after a re-sampled one;
+an English chain needed one re-sample and lost no voice. About one Polish window in five and one English window in
+nine is above 0.01 on finished clips.
 Two judges are steadier than one: `H3_TP2_SPEECH_MODEL=small,medium` re-samples a window only when both models hear
 the lines wrong (the lowest rate counts; `medium` adds about 8 s per window and is asked only when `small` objects). On
 finished clips the two sizes disagree by 1-4 characters on about a third of the windows, so a single judge's rate has
