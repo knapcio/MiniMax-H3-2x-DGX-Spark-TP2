@@ -131,8 +131,10 @@ of 110-130 in an 11.5 s Polish window (0.008-0.026), so 0.01 re-samples on most 
 own mishearings count against the limit as well, which is why the limit is not 0. The language comes from the
 `[Polish]` tag of the lines (`H3_TP2_SPEECH_LANGUAGE` overrides). Measured on three 64.6 s Polish chains at 0.01
 (`results/20261106-voice/` section 15): 21 wrong characters of 2292 without the guard, 7 with it, for one to three
-extra window samplings per chain (+17 to +48 % render time) and about 0.1 UTMOS in the windows after a re-sampled one;
-an English chain needed one re-sample and lost no voice. About one Polish window in five and one English window in
+extra window samplings per chain (+17 to +48 % render time); on a 118 s chain (11 windows) 50 of 1302 without it and
+13 with it for eight extra samplings (+75 %), where the plain chain lost whole words in windows 8 and 11. The voice
+score moved by -0.13 to +0.08 paired UTMOS over the four chains, which is chain-to-chain spread; a control with a
+re-sampled window and no selection kept the voice. An English chain needed one re-sample and lost no voice. About one Polish window in five and one English window in
 nine is above 0.01 on finished clips.
 Two judges are steadier than one: `H3_TP2_SPEECH_MODEL=small,medium` re-samples a window only when both models hear
 the lines wrong (the lowest rate counts; `medium` adds about 8 s per window and is asked only when `small` objects). On

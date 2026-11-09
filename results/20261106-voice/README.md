@@ -9,7 +9,8 @@ texture, 3.87 -> 2.93 UTMOS over six windows (section 9). Since 21:35 the pin is
 steps by default (section 10): 3.60 average over windows 2-6 against 3.26, the same speakers, and the quietest
 hand-overs of every variant in dialogue and in continuous ambience. Slips of the tongue in Polish are the model's own
 and the same with or without a pin. The opt-in speech guard re-samples the window that slipped: a third of the wrong
-characters are left on three Polish chains, for 17-48 % more render time and 0.1 UTMOS (section 15).
+characters are left on three 64.6 s Polish chains for 17-48 % more render time, and on a 118 s chain 13 of 50 for
+75 % more; the voice score moved by -0.13 to +0.08 UTMOS over the four chains (section 15).
 
 ## Two predictors
 
@@ -502,7 +503,7 @@ windows a little less; `toff0` when the words matter most). The lever that does 
 
 Clips: `voicepl-cap-s{3401,3501,3601}` on Spark_06, scores `voice/*_voicepl-cap-*.json`, queue `queue119-cap.sh`.
 
-## 15. The speech guard: re-sample the window that slipped (queue121-125, 2026-11-09 00:53-14:35)
+## 15. The speech guard: re-sample the window that slipped (queue121-125, 2026-11-09 00:53-20:29)
 
 `H3_TP2_SPEECH_GUARD=<max CER>` (`h3_tp2/speech_guard.py`, `docs/DIALOGUE_CLIPS.md`): after a window is sampled its
 audio is decoded, transcribed on the CPU and compared with the `<d>` lines of that window's prompt as a character error
@@ -589,6 +590,27 @@ Reading:
   means are removed (r = 0.12 over 75 windows, inside the noise), and the window after a slip does not differ (-0.02).
   One control is one control: two more re-samplings without selection (seeds 3401 and 3501) are in queue126.
 
+- **A 118 s chain, 11 windows (queue124).** The doll scene with the 120 s script, seed 3701, plain and then with the
+  guard at 0.01, two judges (`small,medium`), same revision and defaults:
+
+  | arm | window samplings | render | wrong characters of 1302, finished clip, two judges | per window (w1 .. w11) | whole-clip WER (`small`) | UTMOS windows 2-11 (w11) |
+  |---|---|---|---|---|---|---|
+  | plain | 11 | 6566 s | 50 | 0, 0, 0, 2, 0, 0, 1, 9, 10, 4, 24 | 0.104 | 3.44 (2.94) |
+  | guard 0.01 | 19 | 11 519 s (+75 %) | 13 | 0, 0, 0, 0, 1, 0, 1, 0, 9, 2, 0 | 0.042 | 3.53 (3.41) |
+
+  The plain chain falls apart at the end (window 8 `sklepjestzbytewnie` for `w sklepie zupełnie`, window 11 loses most
+  of a line): the slips of a long chain are not single letters. The guard re-sampled five windows (w4 0.015 > 0.000;
+  w7 0.010 three times; w8 0.253 > 0.000; w10 0.020, 0.020, 0.051; w11 0.161 > 0.021 > 0.000), eight extra samplings.
+  Two words stay wrong at every seed (`klientków` for `klientów`, `dłongo` for `długo`) and cost four samplings for
+  nothing: they belong in the prompt's phonetic spelling, which is what the dry run is for.
+  Paired UTMOS guard - plain: clip +0.08 (guard better on 15 lines, plain on 9, of 33), per window from w4:
+  +0.12, +0.12, +0.05, +0.35, 0.00, -0.13, -0.03, +0.47; DNSMOS SIG +0.05. So this chain gained voice where the three
+  64.6 s chains lost about 0.1: four chains from -0.13 to +0.08, which reads as chain-to-chain spread and not as a
+  cost of the guard.
+  Nine of the 13 characters left are the two words `Nie słucha` that open window 9. The guard, hearing window 9 alone,
+  has them (`Nie sucha`, one character); in the finished clip they are missing in both arms. The line starts inside the
+  0.92 s hand-over at the start of the window, the part of a window the guard cannot hold the finished clip to. Open.
+
 **English, one clip** (the 60 s 1344x768 showcase chain, seed 2304, limit 0.01): one re-sample, window 5
 (0.019 > 0.000). Wrong characters by the guard's method 5 -> 1 of 713 (the one left is `Novak` for `Nowak`, a spelling
 of the judge: put names in the respelling table). Paired UTMOS +0.02 (windows 5-6 +0.03, +0.05), so no voice loss
@@ -609,3 +631,4 @@ and the ranks hung on mismatched collectives (fixed: the guard is configured fro
 Clips: `voicepl-guard01b-s3401`, `voicepl-guard01c-s{3501,3601}`, `xclip60guard` on Spark_06; scores
 `voice/dry2_*.json`, `voice/segscore_*.json`; queues `queue121-xguard.sh`, `queue122-guard.sh`, `queue123-guard.sh`.
 Control: `voicepl-force3-s3601`, `voicepl-shift3-s3601` (`queue125-retry.sh`, rev 779102a).
+118 s: `lalka118-plain-s3701`, `lalka118-guard-s3701`, `voice/dry2_lalka118-*.json` (`queue124-long.sh`, rev 779102a).
