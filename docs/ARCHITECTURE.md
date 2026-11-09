@@ -83,6 +83,13 @@ rank 0 <--NCCL over RoCE (text-encoder all-reduce, Ulysses all-to-all per attent
 Only rank 0 returns video tensors; rank 1 replies with acknowledgements and errors. The 1.5 GB FP32 video never crosses
 the fabric.
 
+Every window sampling of a continuation request is timed (`h3_tp2/pace.py`, wall time only): `h3_tp2 pace window 4
+attempt 1: 555 s (27.8 s/step)` on both ranks. Two samplings of the same size (task, latent and audio sizes, steps,
+conditioning shapes) do the same work, so a sampling more than 15 % slower than the fastest of its size in the
+process is logged as a warning: the host slowed down under the render, the request did not change. Seen on the pair
+as 700 s windows after 555 s ones in one head process (`results/20261106-voice/` section 15); without the line the
+only trace is a render that took a quarter longer.
+
 ## Tests
 
 `python -m unittest discover -s tests` runs CPU-only tests of the control channel (frame HMAC, agent session state

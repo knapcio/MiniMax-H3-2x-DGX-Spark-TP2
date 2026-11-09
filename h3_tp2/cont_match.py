@@ -16,6 +16,8 @@ import os
 
 import torch
 
+from h3_tp2 import pace as _pace
+
 logger = logging.getLogger("vllm_omni.h3_tp2.cont_match")
 
 
@@ -258,7 +260,9 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
             offset = 7919 * attempt + shift.get(state["index"], 0)
             if offset and "seed" in a and a["seed"] is not None:
                 a["seed"] = int(a["seed"]) + offset
+            started = _pace.clock()
             video, audio = diffuse(**a)
+            _pace.report(state["index"], attempt + 1, a, _pace.clock() - started)   # wall time only, see h3_tp2/pace.py
             drop = forced and attempt == 0   # the checks still run on the dropped attempt, as they do before a real retry
             if drop:
                 logger.warning("h3_tp2 MEASUREMENT window %d: forced re-sample (H3_TP2_CONT_RETRY_FORCE), the first attempt is dropped",
