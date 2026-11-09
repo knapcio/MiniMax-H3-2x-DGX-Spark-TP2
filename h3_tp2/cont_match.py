@@ -200,6 +200,35 @@ def window_map(text: str) -> dict[int, int]:
     return out
 
 
+def overlap_audio_t(args):  # noqa: ANN001
+    """Audio latent steps at the start of a continuation window that repeat the previous window's tail, or None."""
+    lengths = args.get("audio_condition_lengths") or []
+    if lengths:
+        return int(lengths[-1])
+    mask = args.get("audio_edit_mask_rows")
+    if mask is not None:
+        return int((mask == 0).sum().item() // 2)
+    return None
+
+
+def heard_audio(audio, args):  # noqa: ANN001
+    """The part of a sampled window's audio latent that the speech guard listens to: what the finished clip keeps.
+
+    The continuation loop appends ``sampled_audio[..., overlap:]`` to the clip; the first ``overlap`` steps of a
+    window are its own version of the previous window's tail and are dropped.  With the audio pin released early
+    (the default since 2026-11-08) the window may start its first line inside those steps: the window alone then
+    says the whole line and the finished clip starts in the middle of it (seen 2026-11-09, window 9 of a 118 s
+    chain: `Nie słucha` heard by the guard, missing in the clip).  So the guard hears the kept part only.
+    ``H3_TP2_SPEECH_WHOLE_WINDOW=1`` gives it the whole window as before.  The first window has no overlap.
+    """
+    if os.environ.get("H3_TP2_SPEECH_WHOLE_WINDOW", "0").strip() == "1":
+        return audio
+    cut = overlap_audio_t(args)
+    if cut and isinstance(audio, torch.Tensor) and audio.shape[-1] > cut:
+        return audio[..., cut:]
+    return audio
+
+
 def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, retries: int = 0, max_ratio: float = 2.0,
                  lock: str = "", lock_strength: float = 1.0, lock_ramp: float = 1.0, lock_audio: bool = False,
                  lock_std: float | None = None, lock_ref: str = "window", lock_classes: bool = False,
@@ -216,6 +245,8 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
     ``speech_fn(audio, index)`` (with ``max_cer`` > 0) adds the speech guard (``h3_tp2.speech_guard``): it returns
     ``(score, cer, chars)`` for the window's decoded and transcribed audio against the lines of its prompt; a score
     > 1.0 means the lines came out with more than the tolerated character error rate, and the window is re-sampled.
+    It is given the part of the window the finished clip keeps (``heard_audio``: without the leading steps that
+    repeat the previous window's tail).
     ``early_fn(x0, index, attempt, step, args, may_stop)`` (with ``early_steps``, 1-based denoising steps) is handed
     the loop's clean estimate of the audio rows at those steps of every sampling (``h3_tp2.speech_early``).  It may
     raise ``speech_early.Stop`` when ``may_stop`` is true (another attempt can follow): the sampling ends there, the
@@ -235,14 +266,7 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
     force = set(window_map(os.environ.get("H3_TP2_CONT_RETRY_FORCE", "")))
     shift = window_map(os.environ.get("H3_TP2_CONT_RETRY_SEED_SHIFT", ""))
 
-    def _overlap_audio(args):  # noqa: ANN001
-        lengths = args.get("audio_condition_lengths") or []
-        if lengths:
-            return int(lengths[-1])
-        mask = args.get("audio_edit_mask_rows")
-        if mask is not None:
-            return int((mask == 0).sum().item() // 2)
-        return None
+    _overlap_audio = overlap_audio_t
 
     def _overlap(args):  # noqa: ANN001
         blocks = args.get("ref_blocks") or []
@@ -323,7 +347,7 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
                     iscore = 0.0
             if speech_fn is not None and max_cer > 0:
                 try:
-                    sscore, cer, chars = speech_fn(audio, state["index"])
+                    sscore, cer, chars = speech_fn(heard_audio(audio, a), state["index"])   # what the clip keeps
                     logger.info("h3_tp2 speech check window %d attempt %d (seed %s): CER %.4f over %d script chars, score %.2f",
                                 state["index"], attempt + 1, a.get("seed"), cer, int(chars), sscore)
                 except Exception as e:  # noqa: BLE001  (the guard never breaks a render)

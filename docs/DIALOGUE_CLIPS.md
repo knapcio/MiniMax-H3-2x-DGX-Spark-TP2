@@ -124,8 +124,9 @@ A slip of the tongue is what the **speech guard** catches (opt-in, 2026-11-08): 
 the interpreter of `scripts/speech_qa.py`; `H3_TP2_SPEECH_PY` names another). After every window the guard decodes
 its audio, transcribes it on the CPU (the `small` model, 3-4 s per window; `H3_TP2_SPEECH_MODEL` picks another) and
 compares the transcript with the `<d>` lines of that window's prompt as a character error rate with the word
-boundaries removed and free speech before and after the lines (the hand-over tail of the previous window is in the
-audio too). A window above the limit is re-sampled with another seed, up to `H3_TP2_CONT_RETRY` times, and the best
+boundaries removed and free speech before and after the lines. It listens to the part of the window the finished
+clip keeps: the first 0.92 s of a continuation window repeat the previous window's tail and are dropped at assembly,
+so a line the window starts there would be cut in the clip (`H3_TP2_SPEECH_WHOLE_WINDOW=1` for the whole window). A window above the limit is re-sampled with another seed, up to `H3_TP2_CONT_RETRY` times, and the best
 attempt is kept, so a slip the model makes at every seed costs time, not the clip. One slipped word is 1-3 characters
 of 110-130 in an 11.5 s Polish window (0.008-0.026), so 0.01 re-samples on most single slips and 0.02 on two; Whisper's
 own mishearings count against the limit as well, which is why the limit is not 0. The language comes from the

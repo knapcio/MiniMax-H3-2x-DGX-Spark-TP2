@@ -10,8 +10,11 @@ another seed, like the seam, cut and identity checks in ``cont_match``; the atte
 
 The comparison is the character error rate of the script with the word boundaries removed (``dziewczyna pisze`` heard
 as ``dziewczy napisze`` is no error) and with free insertions before the first and after the last script character: the
-window's audio also carries the hand-over tail of the previous window and whatever the model adds around the lines, and
-none of that is the script's fault.  Phonetic respellings written into the prompt are mapped back to the real word with
+window's audio also carries whatever the model adds around the lines, and none of that is the script's fault.  The
+guard is given the part of a window the finished clip keeps (``cont_match.heard_audio``): the leading steps of a
+continuation window repeat the previous window's tail and are dropped when the clip is assembled, so a line the
+window starts inside them is cut in the clip although the window alone says it whole
+(``H3_TP2_SPEECH_WHOLE_WINDOW=1`` listens to the whole window as before 2026-11-09).  Phonetic respellings written into the prompt are mapped back to the real word with
 ``H3_TP2_SPEECH_RESPELL=<file>`` of ``prompt_spelling real_word`` lines.  The language comes from the ``[Polish]`` style
 tag of the lines (``H3_TP2_SPEECH_LANGUAGE`` overrides it).  A window whose prompt has no spoken lines is not judged.
 

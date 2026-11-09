@@ -857,6 +857,7 @@ def _apply(role: str) -> None:
                         t0 = _time.perf_counter()
                         with torch.no_grad():
                             latent = _ppsg.minimax_h3_unpack_audio_tokens(x0, audio_t=int(args["audio_t"]) * 2, audio_channel=2)
+                            latent = _cm.heard_audio(latent, args)   # the part the finished clip keeps, as the guard hears it
                             with pipe._component_on_device(pipe.audio_vae):
                                 wav = pipe.audio_vae.decode_latent(latent)
                         wav_np = wav.detach().float().cpu().numpy()

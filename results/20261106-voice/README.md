@@ -609,7 +609,10 @@ Reading:
   cost of the guard.
   Nine of the 13 characters left are the two words `Nie słucha` that open window 9. The guard, hearing window 9 alone,
   has them (`Nie sucha`, one character); in the finished clip they are missing in both arms. The line starts inside the
-  0.92 s hand-over at the start of the window, the part of a window the guard cannot hold the finished clip to. Open.
+  0.92 s at the start of the window that repeat the previous window's tail, and the clip keeps the previous window's
+  version of them. One window in the 370 continuation windows scored so far. Since 2026-11-09 the guard listens to
+  the part of a window the clip keeps (`cont_match.heard_audio`), so such a window is re-sampled; not yet run on the
+  GPU.
 
 **English, one clip** (the 60 s 1344x768 showcase chain, seed 2304, limit 0.01): one re-sample, window 5
 (0.019 > 0.000). Wrong characters by the guard's method 5 -> 1 of 713 (the one left is `Novak` for `Nowak`, a spelling
