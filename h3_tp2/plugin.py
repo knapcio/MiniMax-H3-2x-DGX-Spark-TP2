@@ -875,6 +875,8 @@ def _apply(role: str) -> None:
                         if world > 1:
                             _dist.broadcast(out, src=0, group=group)
                         if float(out[0]) > 0.0:
+                            if torch.cuda.is_available():   # as upstream's cancellation does: drain queued device work, then unwind
+                                torch.cuda.synchronize()
                             raise _se.Stop(int(step), float(out[1]), limit)
 
                     return _fn
