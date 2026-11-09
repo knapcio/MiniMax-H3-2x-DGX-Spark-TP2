@@ -62,6 +62,7 @@ class Config:
     threads: int = 6
     respell_file: str = ""         # `prompt_spelling real_word` lines, read by rank 0 when it first scores
     min_words: int = 2             # a window whose script has fewer words is not judged
+    early_steps: tuple = ()        # MEASUREMENT: also judge the loop's clean audio estimate at these denoising steps
 
 
 def config_from_env(env=None) -> Config | None:  # noqa: ANN001
@@ -82,7 +83,14 @@ def config_from_env(env=None) -> Config | None:  # noqa: ANN001
         threads=max(1, int(env.get("H3_TP2_SPEECH_THREADS") or 6)),
         respell_file=(env.get("H3_TP2_SPEECH_RESPELL") or "").strip(),
         min_words=max(1, int(env.get("H3_TP2_SPEECH_MIN_WORDS") or 2)),
+        early_steps=_early_steps(env.get("H3_TP2_SPEECH_EARLY") or ""),
     )
+
+
+def _early_steps(text: str) -> tuple:
+    from h3_tp2 import speech_early
+
+    return speech_early.parse_steps(text)
 
 
 def _default_python() -> str:
@@ -345,6 +353,21 @@ class Guard:
                     out["score"], out["heard"][:120], f" | misheard: {wrong}" if wrong else "")
         for old in sorted(x for x in os.listdir(self.dir) if x.startswith("w"))[:-KEEP_WINDOWS]:
             shutil.rmtree(os.path.join(self.dir, old), ignore_errors=True)
+        return out
+
+    def peek(self, index: int, waveform, sample_rate: int, tag: str = "early") -> dict:  # noqa: ANN001
+        """Judge a waveform against the lines of window ``index`` without recording it: nothing enters the summary, the
+        stubborn words or the window count.  The wav and transcripts stay in ``<dir>/<tag>`` ({} without lines)."""
+        script, language = self.script(index)
+        if len(script) < self.cfg.min_words:
+            return {}
+        d = os.path.join(self.dir, tag)
+        os.makedirs(d, exist_ok=True)
+        wav = os.path.join(d, "window.wav")
+        seconds = write_wav(wav, waveform, sample_rate)
+        out, heard, heard_words = judge_wav(self.cfg, script, language, wav, d)
+        out.update({"window": index, "seconds": round(seconds, 2), "language": language, "script_words": len(script),
+                    "heard_words": len(heard_words), "heard": " ".join(heard).strip()[:200], "dir": d})
         return out
 
     def summary(self) -> str:

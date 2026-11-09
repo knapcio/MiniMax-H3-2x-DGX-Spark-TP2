@@ -17,6 +17,7 @@ import os
 import torch
 
 from h3_tp2 import pace as _pace
+from h3_tp2 import speech_early as _early
 
 logger = logging.getLogger("vllm_omni.h3_tp2.cont_match")
 
@@ -203,7 +204,7 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
                  lock: str = "", lock_strength: float = 1.0, lock_ramp: float = 1.0, lock_audio: bool = False,
                  lock_std: float | None = None, lock_ref: str = "window", lock_classes: bool = False,
                  max_cut: float = 0.0, identity_fn=None, max_unknown: float = 0.0, lock_robust: bool = False,
-                 speech_fn=None, max_cer: float = 0.0):  # noqa: ANN001
+                 speech_fn=None, max_cer: float = 0.0, early_fn=None, early_steps=()):  # noqa: ANN001
     """Return a ``diffuse`` replacement for one continuation request (state: the previous window's video latents).
 
     With ``retries`` > 0 a window whose latent seam ratio exceeds ``max_ratio``, or (``max_cut`` > 0) whose interior
@@ -215,6 +216,9 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
     ``speech_fn(audio, index)`` (with ``max_cer`` > 0) adds the speech guard (``h3_tp2.speech_guard``): it returns
     ``(score, cer, chars)`` for the window's decoded and transcribed audio against the lines of its prompt; a score
     > 1.0 means the lines came out with more than the tolerated character error rate, and the window is re-sampled.
+    ``early_fn(x0, index, attempt, step, args)`` (with ``early_steps``, 1-based denoising steps) is a measurement: it is
+    handed the loop's clean estimate of the audio rows at those steps of every sampling (``h3_tp2.speech_early``) and
+    changes nothing.
     ``lock_robust`` estimates the look-lock's statistics on the positions that did not change between the reference
     tail and the new window (``robust_params``), so a character who returns from behind something is not recoloured.
     """
@@ -260,8 +264,13 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
             offset = 7919 * attempt + shift.get(state["index"], 0)
             if offset and "seed" in a and a["seed"] is not None:
                 a["seed"] = int(a["seed"]) + offset
+            listen = None
+            if early_fn is not None and early_steps:
+                def listen(step, x0, a=a, n=attempt + 1):  # noqa: ANN001
+                    early_fn(x0, state["index"], n, step, a)
             started = _pace.clock()
-            video, audio = diffuse(**a)
+            with _early.tapping(early_steps, listen):
+                video, audio = diffuse(**a)
             _pace.report(state["index"], attempt + 1, a, _pace.clock() - started)   # wall time only, see h3_tp2/pace.py
             drop = forced and attempt == 0   # the checks still run on the dropped attempt, as they do before a real retry
             if drop:

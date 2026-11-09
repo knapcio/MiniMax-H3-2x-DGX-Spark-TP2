@@ -157,5 +157,30 @@ class MisheardTests(unittest.TestCase):
                                       "still above 0.01 after every attempt: w4 (zaprośmy ją), w6")
 
 
+class EarlyMeasurementTests(unittest.TestCase):
+    def test_the_early_steps_come_from_the_environment_only(self):
+        cfg = sg.config_from_env({"H3_TP2_SPEECH_GUARD": "0.5", "H3_TP2_SPEECH_EARLY": "10,6, 8"})
+        self.assertEqual(cfg.early_steps, (6, 8, 10))
+        self.assertEqual(sg.config_from_env({"H3_TP2_SPEECH_GUARD": "0.5"}).early_steps, ())
+        with self.assertRaises(ValueError):
+            sg.config_from_env({"H3_TP2_SPEECH_GUARD": "0.5", "H3_TP2_SPEECH_EARLY": "half"})
+
+    def test_a_peek_judges_like_a_score_and_leaves_no_trace_in_the_summary(self):
+        original, sg.transcribe = sg.transcribe, lambda cfg, wav, language, out_json, model=None: ["Dziewcza pisze, że przyszła."]
+        try:
+            guard = sg.Guard(sg.Config(max_cer=0.01), ["<d>[Polish] Dziewczyna pisze, że przyszła.</d>", "No lines here."])
+            peeked = guard.peek(1, [0.0] * 160, 16000, tag="early-w1-a1-s8")
+            self.assertEqual(guard.peek(2, [0.0] * 160, 16000), {})
+            self.assertEqual((guard.windows, guard.history, guard.slips), (0, [], {}))
+            self.assertEqual(guard.summary(), "no window with spoken lines was judged")
+            scored = guard.score(1, [0.0] * 160, 16000)
+        finally:
+            sg.transcribe = original
+        self.assertEqual((peeked["cer"], peeked["distance"], peeked["chars"]), (scored["cer"], scored["distance"], scored["chars"]))
+        self.assertFalse(peeked["ok"])
+        self.assertTrue(os.path.isfile(os.path.join(guard.dir, "early-w1-a1-s8", "window.wav")))
+        self.assertEqual(guard.windows, 1)
+
+
 if __name__ == "__main__":
     unittest.main()
