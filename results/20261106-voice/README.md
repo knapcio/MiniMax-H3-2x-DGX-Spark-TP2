@@ -502,7 +502,7 @@ windows a little less; `toff0` when the words matter most). The lever that does 
 
 Clips: `voicepl-cap-s{3401,3501,3601}` on Spark_06, scores `voice/*_voicepl-cap-*.json`, queue `queue119-cap.sh`.
 
-## 15. The speech guard: re-sample the window that slipped (queue121-123, 2026-11-09 00:53-11:37)
+## 15. The speech guard: re-sample the window that slipped (queue121-125, 2026-11-09 00:53-14:35)
 
 `H3_TP2_SPEECH_GUARD=<max CER>` (`h3_tp2/speech_guard.py`, `docs/DIALOGUE_CLIPS.md`): after a window is sampled its
 audio is decoded, transcribed on the CPU and compared with the `<d>` lines of that window's prompt as a character error
@@ -568,8 +568,26 @@ Reading:
   window. The three default seeds agree within 0.1 in windows 5-6 (3.70-3.81), the three guarded clips sit at
   3.32-3.66 there. Speaker similarity to window 1 stays within 0.03 of the default clips (the second voice of seed 3601
   is scored against another reference line and cannot be compared). The same shape appeared when the RoPE time was
-  changed (sections 13-14). Whether this is what any re-sampled window does to the chain behind it, or what picking the
-  cleanest-spoken attempt does, is queue125 (a window re-sampled with no selection, against the same seed), below.
+  changed (sections 13-14).
+- **A re-sampled window as such costs nothing (control, queue125).** Seed 3601 again with the limit at 0.5 (nothing is
+  rejected) and window 3 re-sampled anyway, with no selection: `H3_TP2_CONT_RETRY_FORCE=3` samples window 3, drops the
+  result and samples it again with the first retry seed (11522; 7 samplings, 4323 s). A second render in a new head
+  process samples window 3 once with that seed (`H3_TP2_CONT_RETRY_SEED_SHIFT=3:7919`; 6 samplings, 3592 s). The two
+  files are byte for byte the same, so the retry path leaves nothing behind: a re-sampled window is the window that
+  seed gives on a first sampling. Against the default render of seed 3601:
+
+  | clip | window 3 | paired UTMOS per window, clip - default (w1 .. w6) | paired UTMOS, clip | UTMOS windows 2-6 | paired DNSMOS SIG, clip |
+  |---|---|---|---|---|---|
+  | re-sampled, no selection | seed 11522, CER 0.052 (`piędzie` for `pieniądze`) | -0.09, -0.02, 0.00, -0.03, +0.03, +0.04 | -0.01 (default better 9 of 18) | 3.65 (default 3.65) | -0.05 |
+  | guard, limit 0.01 (table above) | seed 19441, CER 0.000, then w4 re-sampled | -0.09, -0.05, +0.12, -0.32, -0.07, -0.14 | -0.11 | 3.55 | -0.05 |
+
+  The chain behind an arbitrary other window 3 keeps the default voice (windows 5-6: 3.76 and 3.74, default 3.73 and
+  3.71). So the 0.09-0.13 of the guarded clips is not what re-sampling does. What is left is either the attempt the
+  guard keeps (the cleanly spoken one) or chain-to-chain spread: windows 5-6 of the 15 Polish chains of sections 9-14
+  range from 3.02 to 3.79, and the four default-setting chains measured so far (three seeds and this control) all sit
+  at 3.72-3.79. In those 15 chains a window with a slip scores 0.06 UTMOS above a clean one once chain and window
+  means are removed (r = 0.12 over 75 windows, inside the noise), and the window after a slip does not differ (-0.02).
+  One control is one control: two more re-samplings without selection (seeds 3401 and 3501) are in queue126.
 
 **English, one clip** (the 60 s 1344x768 showcase chain, seed 2304, limit 0.01): one re-sample, window 5
 (0.019 > 0.000). Wrong characters by the guard's method 5 -> 1 of 713 (the one left is `Novak` for `Nowak`, a spelling
@@ -590,3 +608,4 @@ and the ranks hung on mismatched collectives (fixed: the guard is configured fro
 
 Clips: `voicepl-guard01b-s3401`, `voicepl-guard01c-s{3501,3601}`, `xclip60guard` on Spark_06; scores
 `voice/dry2_*.json`, `voice/segscore_*.json`; queues `queue121-xguard.sh`, `queue122-guard.sh`, `queue123-guard.sh`.
+Control: `voicepl-force3-s3601`, `voicepl-shift3-s3601` (`queue125-retry.sh`, rev 779102a).
