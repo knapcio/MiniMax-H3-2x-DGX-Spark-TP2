@@ -1178,6 +1178,24 @@ def _apply(role: str) -> None:
             _aps.install(_dl9h, _pp9h, _aps_frac)
             logger.info("h3_tp2: continuation audio pin released after %.0f %% of the denoise steps", 100 * _aps_frac)
 
+    # 9i) H3_TP2_CONT_EDIT_NOISE=<level> (EXPERIMENT, unset = stock; h3_tp2/handover_noise.py): the fully pinned video
+    #     rows of a latent edit (the previous window's tail in a continuation window) are shown to the model at that
+    #     noise level and timestep 1 - level instead of upstream's 0.001 / 0.999, and restored clean in the output as
+    #     always.  The tail's layout and motion still lead the new window; its fine detail, which a chain degrades
+    #     window by window, is no longer taken at face value.  Changes the video of every window after the first.
+    _hn_text = os.environ.get("H3_TP2_CONT_EDIT_NOISE", "")
+    if _hn_text.strip():
+        from h3_tp2 import handover_noise as _hn
+        from vllm_omni.diffusion.models.minimax_h3 import denoise_loop as _dl9i
+        from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _pp9i
+
+        _hn_level = _hn.parse_level(_hn_text)
+        if _hn_level is None:
+            logger.info("h3_tp2: H3_TP2_CONT_EDIT_NOISE=%s is a no-op", _hn_text)
+        else:
+            _hn.install(_dl9i, _pp9i, _hn_level)
+            logger.warning("h3_tp2: EXPERIMENT hand-over noise: pinned video rows shown at noise level %.3f", _hn_level)
+
     # 10) measurement only: H3_TP2_PROFILE_STEP=<n> profiles the n-th DiT forward of this process (one denoising step
     #     on this rank) with torch.profiler and logs the top CUDA kernels; CUPTI on GB10 can be fragile, so off by default.
     pstep = os.environ.get("H3_TP2_PROFILE_STEP", "").strip()
