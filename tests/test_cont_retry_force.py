@@ -105,6 +105,21 @@ class PluginLoopTests(unittest.TestCase):
         self.assertEqual(seeds, [1101, 1102, 1102 + 7919, 1103])
         self.assertEqual(heard, [1, 2, 2, 3])
 
+    def test_the_checks_also_run_on_a_dropped_attempt(self):
+        # as before a real retry: the guard hears the first attempt of the forced window too, its verdict is ignored
+        heard = []
+
+        def make_speech_fn(_diffuse):
+            return lambda audio, index: heard.append(index) or (0.0, 0.0, 130)
+
+        seeds, video_f, _audio = self.render({"H3_TP2_CONT_RETRY_FORCE": "2"}, speech_cfg=mock.Mock(max_cer=0.5),
+                                             make_speech_fn=make_speech_fn)
+        self.assertEqual(seeds, [1101, 1102, 1102 + 7919, 1103])
+        self.assertEqual(heard, [1, 2, 2, 3])
+        _seeds, video_s, _audio = self.render({"H3_TP2_CONT_RETRY_SEED_SHIFT": "2:7919"}, speech_cfg=mock.Mock(max_cer=0.5),
+                                              make_speech_fn=make_speech_fn)
+        self.assertTrue(torch.equal(video_f, video_s))
+
 
 if __name__ == "__main__":
     unittest.main()

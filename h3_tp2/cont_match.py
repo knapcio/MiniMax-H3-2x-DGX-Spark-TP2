@@ -259,11 +259,13 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
             if offset and "seed" in a and a["seed"] is not None:
                 a["seed"] = int(a["seed"]) + offset
             video, audio = diffuse(**a)
-            if forced and attempt == 0:
+            drop = forced and attempt == 0   # the checks still run on the dropped attempt, as they do before a real retry
+            if drop:
                 logger.warning("h3_tp2 MEASUREMENT window %d: forced re-sample (H3_TP2_CONT_RETRY_FORCE), the first attempt is dropped",
                                state["index"])
-                continue
             if not (ov or guard) or not (isinstance(video, torch.Tensor) and video.dim() == 5):
+                if drop:
+                    continue
                 best = (video, audio, 0.0)
                 break
             r = cr = 0.0
@@ -278,6 +280,8 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
                                     state["index"], attempt + 1, a.get("seed"), cp, ct, cm, cr)
                 except Exception as e:  # noqa: BLE001
                     logger.warning("h3_tp2 seam check skipped (%s)", e)
+                    if drop:
+                        continue
                     best = (video, audio, 0.0)
                     break
             iscore = sscore = 0.0
@@ -298,6 +302,8 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
                 except Exception as e:  # noqa: BLE001  (the guard never breaks a render)
                     logger.warning("h3_tp2 speech check skipped (%s)", e)
                     sscore = 0.0
+            if drop:
+                continue
             score = max(r / max(max_ratio, 1e-9) if ov else 0.0, cr / max_cut if max_cut > 0 else 0.0, iscore, sscore)
             if best is None or score < best[2]:
                 best = (video, audio, score)
