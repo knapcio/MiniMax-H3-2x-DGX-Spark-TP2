@@ -649,6 +649,15 @@ def _apply(role: str) -> None:
             # upstream's latent-guide condition block (the same frames would otherwise be in the sequence twice).
             _edit = os.environ.get("H3_TP2_CONT_EDIT", "2").strip()
             _edit = int(_edit) if _edit in ("1", "2") else 0
+            # 9j) H3_TP2_LADDER_TAIL=<u,...> (EXPERIMENT, unset = stock; h3_tp2/ladder.py): extra low-noise positions at
+            #     the end of every window's sigma ladder (0.025,0.0125: the last video sigmas 0.39 -> 0.24 -> 0.13 -> 0
+            #     instead of 0.39 -> 0, +2 forwards), so fine detail is sampled instead of being one x0 jump at 39 % noise.
+            from h3_tp2 import ladder as _ladder
+
+            _ladder_tail = _ladder.parse_tail(os.environ.get("H3_TP2_LADDER_TAIL"))
+            if _ladder_tail:
+                logger.warning("h3_tp2: EXPERIMENT ladder tail %s appended to every window's sigma positions (+%d forwards)",
+                               _ladder_tail, len(_ladder_tail))
             # H3_TP2_CONT_RETRY=n: re-sample a window (another seed, up to n times) when its latent seam ratio exceeds
             # H3_TP2_CONT_SEAM_RATIO. Calibrated 2026-10-30 08:37: a hard cut right after the prefix measured 1.43,
             # continued windows 0.81-1.16 (17 seams), so the default is 1.3.
@@ -1015,6 +1024,7 @@ def _apply(role: str) -> None:
                                 "audio_t": window.audio_end - window.audio_start, "temporal_offset": window.start * (40.0 / 24.0)}
                         if _seed_step and index and kwargs.get("seed") is not None:
                             args["seed"] = int(kwargs["seed"]) + index * _seed_step
+                        args = _ladder.apply(args, _ladder_tail)   # H3_TP2_LADDER_TAIL: no-op when unset
                         if index and kwargs.get("task") in ("fl2va", "t2va"):
                             # later windows: plain t2va + the pinned prefix; the keyframe rows belong to window 1 only
                             args.update({"task": "t2va", "keyframe_frame_indices": None, "visual_condition": None,
@@ -1195,6 +1205,16 @@ def _apply(role: str) -> None:
         else:
             _hn.install(_dl9i, _pp9i, _hn_level)
             logger.warning("h3_tp2: EXPERIMENT hand-over noise: pinned video rows shown at noise level %.3f", _hn_level)
+
+    # 9k) H3_TP2_REF_FOLLOW_WINDOW=1 (EXPERIMENT, unset = stock; h3_tp2/ref_follow.py): the image reference rows of a
+    #     Ref2VA continuation window get the window's temporal offset, so every window sees its references at the RoPE
+    #     distance window 1 saw them (upstream leaves image blocks at the media time origin: packed_sequence.py).
+    if os.environ.get("H3_TP2_REF_FOLLOW_WINDOW", "0").strip() == "1":
+        from h3_tp2 import ref_follow as _rfw
+        from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _pp9k
+
+        _rfw.install(_pp9k)
+        logger.warning("h3_tp2: EXPERIMENT reference images follow the window in RoPE time")
 
     # 10) measurement only: H3_TP2_PROFILE_STEP=<n> profiles the n-th DiT forward of this process (one denoising step
     #     on this rank) with torch.profiler and logs the top CUDA kernels; CUPTI on GB10 can be fragile, so off by default.
