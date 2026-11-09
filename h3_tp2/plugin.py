@@ -752,10 +752,10 @@ def _apply(role: str) -> None:
                         if not prompts:
                             base, _ = self._extract_prompt(raw_prompt)
                             prompts = [base] if isinstance(base, str) else []
-                        g = _sg.Guard(_sg_cfg, prompts)
-                        _sg_state["guard"] = g
+                        _sg_state["guard"] = _sg.Guard(_sg_cfg, prompts)
+                        # word counts without the respelling table: only the scoring rank has to have that file
                         logger.info("h3_tp2 speech guard: %d window prompt(s), %s", len(prompts),
-                                    ", ".join(f"w{i + 1} {len(g.script(i + 1)[0])} words" for i in range(len(prompts))))
+                                    ", ".join(f"w{i + 1} {len(_sg.script_of(p)[0])} words" for i, p in enumerate(prompts)))
                     except Exception as e:  # noqa: BLE001
                         logger.warning("h3_tp2 speech guard: prompts not captured (%s)", e)
                         _sg_state["guard"] = None
