@@ -90,6 +90,11 @@ A long clip can cut away in a late window (two of three samples of the 118 s Pol
 with `H3_TP2_SAVE_LATENTS` set a window that still goes wrong is re-sampled afterwards in minutes with
 `H3_TP2_REPLAY_LATENTS` + `H3_TP2_REPLAY_PARTIAL=1` and another request seed, instead of a full re-render.
 
+Identity over two minutes: the scene reference alone holds the faces for about 60 s and loses them in the second
+minute (118 s chains, 2026-11-09: the woman 0.71 -> 0.60 similarity, another person on screen); with a head-and-shoulders
+crop per character (next paragraph) both faces stayed the same person for the whole 118 s (0.75-0.80 and 0.80-0.85 per
+window) for +25 % per step (`results/20261109-long-chain-identity/`). So give any clip beyond about 90 s the crops.
+
 Identity through an occlusion or a turn-away: first, the look-lock must not undo it. A character hidden at the moment of
 a hand-over came back as another person (open orange coat instead of the closed red one, blonder, older) although the
 guard had passed the window: the plain look-lock pulled the window's statistics toward window 1's tail, a tail without
