@@ -142,6 +142,9 @@ extra window samplings per chain (+17 to +48 % render time); on a 118 s chain (1
 score moved by -0.13 to +0.08 paired UTMOS over the four chains, which is chain-to-chain spread; a control with a
 re-sampled window and no selection kept the voice. An English chain needed one re-sample and lost no voice. About one Polish window in five and one English window in
 nine is above 0.01 on finished clips.
+The guards judge a plain one-window request (4-14 s, no `long_video`) as well since 2026-11-10: with a guard configured
+such a request runs as a one-window continuation, the same sampling plus the checks and retries (`H3_TP2_GUARD_SINGLE=0`
+turns that off). Shots rendered one by one and cut together get the same speech guard as a long take.
 Two judges are steadier than one: `H3_TP2_SPEECH_MODEL=small,medium` re-samples a window only when both models hear
 the lines wrong (the lowest rate counts; `medium` adds about 8 s per window and is asked only when `small` objects). On
 finished clips the two sizes disagree by 1-4 characters on about a third of the windows, so a single judge's rate has

@@ -1088,6 +1088,14 @@ def _apply(role: str) -> None:
 
             _pp9e.diffuse_continuation = _dc
             _pp9e._h3_tp2_cont_match_patched = True
+            # 9m) with a guard configured, a one-window request (4-14 s, no long_video) takes the loop's first-window
+            #     path as a one-window continuation, so the speech and identity guards judge it too (h3_tp2/guard_single.py;
+            #     H3_TP2_GUARD_SINGLE=0 turns it off).  Same arguments as the direct call, plus the checks and retries.
+            if (_sg_cfg is not None or _ig_cfg is not None) and os.environ.get("H3_TP2_GUARD_SINGLE", "1").strip() != "0":
+                from h3_tp2 import guard_single as _gsg
+
+                _gsg.install(_pp9e.MiniMaxH3Pipeline)
+                logger.warning("h3_tp2: one-window requests are judged by the configured guards (H3_TP2_GUARD_SINGLE)")
             logger.warning("h3_tp2: continuation hand-over diagnostics ON; latent match %s; crossfade %s; edit prefix %s; seam retries %d (ratio > %.1f); look-lock %s (%.2f, ramp %.2f, audio %s, ref %s, classes %s, robust %s); window seed step %d",
                            "ON" if _apply_match else "off", "ON" if _xfade else "off", _edit or "off", _retries, _max_ratio, _lock or "off", _lock_strength, _lock_ramp, "ON" if _lock_audio else "off", _lock_ref, "ON" if _lock_classes else "off", "ON" if _lock_robust else "off", _seed_step)
     except Exception as e:  # noqa: BLE001
