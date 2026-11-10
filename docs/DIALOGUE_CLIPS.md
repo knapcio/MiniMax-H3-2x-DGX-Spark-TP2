@@ -93,7 +93,10 @@ with `H3_TP2_SAVE_LATENTS` set a window that still goes wrong is re-sampled afte
 Identity over two minutes: the scene reference alone holds the faces for about 60 s and loses them in the second
 minute (118 s chains, 2026-11-09: the woman 0.71 -> 0.60 similarity, another person on screen); with a head-and-shoulders
 crop per character (next paragraph) both faces stayed the same person for the whole 118 s (0.75-0.80 and 0.80-0.85 per
-window) for +25 % per step (`results/20261109-long-chain-identity/`). So give any clip beyond about 90 s the crops.
+window) for +25 % per step (`results/20261109-long-chain-identity/`). So give any clip beyond about 90 s the crops. The lines of the second minute slip for another reason, the window's
+RoPE time running away from the text: `H3_TP2_ID_LOCK=toffcap` with `H3_TP2_ID_LOCK_TOFF_CAP=2125` (the clock stops
+after window 6) took the same chain's wrong characters from 0.065 to 0.025 with windows 8-9 clean, for a few points
+of the woman's similarity at the very end (section 5 of the same results).
 
 Identity through an occlusion or a turn-away: first, the look-lock must not undo it. A character hidden at the moment of
 a hand-over came back as another person (open orange coat instead of the closed red one, blonder, older) although the

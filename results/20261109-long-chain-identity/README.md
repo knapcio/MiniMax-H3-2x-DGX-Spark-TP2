@@ -97,6 +97,30 @@ Reading (one window, one seed: differences under about 0.05 similarity or 10 % s
   the pull of the references at window 11 is not about their RoPE distance.
 
 Clips: `w11-*-s3701` on Spark_06; queue `queue131-screen11.sh`.
+## 5. Crops and the capped RoPE time together (queue133, 2026-11-10 08:42-11:57, rev 50035f8)
+
+The 118 s chain once more with the two crops and `H3_TP2_ID_LOCK=toffcap`, `H3_TP2_ID_LOCK_TOFF_CAP=2125` (windows 1-6
+untouched, windows 7-11 kept at window 6's RoPE time), seed 3701, no speech guard. Windows 1-6 are the crops chain's
+windows (same seeds, same numbers); windows 7-11 differ.
+
+| arm | wrong characters per window w7 .. w11 (two judges, finished clip) | whole clip CER / WER | woman w7 .. w11 | man w7 .. w11 | UTMOS windows 2-11 | render |
+|---|---|---|---|---|---|---|
+| crops (queue129) | 0.031 0.161 0.063 0.030 0.014 | 0.065 / 0.115 | 0.77 0.77 0.78 0.75 0.66 | 0.82 0.84 0.81 0.83 0.80 | 3.20 | 9802 s |
+| **crops + cap** | 0.010 **0.000 0.000** 0.030 0.049 | **0.025 / 0.054** | 0.79 0.75 0.73 0.72 0.61 | 0.83 0.85 0.80 0.81 0.79 | 3.24 | 9555 s |
+| plain, for scale | 0.010 0.103 0.089 0.040 0.168 | 0.064 / 0.104 | 0.69 0.69 0.68 0.65 0.60 | 0.74 0.81 0.82 0.79 0.75 | 3.14 | 6566 s |
+
+- The cap takes the second minute's speech from 50-ish wrong characters to a third: windows 8 and 9, which babbled in
+  every chain without it (seed 3708 in all three), are clean, the whole-clip rate is 0.025 against 0.064-0.065. This
+  is without a speech guard; with one the guard would have little left to re-sample in windows 7-9.
+- The faces: the man holds (0.79-0.85), the woman ends lower than with the crops alone (0.61 against 0.66 in window
+  11, 0.72-0.73 against 0.75-0.78 in windows 9-10). One chain at one seed, and single-window differences of 0.05 are
+  within what the screen called noise, but the direction is the one `toff0` showed on voice: moving the window's time
+  costs a little of what the references carry. Sharpness and seams unchanged (34.3-35.1 s per step throughout, no
+  slow state, one seam retry pair in window 3 as in the crops chain).
+- Recipe for dialogue beyond 90 s, as of now: the crops for the faces; the cap when the lines of the second minute
+  matter more than the last few points of identity (or when the speech guard's re-samples there are too expensive).
+  Open: a cap between 2125 and the full offset (a slower clock instead of a stopped one) may keep both.
+
 Clips: `lalka118-plain-s3701`, `lalka118-guard-s3701`, `lalka118-cards-s3701` on Spark_06 (copies in the owner's
 Downloads); scores `voice/drift_*.json`, this directory's `cpu1/` tables came from `scratchpad` scoring on the Mac.
 Queues: `queue124-long.sh`, `queue129-cards118.sh`, `queue131-screen11.sh`.
