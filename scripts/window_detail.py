@@ -46,7 +46,7 @@ def per_window(values, times, bounds, fps: float) -> list[float | None]:  # noqa
     out = []
     for start, end in bounds:
         inside = [v for v, t in zip(values, times) if start / fps <= t < end / fps]
-        out.append(round(sum(inside) / len(inside), 1) if inside else None)
+        out.append(round(float(sum(inside)) / len(inside), 1) if inside else None)
     return out
 
 

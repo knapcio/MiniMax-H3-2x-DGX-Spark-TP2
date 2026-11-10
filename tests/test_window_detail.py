@@ -43,6 +43,15 @@ class MeasureTests(unittest.TestCase):
         blurred = (noisy[:, :-1, :-1] + noisy[:, 1:, :-1] + noisy[:, :-1, 1:] + noisy[:, 1:, 1:]) / 4
         self.assertGreater(wd.laplacian_variance(noisy)[0], 2 * wd.laplacian_variance(blurred)[0])
 
+    def test_per_window_means_are_plain_floats_even_from_numpy(self):
+        import json
+
+        import numpy as np
+
+        values = np.array([10.0, 20.0, 30.0, 40.0], dtype=np.float32)
+        out = wd.per_window(values, [0.25, 0.75, 1.25, 1.75], [(0, 24), (24, 48)], 24.0)
+        self.assertEqual(json.loads(json.dumps(out)), [15.0, 35.0])
+
     def test_per_window_means(self):
         values = [10.0, 20.0, 30.0, 40.0]
         times = [0.25, 0.75, 1.25, 1.75]
