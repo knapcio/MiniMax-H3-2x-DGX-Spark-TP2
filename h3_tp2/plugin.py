@@ -1216,6 +1216,23 @@ def _apply(role: str) -> None:
         _rfw.install(_pp9k)
         logger.warning("h3_tp2: EXPERIMENT reference images follow the window in RoPE time")
 
+    # 9l) H3_TP2_AUTO_CARDS=<max faces> (EXPERIMENT, unset = stock; h3_tp2/auto_cards.py): a Ref2VA request with one
+    #     image and no video reference gets a head-and-shoulders crop per detected face appended to its images on rank 0
+    #     before upstream prepares the encoder inputs (the crops that held both faces over 118 s, made by
+    #     scripts/make_character_cards.py in the identity guard's interpreter).  About +12 % render time per card.
+    _ac_text = os.environ.get("H3_TP2_AUTO_CARDS", "")
+    if _ac_text.strip():
+        from h3_tp2 import auto_cards as _ac
+        from vllm_omni.diffusion.models.minimax_h3 import pipeline_minimax_h3 as _pp9l
+
+        _ac_max = _ac.parse_max(_ac_text)
+        if _ac_max is None:
+            logger.info("h3_tp2: H3_TP2_AUTO_CARDS=%s is a no-op", _ac_text)
+        else:
+            _ac.install(_pp9l, _ac_max)
+            logger.warning("h3_tp2: EXPERIMENT automatic character cards: up to %d face crops added to a one-image Ref2VA request",
+                           _ac_max)
+
     # 10) measurement only: H3_TP2_PROFILE_STEP=<n> profiles the n-th DiT forward of this process (one denoising step
     #     on this rank) with torch.profiler and logs the top CUDA kernels; CUPTI on GB10 can be fragile, so off by default.
     pstep = os.environ.get("H3_TP2_PROFILE_STEP", "").strip()
