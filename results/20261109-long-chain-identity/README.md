@@ -123,6 +123,16 @@ windows (same seeds, same numbers); windows 7-11 differ.
   `H3_TP2_ID_LOCK_TOFF_CAP`, `H3_TP2_ID_LOCK_TOFF_SCALE` of it beyond; window 11 at 3187 units with the knee at 2125
   and the scale 0.5; queue136).
 
+## 6. The slowed clock (queue136, 2026-11-10 19:39-22:53)
+
+`H3_TP2_ID_LOCK=toffslow` with the knee at 2125 and the scale 0.5 (windows 7-11 at 2337 .. 3187 RoPE units) with the
+crops, seed 3701: wrong characters per window w7 .. w11 by the two judges 0.010 0.012 0.036 **0.182 0.175**, whole
+clip 0.071 (crops alone 0.065, crops + cap 0.025); the woman w7 .. w11 0.78 0.76 0.72 **0.59** 0.65, the man as before.
+Windows 7-9 (offsets up to 2762) are as clean as under the cap, windows 10-11 (3187 and beyond) are the worst of all
+chains, and the woman's worst window is window 10. So the lines fail from an offset around 3000 units on, and a
+monotonic clock does not help them: the lever is the distance, not the motion of the clock. The stopped clock at
+about 2125 stays the recipe for the second minute. 9531 s, no slow state.
+
 Clips: `lalka118-plain-s3701`, `lalka118-guard-s3701`, `lalka118-cards-s3701` on Spark_06 (copies in the owner's
 Downloads); scores `voice/drift_*.json`, this directory's `cpu1/` tables came from `scratchpad` scoring on the Mac.
 Queues: `queue124-long.sh`, `queue129-cards118.sh`, `queue131-screen11.sh`.
