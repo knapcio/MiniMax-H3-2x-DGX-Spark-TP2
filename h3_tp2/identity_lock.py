@@ -21,6 +21,12 @@ the shift of window 2 at 24 fps: 255 frames * 40 / 24), so every later window si
 time span of a training clip and still not at a clip's opening.  The middle ground between upstream's shift (window 6
 at 2125 units, 3.5 training clips away from its reference) and ``toff0``.
 
+``toffslow`` (Ref2VA continuation only, 2026-11-10): the shift runs at full speed up to ``H3_TP2_ID_LOCK_TOFF_CAP`` and
+at ``H3_TP2_ID_LOCK_TOFF_SCALE`` (default 0.5) of its speed beyond it, so the windows after the knee keep moving in
+time instead of standing still at the cap: with the knee at 2125 and the scale 0.5, window 11 of a 118 s clip sits at
+3187 units instead of 4250 (upstream) or 2125 (``toffcap``).  Meant to keep the cap's gain on the late lines (118 s
+chain: 0.065 -> 0.025 wrong characters) without the few points of face similarity the stopped clock cost.
+
 ``stats`` / ``blend`` (latent face lock, post-hoc on the returned window, after the look-lock): inside the face boxes
 (``H3_TP2_ID_LOCK_BOXES``, normalised x0,y0,x1,y1 per face, ``;``-separated) each free token of a later window is
 aligned to window 1's opening block by an integer latent shift (search radius ``H3_TP2_ID_LOCK_RADIUS`` cells) and
@@ -38,7 +44,7 @@ from __future__ import annotations
 import logging
 import math
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
@@ -46,7 +52,7 @@ import torch.nn.functional as F
 logger = logging.getLogger("vllm_omni.h3_tp2.identity_lock")
 
 BLOCK_TOKENS = 5          # VAE: 5 latent tokens per 17-frame block, token 5k is the padded block-start token
-MODES = ("end", "toff0", "toffcap", "stats", "blend", "measure")
+MODES = ("end", "toff0", "toffcap", "toffslow", "stats", "blend", "measure")
 
 
 def video_t(frames: int) -> int:
@@ -64,6 +70,7 @@ class Config:
     ramp: float = 0.25                    # fraction of the free frames until full strength (block-constant steps)
     lowpass: bool = True
     toff_cap: float = 425.0               # toffcap: the largest per-window RoPE shift, units of 40/24 per frame
+    toff_scale: float = 0.5               # toffslow: the clock's speed beyond the knee (toff_cap)
 
     @property
     def active(self) -> bool:
@@ -84,12 +91,15 @@ class Config:
         boxes = parse_boxes(environ.get("H3_TP2_ID_LOCK_BOXES", ""))
         if modes & {"stats", "blend", "measure"} and not boxes:
             raise ValueError("H3_TP2_ID_LOCK stats/blend/measure need H3_TP2_ID_LOCK_BOXES")
-        if {"toff0", "toffcap"} <= modes:
-            raise ValueError("H3_TP2_ID_LOCK: toff0 and toffcap exclude each other")
+        if len(modes & {"toff0", "toffcap", "toffslow"}) > 1:
+            raise ValueError("H3_TP2_ID_LOCK: toff0, toffcap and toffslow exclude each other")
         toff_cap = float(environ.get("H3_TP2_ID_LOCK_TOFF_CAP", "425") or 425)
         if toff_cap < 0:
             raise ValueError("H3_TP2_ID_LOCK_TOFF_CAP must be >= 0")
-        return cls(modes=modes, extend=extend, boxes=boxes, toff_cap=toff_cap,
+        toff_scale = float(environ.get("H3_TP2_ID_LOCK_TOFF_SCALE", "0.5") or 0.5)
+        if not 0.0 <= toff_scale <= 1.0:
+            raise ValueError("H3_TP2_ID_LOCK_TOFF_SCALE must be in [0, 1]")
+        return cls(modes=modes, extend=extend, boxes=boxes, toff_cap=toff_cap, toff_scale=toff_scale,
                    strength=float(environ.get("H3_TP2_ID_LOCK_STRENGTH", "0.3") or 0.3),
                    radius=int(environ.get("H3_TP2_ID_LOCK_RADIUS", "2") or 2),
                    feather=int(environ.get("H3_TP2_ID_LOCK_FEATHER", "2") or 2),
@@ -164,6 +174,8 @@ def wrap_inner(diffuse, cfg: Config):
             args = {**args, "temporal_offset": 0.0}
         if "toffcap" in cfg.modes and args.get("task") == "ref2va" and (args.get("temporal_offset") or 0) > cfg.toff_cap:
             args = {**args, "temporal_offset": float(cfg.toff_cap)}
+        if "toffslow" in cfg.modes and args.get("task") == "ref2va" and (args.get("temporal_offset") or 0) > cfg.toff_cap:
+            args = {**args, "temporal_offset": float(cfg.toff_cap + cfg.toff_scale * (float(args["temporal_offset"]) - cfg.toff_cap))}
         if "end" in cfg.modes and state["ref"] is not None and _later_window(args):
             a, crop = end_anchor_args(args, state["ref"], cfg.extend)
             logger.info("h3_tp2 identity end anchor (call %d, seed %s): reference as last keyframe, canvas %d -> %d frames",

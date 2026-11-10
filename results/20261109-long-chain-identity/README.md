@@ -119,7 +119,9 @@ windows (same seeds, same numbers); windows 7-11 differ.
   slow state, one seam retry pair in window 3 as in the crops chain).
 - Recipe for dialogue beyond 90 s, as of now: the crops for the faces; the cap when the lines of the second minute
   matter more than the last few points of identity (or when the speech guard's re-samples there are too expensive).
-  Open: a cap between 2125 and the full offset (a slower clock instead of a stopped one) may keep both.
+  Open: a slower clock instead of a stopped one may keep both (`H3_TP2_ID_LOCK=toffslow`: full speed to the knee
+  `H3_TP2_ID_LOCK_TOFF_CAP`, `H3_TP2_ID_LOCK_TOFF_SCALE` of it beyond; window 11 at 3187 units with the knee at 2125
+  and the scale 0.5; queue136).
 
 Clips: `lalka118-plain-s3701`, `lalka118-guard-s3701`, `lalka118-cards-s3701` on Spark_06 (copies in the owner's
 Downloads); scores `voice/drift_*.json`, this directory's `cpu1/` tables came from `scratchpad` scoring on the Mac.

@@ -236,3 +236,22 @@ def test_install_composes_around_the_look_lock_wrapper_and_keeps_its_hooks():
     v2, a2 = d(**window_args(1))
     assert v1.shape[2] == 82 and v2.shape[2] == 82 and a2.shape[-1] == round(277 * 5 / 3)
     assert calls[1]["keyframe_frame_indices"] == [-1] and calls[1]["num_frames"] == 345
+
+
+def test_toffslow_slows_the_clock_beyond_the_knee():
+    calls = []
+    d = il.wrap_inner(fake_diffuse(calls), cfg(modes=frozenset({"toffslow"}), toff_cap=2125.0, toff_scale=0.5))
+    for shift in (0.0, 425.0, 2125.0, 2550.0, 4250.0):
+        a = window_args(1); a.update(task="ref2va", temporal_offset=shift)
+        d(**a)
+    b = window_args(1); b["temporal_offset"] = 4250.0
+    d(**b)
+    assert [c["temporal_offset"] for c in calls] == [0.0, 425.0, 2125.0, 2337.5, 3187.5, 4250.0]
+    c = il.Config.from_env({"H3_TP2_ID_LOCK": "toffslow", "H3_TP2_ID_LOCK_TOFF_CAP": "2125", "H3_TP2_ID_LOCK_TOFF_SCALE": "0.25"})
+    assert c.toff_scale == 0.25 and c.toff_cap == 2125.0 and c.modes == {"toffslow"}
+    assert il.Config.from_env({"H3_TP2_ID_LOCK": "toffslow"}).toff_scale == 0.5
+    with pytest.raises(ValueError):
+        il.Config.from_env({"H3_TP2_ID_LOCK": "toffslow,toffcap"})
+    with pytest.raises(ValueError):
+        il.Config.from_env({"H3_TP2_ID_LOCK": "toffslow", "H3_TP2_ID_LOCK_TOFF_SCALE": "1.5"})
+
