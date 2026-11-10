@@ -7,7 +7,9 @@ With a guard configured this module gives such a request a continuation of exact
 the window, the usual 22-frame overlap that one window never uses), so the request takes the loop's first-window
 path: the same arguments as the direct call (no pinned tail, no offset, the request's own seed), plus the guards and
 their seed retries.  Requests longer than one window (345 frames) are left alone: splitting them would change the
-render.  ``H3_TP2_GUARD_SINGLE=0`` turns this off.
+render.  The same path carries the loop's other per-window levers (``H3_TP2_LADDER_TAIL``), which the direct call
+skips (queue137, 2026-11-10: a one-window render with the tail set and no guard was byte for byte the stock one).
+``H3_TP2_GUARD_SINGLE=0`` turns this off.
 """
 from __future__ import annotations
 
