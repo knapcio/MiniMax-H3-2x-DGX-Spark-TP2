@@ -42,9 +42,15 @@ def note(size: tuple, seconds: float, best: dict | None = None) -> float | None:
     return seconds / fastest - 1.0
 
 
+REPLAY_FLOOR_S = 5.0   # a sampling that took less than this was replayed from saved latents, not sampled
+
+
 def report(index: int, attempt: int, args: dict, seconds: float, best: dict | None = None) -> float | None:
     """Log one sampling against the fastest of its size; returns `note`'s value.  Never raises."""
     try:
+        if seconds < REPLAY_FLOOR_S:   # H3_TP2_REPLAY_LATENTS: no denoising happened, nothing to time or to compare with
+            logger.info("h3_tp2 pace window %d attempt %d: %.1f s (replayed, not timed)", index, attempt, seconds)
+            return None
         size = key(args)
         fastest = (_BEST if best is None else best).get(size)
         slower = note(size, seconds, best)

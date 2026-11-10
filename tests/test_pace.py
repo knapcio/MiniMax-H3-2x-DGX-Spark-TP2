@@ -68,3 +68,16 @@ class ReportTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReplayTests(unittest.TestCase):
+    def test_a_replayed_window_is_neither_timed_nor_the_fastest(self):
+        best = {}
+        args = {"task": "ref2va", "latent_t": 82, "latent_h": 34, "latent_w": 60, "audio_t": 462, "num_steps": 20}
+        with self.assertLogs(pace.logger, level="INFO") as logs:
+            self.assertIsNone(pace.report(10, 1, args, 0.04, best))
+            self.assertIsNone(pace.report(11, 1, args, 570.0, best))
+        self.assertEqual(best, {pace.key(args): 570.0})
+        self.assertIn("replayed, not timed", logs.output[0])
+        self.assertNotIn("slower", logs.output[1])
+
