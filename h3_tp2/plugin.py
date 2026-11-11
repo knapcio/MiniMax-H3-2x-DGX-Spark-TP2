@@ -655,6 +655,15 @@ def _apply(role: str) -> None:
             from h3_tp2 import ladder as _ladder
 
             _ladder_tail = _ladder.parse_tail(os.environ.get("H3_TP2_LADDER_TAIL"))
+            # 9n) H3_TP2_VOICE_ANCHOR=<seconds> (EXPERIMENT, unset = stock; h3_tp2/voice_anchor.py): every window after
+            #     the first gets the opening seconds of window 1's audio latent as a Ref2VA audio reference, a voice
+            #     sample that does not drift.  The block goes before the hand-over guide, so the overlap reader is unchanged.
+            from h3_tp2 import voice_anchor as _va
+
+            _voice_anchor_s = _va.parse_seconds(os.environ.get("H3_TP2_VOICE_ANCHOR"))
+            if _voice_anchor_s:
+                logger.warning("h3_tp2: EXPERIMENT voice anchor: the first %.1f s of window 1's audio referenced by every later window",
+                               _voice_anchor_s)
             if _ladder_tail:
                 logger.warning("h3_tp2: EXPERIMENT ladder tail %s appended to every window's sigma positions (+%d forwards)",
                                _ladder_tail, len(_ladder_tail))
@@ -1069,6 +1078,8 @@ def _apply(role: str) -> None:
                                                 n_guide, n_rows, 2 * int((pin_a < 1).sum()) if pin_a is not None else 0, 2 * a_t, _edit_audio, "kept" if _edit == 1 else "dropped")
                         _ct.logger.info("MiniMax H3 continuation window %d/%d: frames [%d, %d), hidden overlap %d, temporal offset %.6f (h3_tp2 crossfade)",
                                         index + 1, len(windows), window.start, window.end, window.overlap, args["temporal_offset"])
+                        if _voice_anchor_s and index and audio is not None:
+                            args = _va.apply(args, audio, _voice_anchor_s, _ct.minimax_h3_pack_audio_latent)
                         sampled_video, sampled_audio = diffuse(**args)
                         if video is None:
                             video, audio = sampled_video, sampled_audio

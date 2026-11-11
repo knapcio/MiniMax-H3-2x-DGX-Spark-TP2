@@ -14,6 +14,7 @@ import torch.distributed as dist
 
 from h3_tp2 import cont_checkpoint_coord as coordination
 from h3_tp2 import ladder
+from h3_tp2 import voice_anchor
 from h3_tp2 import cont_checkpoint_loop as loop
 from h3_tp2 import cont_checkpoint_session as sessions
 from h3_tp2 import cont_match as match
@@ -89,7 +90,8 @@ def production_loop(options):
            '_sg_cfg': options.get('speech_cfg'), '_sg_state': {'guard': None},
            '_make_speech_fn': options.get('make_speech_fn', lambda _diffuse: None),
            '_make_early_fn': options.get('make_early_fn', lambda _diffuse: None), '_early_steps': options.get('early_steps', ()),
-           '_ladder': ladder, '_ladder_tail': options.get('ladder_tail')}
+           '_ladder': ladder, '_ladder_tail': options.get('ladder_tail'),
+           '_va': voice_anchor, '_voice_anchor_s': options.get('voice_anchor_s')}
     module = ast.fix_missing_locations(ast.Module(body=[nodes[0]], type_ignores=[]))
     exec(compile(module, str(ROOT / 'h3_tp2/plugin.py'), 'exec'), env)  # actual function body, synthetic dependencies
     return env['_dc']

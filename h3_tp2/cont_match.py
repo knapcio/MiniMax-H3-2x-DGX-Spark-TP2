@@ -201,13 +201,17 @@ def window_map(text: str) -> dict[int, int]:
 
 
 def overlap_audio_t(args):  # noqa: ANN001
-    """Audio latent steps at the start of a continuation window that repeat the previous window's tail, or None."""
-    lengths = args.get("audio_condition_lengths") or []
-    if lengths:
-        return int(lengths[-1])
+    """Audio latent steps at the start of a continuation window that repeat the previous window's tail, or None.
+
+    With the pinned-prefix hand-over (``H3_TP2_CONT_EDIT``) the pin mask says how many; otherwise the last audio
+    condition is the hand-over guide (an audio reference such as the voice anchor comes before it).
+    """
     mask = args.get("audio_edit_mask_rows")
     if mask is not None:
         return int((mask == 0).sum().item() // 2)
+    lengths = args.get("audio_condition_lengths") or []
+    if lengths:
+        return int(lengths[-1])
     return None
 
 
