@@ -31,12 +31,24 @@ def one_window(frames) -> tuple[int, int] | None:  # noqa: ANN001
     return frames, OVERLAP
 
 
+def _grid_below(frames: int) -> int:
+    """The largest 17n+5 at or below ``frames``."""
+    return frames - (frames - (GRID - 12)) % GRID
+
+
 def judge(context: dict, *, log=logger) -> bool:  # noqa: ANN001
     """Give a one-window request without continuation the one-window geometry; returns whether it did."""
     if not isinstance(context, dict) or context.get("continuation") is not None:
         return False
     geometry = one_window(context.get("num_frames"))
     if geometry is None:
+        try:
+            frames = int(context.get("num_frames"))
+        except (TypeError, ValueError):
+            frames = None
+        if frames is not None and MIN_WINDOW <= frames <= MAX_WINDOW:
+            log.warning("h3_tp2: one-window request of %d frames is off the 17n+5 grid, so no guard judges it "
+                        "(nearest grid sizes %d and %d)", frames, _grid_below(frames), _grid_below(frames) + GRID)
         return False
     context["continuation"] = geometry
     log.info("h3_tp2: one-window request of %d frames goes through the continuation loop so that the guards judge it",

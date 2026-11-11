@@ -30,6 +30,21 @@ class JudgeTests(unittest.TestCase):
         self.assertFalse(gs.judge(ctx))
         self.assertIsNone(ctx["continuation"])
 
+    def test_off_grid_request_is_logged_and_left_alone(self):
+        import logging
+
+        log = logging.getLogger("test.guard_single.offgrid")
+        with self.assertLogs(log, level="WARNING") as captured:
+            ctx = {"continuation": None, "num_frames": 240}   # 10 s asked as 240 frames: not 17n+5
+            self.assertFalse(gs.judge(ctx, log=log))
+        self.assertIsNone(ctx["continuation"])
+        self.assertIn("off the 17n+5 grid", captured.output[0])
+        self.assertIn("226 and 243", captured.output[0])
+        with self.assertNoLogs(log, level="WARNING"):
+            self.assertFalse(gs.judge({"continuation": None, "num_frames": 90}, log=log))   # too short: not a one-window case
+        self.assertEqual(gs._grid_below(243), 243)
+        self.assertEqual(gs._grid_below(240), 226)
+
 
 class InstallTests(unittest.TestCase):
     def test_wraps_the_method_once_and_never_breaks_it(self):
