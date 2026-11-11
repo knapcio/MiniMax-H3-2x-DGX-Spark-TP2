@@ -75,8 +75,9 @@ else.
 2. Wide shots and two-shots: scene frame + crops as references, one window each (4-14 s), the speech guard on
    (`H3_TP2_SPEECH_GUARD=0.03`, `H3_TP2_SPEECH_MODEL=small,medium`, `H3_TP2_CONT_RETRY=2`).
 3. Close-ups, two ways. (a) Scene frame (or a late frame of an earlier close-up) + the character's crop: the real
-   room and props, but the shot opens with a 1-1.5 s establishing move; render 1.5 s longer and trim the head in
-   the edit, and start the line after a beat (section 5 has the measured shape of that head). (b) The character's crop alone: static from the first frame, faces
+   room and props, but the shot opens on the reference's composition and cuts to the close-up on its own after
+   1-2.6 s; render 1.5 s longer, ask for a beat before the line, and trim the head in the edit when the audio before
+   the cut is silent (`scripts/shot_cuts.py`; section 5 has the measured shape of that head). (b) The character's crop alone: static from the first frame, faces
    held, but the room and props are the prompt's and differ from the wide shot's. (v3/v4, queue137-143.)
 4. Cut with jump cuts; a 40 ms audio fade at each cut keeps the room tone from clicking (`ffmpeg -nostdin` in a loop).
 5. Words the model cannot say (invented names) are slips at every seed: write around them.
@@ -117,8 +118,9 @@ What this says:
 - Cost: 1211 s for an 8.0 s shot with four references (v3's 6 s shot took 935 s with the same references; the 6 s
   card-only shots of v4 took 692 s). The guard's retries dominate when they fire (shot 4: 3550 s).
 
-The edit (`fun2/v5/assemble.sh` on the Mac, `headtrim.py` next to it): head trim = the first scene cut under 2 s when
-the audio before it is silence (shots 2 and 9), two hand overrides (shot 5 keeps 1.2 s of the chewing close-up, shot 7
+The edit (`fun2/v5/assemble.sh` on the Mac): head trim = the first scene cut under 2 s when the audio before it is
+silence (shots 2 and 9; `scripts/shot_cuts.py shot.mp4` measures the cuts and silences of a shot and prints that trim,
+`--apply out.mp4` writes it), two hand overrides (shot 5 keeps 1.2 s of the chewing close-up, shot 7
 keeps 1 s of its 2 s beat), wide shots 1/3/8 from v3, 40 ms audio fade at every cut, `ffmpeg -nostdin`. Result
 `ksiazulo-v5-realroom-closeups.mp4`: 65 s, 9 shots, the same inn in every shot. Clips `fun5-s{2,4,5,6,7,9}` on
 Spark_06, queue `queue144-fun5.sh`. Invented characters only.
