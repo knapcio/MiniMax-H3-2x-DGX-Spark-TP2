@@ -677,3 +677,25 @@ Clips `voicepl-early-s3501`, `voicepl-early-s3601`; transcripts `voice/early_voi
 queue `queue127-early.sh`. The second chain of this queue is also where the slow render state was caught and fixed
 (`results/20261111-slow-state-compaction/`).
 
+## 17. The voice anchor, first run (queue142, 2026-11-11 14:03-15:32)
+
+`H3_TP2_VOICE_ANCHOR=5`: windows 2-6 of the 64.6 s doll chain (seed 3501) receive the first 5 s of window 1's audio
+latent as a Ref2VA audio reference (400 rows, placed at the window's origin). Against the plain render of the seed:
+
+| | plain | voice anchor |
+|---|---|---|
+| speaker similarity to window 1, low voice, w2 .. w6 | 0.976 0.962 0.975 0.940 0.953 | 0.967 0.981 0.975 0.974 0.945 |
+| high voice, w2 .. w6 | 0.952 0.959 0.936 0.939 0.956 | 0.925 0.943 0.928 0.944 0.946 |
+| paired UTMOS, clip (per window) | | +0.01 (+0.03 +0.08 +0.17 0.00 -0.12 -0.15) |
+| wrong characters, whole clip (per window) | 0.025 (0 0 0.007 0.046 0.039 0.061) | 0.009 (0 0 0.015 0 0 0.043) |
+| echoed lines | | none: every word heard is a script word |
+| pace | 555-584 s | 557-562 s (+400 reference rows) |
+
+- At 60 s the voices of this seed do not drift, so there is nothing for the anchor to hold: the speaker numbers move
+  within their noise in both directions. The clip is not worse (UTMOS neutral, no echo, no seam effect), and two of
+  the three windows that slipped in the plain render came out clean, which may be the anchor or the seed's draw.
+- The question the anchor was built for is the second minute (speaker similarity 0.75-0.94 by window 11 in the 118 s
+  chains). That run is the next step if the voice of long clips becomes the priority; one 118 s chain at 3-4 h.
+
+Clip `voicepl-anchor5-s3501`; queue `queue142-voice-anchor.sh`.
+
