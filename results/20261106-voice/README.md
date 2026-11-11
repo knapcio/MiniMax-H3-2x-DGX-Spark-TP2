@@ -588,7 +588,11 @@ Reading:
   range from 3.02 to 3.79, and the four default-setting chains measured so far (three seeds and this control) all sit
   at 3.72-3.79. In those 15 chains a window with a slip scores 0.06 UTMOS above a clean one once chain and window
   means are removed (r = 0.12 over 75 windows, inside the noise), and the window after a slip does not differ (-0.02).
-  One control is one control: two more re-samplings without selection (seeds 3401 and 3501) are in queue126.
+  Two more controls (queue126, 2026-11-11, seeds 3401 and 3501, window 3 sampled once at the second retry seed, no
+  selection): paired UTMOS against the plain render -0.12 (windows 3-5 at -0.22, -0.29, -0.27, window 6 +0.02) and
+  +0.00 (window 3 +0.20, then -0.09, -0.05). So a window re-rolled with another seed can change the voice of the
+  windows after it by a quarter point either way: that is the chain's seed-to-seed spread, and the guarded clips'
+  -0.1 sits inside it. The guard has no cost of its own; what it costs or gains per clip is a draw.
 
 - **A 118 s chain, 11 windows (queue124).** The doll scene with the 120 s script, seed 3701, plain and then with the
   guard at 0.01, two judges (`small,medium`), same revision and defaults:

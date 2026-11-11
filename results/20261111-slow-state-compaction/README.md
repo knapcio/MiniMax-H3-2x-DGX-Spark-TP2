@@ -28,6 +28,7 @@ warning) were running.
 | `sysctl -w vm.compaction_proactiveness=0` | 01:58:49 | | |
 | chain 2, window 2 (started 01:57, the first 1.5 min still under the storm) | 01:57-02:08 | 1372, then **0** from 01:59 on | 612 s |
 | chain 2, windows 3-6 | 02:08-02:47 | 0 | **578, 579, 577, 572 s**, all faster than any window of chain 1 |
+| queue126, two 64.6 s chains under the setting (03:03-05:41, same head process) | | 0 | **547-551 s every window**, the fastest chains recorded on the pair (reference 555-584) |
 
 GPU power stayed at 82-86 W and the clock at 2138-2184 MHz throughout; `pgmigrate_success` moved by 826 000 pages
 in the six scoring minutes and by only 8 000 during the slow window, `compact_daemon_wake` did not move: kcompactd
