@@ -133,6 +133,33 @@ chains, and the woman's worst window is window 10. So the lines fail from an off
 monotonic clock does not help them: the lever is the distance, not the motion of the clock. The stopped clock at
 about 2125 stays the recipe for the second minute. 9531 s, no slow state.
 
+## 7. The two-minute recipe in one render (queue140, 2026-11-11 07:37-12:24, rev a036e21)
+
+The 118 s chain, seed 3701, with the two crops, the cap at window 6 and the speech guard at 0.01 (two judges, the
+respelling table), under `vm.compaction_proactiveness=0`:
+
+| arm | samplings | render | wrong characters of the script (two judges) | whole-clip WER | woman w7 .. w11 | man w7 .. w11 |
+|---|---|---|---|---|---|---|
+| plain | 11 | 6566 s | 0.064 | 0.104 | 0.69 0.69 0.68 0.65 0.60 | 0.74 0.81 0.82 0.79 0.75 |
+| speech guard alone | 19 | 11 519 s | 0.027 | 0.042 | 0.63 0.60 0.57 0.58 0.61 | 0.71 0.77 0.76 0.80 0.69 |
+| crops | 13 | 9802 s | 0.065 | 0.115 | 0.77 0.77 0.78 0.75 0.66 | 0.82 0.84 0.81 0.83 0.80 |
+| crops + cap | 11 | 9555 s | 0.025 | 0.054 | 0.79 0.75 0.73 0.72 0.61 | 0.83 0.85 0.80 0.81 0.79 |
+| **crops + cap + guard 0.01** | 21 | 15 042 s | **0.010** | **0.050** | 0.79 0.75 0.73 **0.69 0.69** | 0.83 0.85 0.80 0.84 0.84 |
+
+- Every window sampled at 682-686 s (34.1-34.3 s per step, the crops' price) with no drift of the pace over 4.2 h:
+  the compaction setting holds.
+- The guard re-sampled windows 7, 10 and 11 for speech (three attempts each; the kept attempts 0.010, 0.020, 0.014)
+  and windows 3 and 6 were re-sampled by the seam and cut checks as in every crops chain of this seed. What is left
+  wrong is the same four prompt-level words as always (`klientków`, `dłongo`, `czynsz`, `lepsym`): the respelling
+  table is where they go.
+- Both faces end higher than in any other arm (the woman 0.69 in windows 10-11 against 0.60-0.66), which says that
+  the re-sampled late windows were also better faces, and that the cap's small face cost is within what a re-sample
+  recovers.
+- Cost: 2.3x the plain render for a clip that keeps its people and says its lines. Half of that is the crops, the
+  rest the re-samples; with the four words respelled the guard would have had windows 10-11 only.
+
+Clip: `lalka118-recipe-s3701` (Spark_06; a copy in the owner's Downloads). Queue `queue140-recipe118.sh`.
+
 Clips: `lalka118-plain-s3701`, `lalka118-guard-s3701`, `lalka118-cards-s3701` on Spark_06 (copies in the owner's
 Downloads); scores `voice/drift_*.json`, this directory's `cpu1/` tables came from `scratchpad` scoring on the Mac.
 Queues: `queue124-long.sh`, `queue129-cards118.sh`, `queue131-screen11.sh`.
