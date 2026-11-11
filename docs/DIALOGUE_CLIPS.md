@@ -170,6 +170,8 @@ ffmpeg -i clip.mp4 -af silencedetect=n=-40dB:d=1.5 -f null -                    
 ffmpeg -nostats -i clip.mp4 -vf "select=gt(scene\,0.1),showinfo" -f null - 2>&1 | grep -c pts_time   # cuts
 ~/facenv/bin/python scripts/face_drift.py clip.mp4 reference.png --json drift.json  # faces per window vs the reference
 ~/facenv/bin/python scripts/voice_naturalness.py clip.mp4           # UTMOS + DNSMOS + pitch spread per window
+python scripts/shot_cuts.py shot2.mp4 shot4.mp4                   # a shot's own cuts and silences, and the head trim they imply
+python scripts/cut_shots.py shot1.mp4 shot2.mp4 ... --out film.mp4  # the shots cut together (head trims, one encoding, audio fades)
 .speech-venv/bin/python scripts/speech_qa.py clip.mp4 --language pl --output speech.json
 ~/facenv/bin/python scripts/voice_naturalness.py clip.mp4 --segments speech.json   # the same per spoken line
 python3 scripts/script_wer.py --segments speech.json --extra extra.json [--respell respell.txt]  # word error rate per window
