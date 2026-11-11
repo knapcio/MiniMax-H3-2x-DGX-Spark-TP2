@@ -1,12 +1,14 @@
 # The slow render state: proactive compaction of the unified memory (2026-11-11)
 
-**2026-11-11 03:50, the fix is withdrawn until explained:** about 90 minutes after `vm.compaction_proactiveness=0` was
-persisted on both Sparks, both stopped answering on the LAN and on both fabric rails at the same minute, during a
-render (queue126), while the other four Sparks stayed up. Proactive compaction may be what keeps high-order free
-blocks available to the NVIDIA driver on a GB10 host; without it an allocation failure can livelock the host
-(`NV_ERR_NO_MEMORY`, seen on 2026-10-26). The setting goes back to 20 as soon as the hosts return and the previous
-boot's journal has been read. The diagnosis above (compaction scanning slows a render by a fifth) stands; the remedy
-has to be something that does not starve the driver of high-order pages.
+**2026-11-11 03:50-07:35, a false alarm on the way:** about 90 minutes after the setting was persisted, both Sparks
+stopped answering on the LAN at the same minute and the setting was suspected and withdrawn. The previous boot's
+journal, read after the owner's power cycle at 07:28, shows both hosts losing their Wi-Fi link to the same access
+point at 03:45:46-48 (`wlP9s9: Connection to AP ... lost`, then `ssid-not-found`, no lease) and never reconnecting,
+while the hosts kept rendering all night: queue126 finished at 05:41 with every window at 547-551 s, the fastest
+chains recorded on the pair, and queue139 rendered its six shots after it. The `NVRM ... NV_ERR_NO_MEMORY` lines in
+that journal appear every 20-60 minutes all day, before and after the setting, and are not a crash signature. The
+setting is exonerated and re-applied (see the end of this file); the lesson about the Sparks' Wi-Fi LAN is in the
+workspace notes.
 
 Since 2026-11-08 some renders on the two-Spark TP2 stack ran about 25 % slower per step than others of the same size,
 whole chains or the rest of a process from some window on, at normal GPU power and clock, with nothing in the request
