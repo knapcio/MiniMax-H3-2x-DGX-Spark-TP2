@@ -1,5 +1,13 @@
 # The slow render state: proactive compaction of the unified memory (2026-11-11)
 
+**2026-11-11 03:50, the fix is withdrawn until explained:** about 90 minutes after `vm.compaction_proactiveness=0` was
+persisted on both Sparks, both stopped answering on the LAN and on both fabric rails at the same minute, during a
+render (queue126), while the other four Sparks stayed up. Proactive compaction may be what keeps high-order free
+blocks available to the NVIDIA driver on a GB10 host; without it an allocation failure can livelock the host
+(`NV_ERR_NO_MEMORY`, seen on 2026-10-26). The setting goes back to 20 as soon as the hosts return and the previous
+boot's journal has been read. The diagnosis above (compaction scanning slows a render by a fifth) stands; the remedy
+has to be something that does not starve the driver of high-order pages.
+
 Since 2026-11-08 some renders on the two-Spark TP2 stack ran about 25 % slower per step than others of the same size,
 whole chains or the rest of a process from some window on, at normal GPU power and clock, with nothing in the request
 to explain it (`h3_tp2/pace.py` was written to log it; `results/20261106-voice/` section 15). This directory holds the
