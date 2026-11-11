@@ -19,13 +19,13 @@ warning) were running.
 | chain 2, window 1 | 01:46-01:57 | **1063-2135** | **710 s, 21 % slower** (pace warning, `slowcatch-1111-0156.log`) |
 | `sysctl -w vm.compaction_proactiveness=0` | 01:58:49 | | |
 | chain 2, window 2 (started 01:57, the first 1.5 min still under the storm) | 01:57-02:08 | 1372, then **0** from 01:59 on | 612 s |
-| chain 2, window 3 | 02:08-02:17 | 0 | **578 s, the fastest window of the process** |
+| chain 2, windows 3-6 | 02:08-02:47 | 0 | **578, 579, 577, 572 s**, all faster than any window of chain 1 |
 
 GPU power stayed at 82-86 W and the clock at 2138-2184 MHz throughout; `pgmigrate_success` moved by 826 000 pages
 in the six scoring minutes and by only 8 000 during the slow window, `compact_daemon_wake` did not move: kcompactd
 was scanning (proactive compaction, `vm.compaction_proactiveness=20`), not migrating much, and that scanning alone cost
-the render a fifth of its speed. With proactive compaction off the thread went silent within the minute and the next
-window was the fastest of the process.
+the render a fifth of its speed. With proactive compaction off the thread went silent within the minute and every later
+window was faster than any window of chain 1 (572-579 s against 587-620).
 
 Earlier observations fit: the first slow chains (queue119 chain 2, queue122 chain 3, queue123 chain 2) all followed a
 scoring phase in the same queue; the 10-30 slow render had the UVM thread busy; and a CPU scoring job run deliberately
