@@ -157,6 +157,18 @@ PY
 elif [ -n "${AUDIO_URL:-}" ]; then
   args+=(--form-string "audio_reference=$(python3 -c 'import json,sys; print(json.dumps({"audio_url": sys.argv[1]}))' "$AUDIO_URL")")
 fi
+# H3_SOURCE_VIDEO + H3_VIDEO_NOISE_MASK: upstream's latent-mask editing for one request (the server resizes the
+# source to the request and clones its last frame to the request's length; the mask is a JSON token grid, 0 = keep the
+# source, 1 = generate). scripts/first_frame_pin.py writes both for a pinned first frame. Not for continuation requests.
+edit_meta=""
+if [ -n "${H3_SOURCE_VIDEO:-}" ] || [ -n "${H3_VIDEO_NOISE_MASK:-}" ]; then
+  [ -n "${H3_SOURCE_VIDEO:-}" ] && [ -n "${H3_VIDEO_NOISE_MASK:-}" ] || { echo "render.sh: H3_SOURCE_VIDEO and H3_VIDEO_NOISE_MASK go together" >&2; exit 2; }
+  [ -f "$H3_SOURCE_VIDEO" ] && [ -f "$H3_VIDEO_NOISE_MASK" ] || { echo "render.sh: H3_SOURCE_VIDEO or H3_VIDEO_NOISE_MASK is not a file" >&2; exit 2; }
+  case "$H3_SOURCE_VIDEO" in *.[Mm][Pp]4|*.[Mm][Oo][Vv]) ;; *) echo "render.sh: H3_SOURCE_VIDEO must be an MP4 or MOV file" >&2; exit 2;; esac
+  python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$H3_VIDEO_NOISE_MASK" || { echo "render.sh: H3_VIDEO_NOISE_MASK is not JSON" >&2; exit 2; }
+  args+=(-F "source_video=@$(curl_form_path "$H3_SOURCE_VIDEO")" -F "video_noise_mask=@$(curl_form_path "$H3_VIDEO_NOISE_MASK")")
+  edit_meta="$H3_SOURCE_VIDEO,$H3_VIDEO_NOISE_MASK"
+fi
 t0=$(date +%s.%N)
 # -q must be curl's first argument. Otherwise a user's .curlrc may add URLs
 # or other options and send this multipart request to unintended destinations.
@@ -184,6 +196,7 @@ record = {"out": o, "http": code, "curl_rc": int(crc), "elapsed_s": float(el), "
                   "frame_indices": where if (img and e.get("task") == "fl2va") else None,
                   "video_flow_shift_form": float(video_shift),
                   "video_flow_shift_after_extra_merge": e.get("flow_shift", float(video_shift)), "lora": lora,
+                  "latent_edit": os.environ.get("H3_SOURCE_VIDEO") and {"source_video": os.environ.get("H3_SOURCE_VIDEO"), "video_noise_mask": os.environ.get("H3_VIDEO_NOISE_MASK")} or None,
                   "extra_params": e, "text_fields": json.loads(Path(text_meta).read_bytes()), "audio_reference": audio or None,
                   "audio_reference_file": json.loads(Path(audio_meta).read_text()) if audio_meta else None, "prompt": prompt}
 if image_meta:
