@@ -41,7 +41,9 @@ class HeadEndTests(unittest.TestCase):
 
     def test_push_in_to_the_last_frame_never_arrives(self):
         times = [i * 0.25 for i in range(8)]
-        self.assertIsNone(ft.head_end(times, [0.4] * 8, [None] + [1.05] * 7))
+        self.assertIsNone(ft.head_end(times, [0.4] * 8, [None] + [1.15] * 7))
+        # a slow push-in (5 % per sample) has under 10 % of zoom left two samples before the end: it arrives there
+        self.assertEqual(ft.head_end(times, [0.4] * 8, [None] + [1.05] * 7), 1.5)
         # a drift of 1 % in total is static
         self.assertEqual(ft.head_end(times, [0.4] * 8, [None] + [1.0014] * 7), 0.0)
 
