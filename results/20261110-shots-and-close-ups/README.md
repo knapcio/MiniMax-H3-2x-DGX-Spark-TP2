@@ -11,6 +11,7 @@ one continuation take. All renders Ref2VA, 20 steps, the serving defaults of 202
 | v1 (queue128b) | one 54 s continuation take, 960x544, scene frame + three crops, speech guard 0.08 | static three-shot, slips, props not matching the words, soft hand-overs |
 | v2 (queue132) | nine shots of 4.5-10 s, 960x544, one window each, cut together; the guard set but never ran | cuts and close-ups, but slips in five shots and "pixelation" in the close-ups |
 | v3 (queue134) | the same nine shots at 1344x768, the guard on every shot (`guard_single`), conversational lines, a static camera in every prompt | seven shots clean at the first attempt, two re-sampled; close-ups still open wide and push in |
+| v4 (queue139) | the six close-up shots of v3 again with the character's crop as the only reference (wide shots and the two-shot kept from v3) | every close-up opens in its framing and holds it, no push-in; the set behind a close-up is the prompt's inn, not the scene frame's; five of six shots clean at the first attempt, one re-sampled twice |
 
 Shots are the right unit: one window each, so no hand-over drift, window-1 quality everywhere, and the speech guard
 re-samples a bad shot in minutes. The faces hold across framings from one reference set (scene frame + a crop per
@@ -53,11 +54,13 @@ else.
    or `H3_TP2_AUTO_CARDS=2`).
 2. Wide shots and two-shots: scene frame + crops as references, one window each (4-14 s), the speech guard on
    (`H3_TP2_SPEECH_GUARD=0.03`, `H3_TP2_SPEECH_MODEL=small,medium`, `H3_TP2_CONT_RETRY=2`).
-3. Close-ups: the character's crop as the only reference, the prompt describing the set; `queue139` renders v4 that
-   way (the close-ups of v3 again, cards only) for the background question.
+3. Close-ups: the character's crop as the only reference, the prompt describing the set (v4, queue139: static,
+   in-frame from the first frame, faces held; the background is the prompt's room, so write the set into every
+   prompt the same way, or accept that a close-up's background differs from the wide shot's, as it often does in a
+   real edit).
 4. Cut with jump cuts; a 40 ms audio fade at each cut keeps the room tone from clicking (`ffmpeg -nostdin` in a loop).
 5. Words the model cannot say (invented names) are slips at every seed: write around them.
 
-Clips: `fun-lembas-s4201` (v1), `fun2-s1..9` (v2), `fun3-s1..9` + `fun3/out/ksiazulo-v3.mp4` (v3), `cu2-*-s5002`
-(queue137/138) on Spark_06; queues `queue128b-fun.sh`, `queue132-fun2.sh`, `queue134-fun3.sh`, `queue137-cu-sharp.sh`,
+Clips: `fun-lembas-s4201` (v1), `fun2-s1..9` (v2), `fun3-s1..9` + `fun3/out/ksiazulo-v3.mp4` (v3), `fun4-s{2,4,5,6,7,9}`
+(v4, cut together on the Mac), `cu2-*-s5002` (queue137/138) on Spark_06; queues `queue128b-fun.sh`, `queue132-fun2.sh`, `queue134-fun3.sh`, `queue137-cu-sharp.sh`,
 `queue138-reforder.sh`, `queue139-fun4.sh`. The clips show invented characters only.
