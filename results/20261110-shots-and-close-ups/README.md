@@ -60,6 +60,13 @@ else.
   the model's own frame: a late frame of a v3 close-up (after its push-in) shows the real room and props at close-up
   framing, so as the scene reference of that character's close-ups it should give the framing and the room at once
   (queue143).
+- **The model's own frame (queue143).** A late frame of a v3 close-up as Picture 1 (the real room and props at
+  close-up framing) plus the face card: the elf shot opens on a wide view of a room and pushes into the close-up
+  within 1.5 s again; the host shot opens on a table insert (hands, the scene's pale square lembas, the kebab) and
+  then cuts to the host at the door. The room and the props now match the scene (the lembas is the scene's loaf, not
+  toast), but the opening is an establishing move whenever the reference shows a room. So: a reference with a room
+  gives the room and an establishing head; a reference without one (the face card alone) gives a static shot in an
+  invented room. There is no reference set that opens static in the real room.
 
 ## 4. The recipe for a film from shots, as of now
 
@@ -67,10 +74,10 @@ else.
    or `H3_TP2_AUTO_CARDS=2`).
 2. Wide shots and two-shots: scene frame + crops as references, one window each (4-14 s), the speech guard on
    (`H3_TP2_SPEECH_GUARD=0.03`, `H3_TP2_SPEECH_MODEL=small,medium`, `H3_TP2_CONT_RETRY=2`).
-3. Close-ups: the character's crop as the only reference, the prompt describing the set (v4, queue139: static,
-   in-frame from the first frame, faces held; the background is the prompt's room, so write the set into every
-   prompt the same way, or accept that a close-up's background differs from the wide shot's, as it often does in a
-   real edit).
+3. Close-ups, two ways. (a) Scene frame (or a late frame of an earlier close-up) + the character's crop: the real
+   room and props, but the shot opens with a 1-1.5 s establishing move; render 1.5 s longer and trim the head in
+   the edit, and start the line after a beat. (b) The character's crop alone: static from the first frame, faces
+   held, but the room and props are the prompt's and differ from the wide shot's. (v3/v4, queue137-143.)
 4. Cut with jump cuts; a 40 ms audio fade at each cut keeps the room tone from clicking (`ffmpeg -nostdin` in a loop).
 5. Words the model cannot say (invented names) are slips at every seed: write around them.
 
