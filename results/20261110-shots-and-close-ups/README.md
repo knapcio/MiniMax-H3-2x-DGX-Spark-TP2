@@ -37,6 +37,9 @@ else.
 | scene frame alone | the wide shot, and the host instead of the elf | wide | 124 ... |
 | crops at their native 512 px (`H3_TP2_REF_NO_UPSCALE=600`) | the wide three-shot | the close-up | 130 124 ... 36 |
 | **the elf's crop alone** | **the elf in a medium shot at a table, in his framing from the first frame** | the same framing, static | **148 154 151 139 147 147 144 149 ... 175** |
+| a crop of the scene frame in the shot's framing (the elf, his part of the table, the wall) + his crop (queue141) | the elf in a medium shot, in framing from the first frame | static | 168 174 172 167 168 165 ... 206 |
+| the same + a crop of the lembas (queue141) | as above | static | 145 145 148 133 ... 161 |
+| shot 6 (the host with the kebab): framing crop + his crop; + a kebab crop; his crop + the kebab crop (queue141) | the host in a medium shot in every arm | static | 85-99 / 81-90 / 102-118 |
 
 - With the scene frame among the references, in any position, the shot opens on the scene frame's composition and the
   camera rushes into the prompt's framing in about 1.5 s. That push-in is the "quality drop" and the odd motion of
@@ -47,6 +50,16 @@ else.
   a wide shot and a close-up of this kind do not share a background.
 - The frame-level sharpness numbers of a close-up (30-50 against 120-170 for a wide shot) are mostly composition
   (large smooth skin areas), not blur: the v3 close-ups are detailed on inspection.
+- **What a reference anchors (queue141, 2026-11-11).** A crop of the scene frame in the shot's framing opens the shot
+  in that framing and keeps it, like the character's crop alone, and it brings the scene's style (the beams, the round
+  green door, the lamps) but not the room itself: the door and the fireplace sit elsewhere in every arm. Object crops
+  (the lembas, the kebab) do not make the prop look like the crop either: the lembas came out as a pale toast slice
+  with and without its crop, the kebab wrap looks alike in all three arms because the prompt names it. So Ref2VA
+  references anchor subjects (faces, costumes) and style; backgrounds and props are regenerated per shot from the
+  prompt unless the whole scene frame is a reference, and then the shot opens on that frame. The next thing to try is
+  the model's own frame: a late frame of a v3 close-up (after its push-in) shows the real room and props at close-up
+  framing, so as the scene reference of that character's close-ups it should give the framing and the room at once
+  (queue143).
 
 ## 4. The recipe for a film from shots, as of now
 
