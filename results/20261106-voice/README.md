@@ -635,3 +635,41 @@ Clips: `voicepl-guard01b-s3401`, `voicepl-guard01c-s{3501,3601}`, `xclip60guard`
 `voice/dry2_*.json`, `voice/segscore_*.json`; queues `queue121-xguard.sh`, `queue122-guard.sh`, `queue123-guard.sh`.
 Control: `voicepl-force3-s3601`, `voicepl-shift3-s3601` (`queue125-retry.sh`, rev 779102a).
 118 s: `lalka118-plain-s3701`, `lalka118-guard-s3701`, `voice/dry2_lalka118-*.json` (`queue124-long.sh`, rev 779102a).
+
+## 16. How early a slip can be heard (queue127, 2026-11-11 00:15-03:02)
+
+`H3_TP2_SPEECH_EARLY=4,6,8,10,12,14,16,20` decodes the denoising loop's clean estimate of the audio at those steps and
+transcribes it (observe only). Two 64.6 s chains, seeds 3501 and 3601, guard limit 0.5 (nothing re-sampled). Both clips
+are byte for byte the plain renders of their seeds (video and audio), so the tap is lossless. The journal logged only
+some of the checks (a logging gap, the transcripts of all 96 are on disk), so the table was scored offline with the
+guard's own method from the saved transcripts. Character error rate of the window's lines at step S of 20 (the audio
+ladder with shift 3 still has 75 % noise at step 10, 56 % at step 14, 43 % at step 16):
+
+| seed | window | s4 | s6 | s8 | s10 | s12 | s14 | s16 | s20 = final |
+|---|---|---|---|---|---|---|---|---|---|
+| 3501 | 1 | 0.907 | 0.791 | 0.217 | 0.108 | 0.000 | 0.000 | 0.008 | 0.000 |
+| 3501 | 2 | 0.879 | 0.452 | 0.121 | 0.032 | 0.000 | 0.000 | 0.000 | 0.000 |
+| 3501 | 3 | 0.659 | 0.385 | 0.148 | 0.030 | 0.074 | 0.037 | 0.037 | 0.007 |
+| 3501 | 4 | 0.651 | 0.659 | 0.167 | 0.091 | 0.045 | 0.045 | 0.045 | **0.045** |
+| 3501 | 5 | 1.000 | 0.682 | 0.372 | 0.209 | 0.093 | 0.039 | 0.031 | **0.046** |
+| 3501 | 6 | 0.722 | 0.426 | 0.365 | 0.183 | 0.035 | 0.026 | 0.017 | 0.017 |
+| 3601 | 1 | 1.000 | 0.589 | 0.240 | 0.140 | 0.015 | 0.000 | 0.000 | 0.000 |
+| 3601 | 2 | 0.782 | 0.419 | 0.065 | 0.008 | 0.000 | 0.000 | 0.000 | 0.000 |
+| 3601 | 3 | 0.644 | 0.385 | 0.215 | 0.037 | 0.000 | 0.015 | 0.015 | 0.015 |
+| 3601 | 4 | 0.735 | 0.561 | 0.235 | 0.091 | 0.045 | 0.015 | 0.015 | **0.038** |
+| 3601 | 5 | 0.736 | 0.612 | 0.388 | 0.108 | 0.031 | 0.000 | 0.000 | 0.000 |
+| 3601 | 6 | 0.774 | 0.504 | 0.296 | 0.096 | 0.000 | 0.017 | 0.017 | 0.017 |
+
+- The words are there from step 10-12 on; the fine verdict settles only around step 14-16, and a window's rate still
+  moves by 0.01-0.02 between step 16 and the end (window 5 of 3501 up, window 4 of 3601 up).
+- An early stop at step 14 with the limit at 0.03 would have caught the two clear failures of seed 3501 (0.045,
+  0.039) and raised a false alarm on window 3 (0.037, final 0.007); at step 16 the same. A stop before step 12 is
+  noise. So the saving is 20-30 % of a failed attempt, bought with a false alarm now and then that costs a whole one.
+  `H3_TP2_SPEECH_EARLY_STOP` stays an experiment that is not worth enabling; the measurement switch stays for the
+  record.
+- Cost of the measurement: 3-4 s per check (decode + `small`), about 25 s per window at eight steps.
+
+Clips `voicepl-early-s3501`, `voicepl-early-s3601`; transcripts `voice/early_voicepl-early-s*/early-w*-a*-s*/`;
+queue `queue127-early.sh`. The second chain of this queue is also where the slow render state was caught and fixed
+(`results/20261111-slow-state-compaction/`).
+
