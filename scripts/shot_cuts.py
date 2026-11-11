@@ -5,8 +5,8 @@ A close-up rendered from a scene frame opens on the reference's composition and 
 (queue144, 2026-11-11: a hard cut at 1.0-2.6 s in three of six shots, not a push-in). When the audio before that cut
 is silence the head trims off without touching a word; when the line already started in the head, the head is a shot
 of its own and stays. This script measures that per clip and prints the trim: the first scene cut under ``--max-head``
-seconds whose leading audio is silence. ``--apply`` writes the trimmed clip (re-encoded; a short fade-in on the audio
-keeps the room tone from clicking at the cut). Needs ffmpeg and ffprobe only.
+seconds whose leading audio is silence. ``--apply`` writes the trimmed clip (re-encoded; a 40 ms audio fade-in at the
+new start and fade-out at the end keep the room tone from clicking at a cut). Needs ffmpeg and ffprobe only.
 
   python scripts/shot_cuts.py shot2.mp4 shot4.mp4            # one line per clip: cuts, silences, trim
   python scripts/shot_cuts.py shot2.mp4 --apply out/shot2.mp4
@@ -78,10 +78,27 @@ def measure(path: str, max_head: float, threshold: float, noise_db: float) -> di
             "trim_s": head_trim(cuts, quiet, max_head, fps)}
 
 
+def trim_filters(trim: float, total_s: float, fade_s: float = 0.04, fps: float | None = None,
+                 size: str | None = None) -> tuple[str, str]:
+    """(video filter, audio filter) that cut ``trim`` seconds off the head and fade the audio in at the new start and
+    out at the end. The cut is done by the trim filters, not by an output ``-ss``: ffmpeg applies an output ``-ss``
+    after the filters, so a fade placed at 0 would land in the discarded head."""
+    vf = [f"trim=start={trim:.4f}", "setpts=PTS-STARTPTS"]
+    if fps:
+        vf.append(f"fps={fps:g}")
+    if size:
+        vf.append(f"scale={size.replace('x', ':')}:flags=lanczos")
+    kept = max(total_s - trim, 2 * fade_s)
+    af = [f"atrim=start={trim:.4f}", "asetpts=PTS-STARTPTS", f"afade=t=in:st=0:d={fade_s}",
+          f"afade=t=out:st={kept - fade_s:.4f}:d={fade_s}"]
+    return ",".join(vf), ",".join(af)
+
+
 def apply(path: str, out: str, trim: float, fade_s: float = 0.04) -> None:
-    subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", path, "-ss", f"{trim:.4f}", "-c:v", "libx264",
-                    "-preset", "slow", "-crf", "17", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
-                    "-af", f"afade=t=in:st=0:d={fade_s}", out], check=True)
+    vf, af = trim_filters(trim, duration(path), fade_s)
+    subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", path, "-vf", vf, "-af", af, "-c:v", "libx264",
+                    "-preset", "slow", "-crf", "17", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k", out],
+                   check=True)
 
 
 def main(argv: list[str] | None = None) -> int:

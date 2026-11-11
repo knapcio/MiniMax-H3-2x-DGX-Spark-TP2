@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Cut rendered shots into one film: the head trim of each shot (``scripts/shot_cuts.py``'s rule, or a value given
-by hand), one encoding for all of them, a short audio fade-in at every cut so the room tone does not click, then a
-stream-copy concat. The way the comedy clip's v3-v5 were cut (``results/20261110-shots-and-close-ups/``).
+by hand), one encoding for all of them, a 40 ms audio fade-in and fade-out on every shot so the room tone does not
+click at the cuts, then a stream-copy concat. The way the comedy clip's v3-v5 were cut (``results/20261110-shots-and-close-ups/``).
 
   python scripts/cut_shots.py shot1.mp4 shot2.mp4 shot3.mp4 --out film.mp4
   python scripts/cut_shots.py shot*.mp4 --out film.mp4 --trim 5=2.333 --trim 7=1.0   # hand trims by shot number (1-based)
@@ -54,12 +54,10 @@ def plan(clips: list[str], hand: dict[int, float], head_trim: bool, max_head: fl
 
 
 def encode(clip: str, out: str, trim: float, fps: float, size: str | None, crf: int, fade_s: float) -> None:
-    vf = [f"fps={fps:g}"]
-    if size:
-        vf.append(f"scale={size.replace('x', ':')}:flags=lanczos")
-    subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", clip, "-ss", f"{trim:.4f}",
-                    "-vf", ",".join(vf), "-c:v", "libx264", "-preset", "slow", "-crf", str(crf), "-pix_fmt", "yuv420p",
-                    "-c:a", "aac", "-b:a", "160k", "-af", f"afade=t=in:st=0:d={fade_s}", out], check=True)
+    vf, af = shot_cuts.trim_filters(trim, shot_cuts.duration(clip), fade_s, fps=fps, size=size)
+    subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", clip, "-vf", vf, "-af", af,
+                    "-c:v", "libx264", "-preset", "slow", "-crf", str(crf), "-pix_fmt", "yuv420p",
+                    "-c:a", "aac", "-b:a", "160k", out], check=True)
 
 
 def concat(parts: list[str], out: str) -> None:
@@ -84,7 +82,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--fps", type=float, default=24.0)
     ap.add_argument("--size", help="WxH to scale every shot to (default: as rendered)")
     ap.add_argument("--crf", type=int, default=17)
-    ap.add_argument("--fade", type=float, default=0.04, help="audio fade-in at each cut in seconds (default 0.04)")
+    ap.add_argument("--fade", type=float, default=0.04, help="audio fade-in and fade-out on each shot in seconds (default 0.04)")
     ap.add_argument("--keep-parts", help="directory to keep the re-encoded shots in (default: a temporary one)")
     args = ap.parse_args(argv)
     try:

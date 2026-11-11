@@ -67,11 +67,32 @@ class SyntheticClipTests(unittest.TestCase):
         self.assertTrue(row["silences_s"] and row["silences_s"][0][0] < 0.05 and abs(row["silences_s"][0][1] - 1.5) < 0.15)
         self.assertAlmostEqual(row["trim_s"], 1.0, delta=0.05)
 
-    def test_apply_shortens_by_the_trim(self):
+    def test_apply_shortens_by_the_trim_and_fades_the_new_start(self):
         out = os.path.join(self.dir, "trimmed.mp4")
-        sc.apply(self.clip, out, 1.0)
-        self.assertAlmostEqual(sc.duration(out), sc.duration(self.clip) - 1.0, delta=0.1)
+        sc.apply(self.clip, out, 2.0)   # the tone starts at 1.5 s, so the new start is inside the tone
+        self.assertAlmostEqual(sc.duration(out), sc.duration(self.clip) - 2.0, delta=0.1)
         self.assertEqual(sc.scene_cuts(out), [])
+        self.assertLess(rms_db(out, 0.0, 0.01) + 10, rms_db(out, 0.2, 0.01))   # faded in: the first 10 ms are quiet
+
+    def test_trim_filters(self):
+        vf, af = sc.trim_filters(1.0417, 8.0, 0.04, fps=24.0, size="1344x768")
+        self.assertEqual(vf, "trim=start=1.0417,setpts=PTS-STARTPTS,fps=24,scale=1344:768:flags=lanczos")
+        self.assertEqual(af, "atrim=start=1.0417,asetpts=PTS-STARTPTS,afade=t=in:st=0:d=0.04,afade=t=out:st=6.9183:d=0.04")
+        self.assertEqual(sc.trim_filters(0.0, 4.0)[0], "trim=start=0.0000,setpts=PTS-STARTPTS")
+
+
+def rms_db(path: str, start: float, length: float) -> float:
+    """RMS in dBFS of the mono 16 kHz PCM decode of ``path`` between ``start`` and ``start + length`` seconds."""
+    import array
+    import math
+
+    pcm = subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-i", path, "-f", "s16le", "-ac", "1", "-ar", "16000", "-"],
+                         capture_output=True).stdout
+    samples = array.array("h", pcm)
+    chunk = samples[int(start * 16000):int((start + length) * 16000)]
+    if not chunk:
+        return -120.0
+    return 20 * math.log10(max(math.sqrt(sum(v * v for v in chunk) / len(chunk)) / 32768.0, 1e-6))
 
 
 if __name__ == "__main__":
