@@ -163,3 +163,44 @@ Clip: `lalka118-recipe-s3701` (Spark_06; a copy in the owner's Downloads). Queue
 Clips: `lalka118-plain-s3701`, `lalka118-guard-s3701`, `lalka118-cards-s3701` on Spark_06 (copies in the owner's
 Downloads); scores `voice/drift_*.json`, this directory's `cpu1/` tables came from `scratchpad` scoring on the Mac.
 Queues: `queue124-long.sh`, `queue129-cards118.sh`, `queue131-screen11.sh`.
+
+## 8. The recipe plus one lever (queue145, 2026-11-11 23:26 - running, rev 932e1a0)
+
+The recipe of section 7 (crops, cap at window 6, guard 0.01 with two judges and the respelling table) rendered
+again with one lever each, same seed 3701, paired line by line with the recipe clip. Arm 1 is the noised hand-over
+(`H3_TP2_CONT_EDIT_NOISE=0.35`, section 4's best single-window lever); arm 2 (the voice anchor, `H3_TP2_VOICE_ANCHOR=5`)
+follows in the morning.
+
+| arm | samplings | pace | cut-check warnings | scene cuts in the clip | woman per window w1 .. w11 | man | woman face sharpness w1 / w7 / w11 | UTMOS rest of the clip (min) |
+|---|---|---|---|---|---|---|---|---|
+| recipe (section 7) | 21 | 682-686 s | 2 | 1 | 0.76 0.80 0.76 0.76 0.75 0.77 0.79 0.75 0.73 0.69 0.69 | 0.82 0.81 0.83 0.83 0.83 0.85 0.83 0.85 0.80 0.84 0.84 | 325 / 290 / 238 | 3.15 (2.74) |
+| recipe + noise 0.35 | 23 | 682-683 s | 10 | 5 | 0.76 0.81 0.78 0.74 0.81 **0.87 0.89 0.87 0.88 0.88** 0.76 | 0.82 0.89 0.82 0.81 0.81 0.50 0.55 0.82 0.83 0.61 0.82 | 325 / **338** / 263 | **3.34 (3.13)** |
+
+What the frames show (one frame per window, `win_recipen35.png` on the Mac): the recipe holds its medium two-shot
+for all eleven windows. With the noise the first five windows are the same two-shot, window 6 is a cutaway of the
+hands and the letter on the counter (no face at all; the man's 0.50 and the face-box sharpness dips are that),
+windows 7-10 are a tight two-shot close-up (the man in profile, the woman large) and window 11 returns to the wide
+shot. So:
+
+- The lever does what section 4 guessed, and more than it: the pinned tail no longer fixes the framing, and the model
+  re-frames where it likes. The cut check fought it (ten warnings, all three attempts of windows 6 and 11 above the
+  limit) and lost; the clip has five scene cuts against one.
+- The close-up windows carry the best identity of any 118 s window so far (the woman 0.87-0.89 against 0.69-0.81 in
+  the two-shot) and the sharpest face (338 in window 7), which says again that the face size is the identity lever
+  and the chain's softening is a wide-shot problem.
+- The voice is a little better (UTMOS of windows 2-11 3.34 against 3.15, the worst window 3.13 against 2.74; paired
+  lines +0.20 mean, 17 better / 13 worse, +0.47 and +0.72 in windows 10-11), and the pace is the same.
+- Verdict: not a default and not for a fixed two-shot; a lever for shots that are meant to cut
+  (`results/20261110-shots-and-close-ups/`), where the cut check would be off anyway.
+- Open: the head's journal has no per-window `hand-over noise` line (nor an `audio pin released` line) while rank 1
+  logs both for every continuation attempt; the outputs differ from the recipe from window 2 on, so something acted,
+  but whether both ranks noised their rows is to be settled with a one-window probe on both logs before this lever is
+  used again.
+
+The third attempt at guard 0.01 (sections 7 and 8, nine windows that reached it: 6, 7, 10, 11 twice each and 3 by the
+seam check): it never passed and never became the kept attempt (window 6 tonight tied the second). In the three
+windows whose words were logged the same word failed in attempts 1 and 2 (`widzę`, `klientów`, `długo`). On this data
+`H3_TP2_CONT_RETRY=1` (two attempts) is lossless at guard 0.01 and saves 15-20 % of a 118 s render; the queue of the
+next night runs it.
+
+Clip: `lalka118-recipen35-s3701` (Spark_06; a copy in the owner's Downloads). Queue `queue145-recipe-levers.sh`.
