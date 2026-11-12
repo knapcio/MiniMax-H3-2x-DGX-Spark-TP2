@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-12 13:01: `scripts/bench-matrix.sh` passes the keyframe position `both` to `render.sh` when `H3_END_IMAGE_FILE`
+  is set (it hard-coded `first`, so a two-keyframe FL2VA request could not go through the queue tooling); test added.
+  The shots recipe (`results/20261110-shots-and-close-ups/` section 4) lists way (c).
 - 2026-11-12 12:56: way (c) to a close-up, the shot rendered as FL2VA from the model's own close-up still (queue147,
   `results/20261110-shots-and-close-ups/` section 6). The opening is solved by construction (frame 0 is the still, 39-43 dB,
   no invented room, no head to trim), but the model leaves the framing anyway: five of six shots pull back or cut to a

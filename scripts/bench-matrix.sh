@@ -45,7 +45,8 @@ for spec in $1; do
   bash "$S/memwatch.sh" start "$OUT/$tag.mem-head.csv"
   ssh "${SSH_OPTS[@]}" "$WORKER_SSH" "mkdir -p ~/$WDIR && bash ~/h3-tp2/scripts/memwatch.sh start ~/$WDIR/$tag.mem-worker.csv" || echo "worker memwatch start failed (continuing without worker samples)"
   status=ok
-  bash "$S/render.sh" "$OUT/$tag.mp4" "$dur" "$w" "$h" "$steps" "$seed" "$PROMPT" ${img:+"$img"} ${img:+first} > "$OUT/$tag.render.log" 2>&1 &
+  where=first; [ -z "${H3_END_IMAGE_FILE:-}" ] || where=both   # a last keyframe (render.sh: H3_END_IMAGE_FILE) needs the position both
+  bash "$S/render.sh" "$OUT/$tag.mp4" "$dur" "$w" "$h" "$steps" "$seed" "$PROMPT" ${img:+"$img"} ${img:+"$where"} > "$OUT/$tag.render.log" 2>&1 &
   rpid=$!; wait "$rpid" || status=render-failed; rpid=""
   tail -3 "$OUT/$tag.render.log"
   bash "$S/memwatch.sh" stop "$OUT/$tag.mem-head.csv" | sed 's/^/head: /'

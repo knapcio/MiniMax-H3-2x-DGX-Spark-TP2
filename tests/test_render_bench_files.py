@@ -39,8 +39,8 @@ Path(os.environ["TEST_CAPTURE"]).write_text(json.dumps({"args":sys.argv[1:],"fil
         self.env.update(TEST_BIN=str(bindir), TEST_PY=sys.executable, TEST_CAPTURE=str(self.root / 'captured.json'),
                         TEST_SSH_CAPTURE=str(self.root / 'ssh.txt'), OUT=str(self.root / 'output'))
 
-    def call(self, **updates):
-        return subprocess.run(['bash', str(self.root / 'scripts/bench-matrix.sh'), '300:960:544:20:3101'],
+    def call(self, *positional, **updates):
+        return subprocess.run(['bash', str(self.root / 'scripts/bench-matrix.sh'), '300:960:544:20:3101', *positional],
                               env=dict(self.env, **updates), capture_output=True, timeout=20)
 
     def test_file_mode_passes_empty_positional_placeholder_without_exporting_prompt(self):
@@ -62,6 +62,21 @@ Path(os.environ["TEST_CAPTURE"]).write_text(json.dumps({"args":sys.argv[1:],"fil
                 self.assertEqual(capture['args'][6], text or (
                     'Slow drifting clouds over rolling green hills at golden hour, soft wind in the grass, '
                     'gentle light moving across the valley, calm, photoreal, steady camera.'))
+
+    def test_image_position_is_first_unless_a_last_keyframe_is_set(self):
+        first = self.root / 'first.png'
+        first.write_bytes(b'png')
+        last = self.root / 'last.png'
+        last.write_bytes(b'png')
+        for end, where in (('', 'first'), (str(last), 'both')):
+            with self.subTest(where=where):
+                result = self.call(str(first), PROMPT='x', H3_END_IMAGE_FILE=end)
+                self.assertEqual(result.returncode, 0, result.stderr.decode())
+                capture = json.loads((self.root / 'captured.json').read_text())
+                self.assertEqual(capture['args'][7:9], [str(first), where])
+        result = self.call(PROMPT='x', H3_END_IMAGE_FILE=str(last))   # no first image: nothing appended, render.sh decides
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.assertEqual(len(json.loads((self.root / 'captured.json').read_text())['args']), 7)
 
     def test_conflict_fails_before_any_ssh_or_render(self):
         result = self.call(H3_PROMPT_FILE='prompt.txt', PROMPT='conflicting text')

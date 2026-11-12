@@ -78,7 +78,10 @@ else.
    room and props, but the shot opens on the reference's composition and cuts to the close-up on its own after
    1-2.6 s; render 1.5 s longer, ask for a beat before the line, and trim the head in the edit when the audio before
    the cut is silent (`scripts/shot_cuts.py`; section 5 has the measured shape of that head). (b) The character's crop alone: static from the first frame, faces
-   held, but the room and props are the prompt's and differ from the wide shot's. (v3/v4, queue137-143.)
+   held, but the room and props are the prompt's and differ from the wide shot's. (v3/v4, queue137-143.) (c) FL2VA from
+   the model's own close-up still: the opening is exact, but five of six shots cut or pull back to a wide shot of invented
+   people within 0.75-3.5 s, on a clause boundary of the line; usable as a close-up insert of the first clause
+   (section 6).
 4. Cut with jump cuts; a 40 ms audio fade at each cut keeps the room tone from clicking (`ffmpeg -nostdin` in a loop).
 5. Words the model cannot say (invented names) are slips at every seed: write around them.
 
