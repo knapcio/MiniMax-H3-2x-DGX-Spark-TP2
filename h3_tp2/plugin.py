@@ -813,7 +813,7 @@ def _apply(role: str) -> None:
                         del wav
                         if wav_np.ndim == 3:
                             wav_np = wav_np[0]
-                        out = torch.zeros(3, dtype=torch.float32, device=audio.device)
+                        out = torch.zeros(4, dtype=torch.float32, device=audio.device)   # score, cer, chars, settled
                         if rank == 0:
                             try:  # rank 1 waits in the broadcast below: a scorer failure must still reach it
                                 g = _sg_state["guard"]
@@ -821,6 +821,13 @@ def _apply(role: str) -> None:
                                 out[0] = float(summary.get("score") or 0.0)
                                 out[1] = float(summary.get("cer") or 0.0)
                                 out[2] = float(summary.get("chars") or 0)
+                                # the same words wrong at two seeds: the word is the model's reading, not a slip; both
+                                # ranks learn it through the broadcast and the retry loop keeps the best attempt
+                                again = g.repeated(int(index)) if (g is not None and summary) else []
+                                if again:
+                                    out[3] = 1.0
+                                    logger.warning("h3_tp2 speech check window %d: the same words came out wrong at two seeds (%s); "
+                                                   "another seed will not fix them, the prompt has to", int(index), " ".join(again))
                             except Exception as e:  # noqa: BLE001
                                 logger.warning("h3_tp2 speech check failed on rank 0 (%s); the window is accepted", e)
                         if world > 1:

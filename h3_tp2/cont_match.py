@@ -249,6 +249,8 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
     ``speech_fn(audio, index)`` (with ``max_cer`` > 0) adds the speech guard (``h3_tp2.speech_guard``): it returns
     ``(score, cer, chars)`` for the window's decoded and transcribed audio against the lines of its prompt; a score
     > 1.0 means the lines came out with more than the tolerated character error rate, and the window is re-sampled.
+    An optional fourth value > 0 says the same words came out wrong as in the attempt before (the guard's
+    ``repeated``): the window is not sampled again and the best attempt so far is kept.
     It is given the part of the window the finished clip keeps (``heard_audio``: without the leading steps that
     repeat the previous window's tail).
     ``early_fn(x0, index, attempt, step, args, may_stop)`` (with ``early_steps``, 1-based denoising steps) is handed
@@ -340,6 +342,7 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
                     best = (video, audio, 0.0)
                     break
             iscore = sscore = 0.0
+            settled = False   # the speech guard saw the same words wrong at two seeds: no further seed for this window
             if identity_fn is not None and max_unknown > 0:
                 try:
                     # the first window is judged whole; a continued one from its first free frame (4 frames per token)
@@ -351,7 +354,9 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
                     iscore = 0.0
             if speech_fn is not None and max_cer > 0:
                 try:
-                    sscore, cer, chars = speech_fn(heard_audio(audio, a), state["index"])   # what the clip keeps
+                    verdict = speech_fn(heard_audio(audio, a), state["index"])   # what the clip keeps
+                    sscore, cer, chars = verdict[0], verdict[1], verdict[2]
+                    settled = len(verdict) > 3 and float(verdict[3]) > 0
                     logger.info("h3_tp2 speech check window %d attempt %d (seed %s): CER %.4f over %d script chars, score %.2f",
                                 state["index"], attempt + 1, a.get("seed"), cer, int(chars), sscore)
                 except Exception as e:  # noqa: BLE001  (the guard never breaks a render)
@@ -372,6 +377,11 @@ def wrap_diffuse(diffuse, *, apply: bool, overlap_v_hint: int | None = None, ret
             elif iscore > 1.0:
                 logger.warning("h3_tp2 identity check window %d: more than %.0f %% of the faces match no reference face (score %.2f), re-sampling with another seed",
                                state["index"], 100.0 * max_unknown, iscore)
+            elif settled:
+                logger.warning("h3_tp2 speech check window %d: the lines came out with a character error rate above %.3f (score %.2f) "
+                               "with the same words wrong as at the seed before; keeping the best attempt, no further seed",
+                               state["index"], max_cer, sscore)
+                break
             else:
                 logger.warning("h3_tp2 speech check window %d: the lines came out with a character error rate above %.3f (score %.2f), re-sampling with another seed",
                                state["index"], max_cer, sscore)

@@ -37,6 +37,15 @@ class SpeechRetryTests(unittest.TestCase):
         self.assertTrue(torch.equal(video, third))
         self.assertEqual(float(audio[0, 0, 0]), 3.0)
 
+    def test_the_same_slip_at_two_seeds_ends_the_retries(self):
+        # window 2: attempt 1 CER 0.0103, attempt 2 the same words wrong (fourth value 1.0): no third attempt, the
+        # first of the two equal scores is kept
+        seeds, judged, video, _audio, second, _third = self.run_two_windows(
+            [(0.0, 0.0, 120), (1.03, 0.0103, 97, 0.0), (1.03, 0.0103, 97, 1.0), (0.0, 0.0, 97)])
+        self.assertEqual(seeds, [1, 2, 2 + 7919])
+        self.assertEqual(len(judged), 3)
+        self.assertTrue(torch.equal(video, second))
+
     def test_a_clean_window_is_not_resampled(self):
         seeds, judged, video, _audio, second, _third = self.run_two_windows([(0.0, 0.0, 120), (0.5, 0.01, 130)])
         self.assertEqual(seeds, [1, 2])

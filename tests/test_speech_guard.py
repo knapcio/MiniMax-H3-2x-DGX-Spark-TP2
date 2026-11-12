@@ -157,6 +157,21 @@ class MisheardTests(unittest.TestCase):
                                       "still above 0.01 after every attempt: w4 (zaprośmy ją), w6")
 
 
+class RepeatedSlipTests(unittest.TestCase):
+    def test_the_same_words_wrong_twice_running_are_repeated(self):
+        g = sg.Guard(sg.Config(max_cer=0.01))
+        g.slips = {4: [{20: "zaprośmy", 21: "ją"}, {21: "ją", 20: "zaprośmy"}],          # alike: order does not matter
+                   5: [{20: "zaprośmy"}, {20: "zaprośmy", 3: "wyjścia"}],                 # one more word: not alike
+                   6: [{2: "czynsz"}, {9: "cierpliwy"}],                                   # different words
+                   7: [{1: "a"}],                                                          # one attempt
+                   8: [{1: "a"}, {}],                                                      # the last attempt was clean
+                   9: [{1: "a"}, {2: "b"}, {2: "b"}]}                                      # only the last two count
+        self.assertEqual(g.repeated(4), ["zaprośmy", "ją"])
+        for w in (5, 6, 7, 8, 3):
+            self.assertEqual(g.repeated(w), [], w)
+        self.assertEqual(g.repeated(9), ["b"])
+
+
 class EarlyMeasurementTests(unittest.TestCase):
     def test_the_early_steps_come_from_the_environment_only(self):
         cfg = sg.config_from_env({"H3_TP2_SPEECH_GUARD": "0.5", "H3_TP2_SPEECH_EARLY": "10,6, 8"})

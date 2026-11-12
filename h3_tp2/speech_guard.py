@@ -407,6 +407,15 @@ class Guard:
             text += f", still above {self.cfg.max_cer:g} after every attempt: " + ", ".join(f"w{w}{self.stubborn(w)}" for w in over)
         return text
 
+    def repeated(self, window: int) -> list[str]:
+        """The script words that came out wrong in the last two attempts of ``window`` alike (the same words and no
+        others): another seed will not fix them, the prompt has to (rewrite or respell). Empty with fewer than two
+        attempts, when the attempts slipped on different words, or when the last attempt was clean."""
+        attempts = self.slips.get(int(window)) or []
+        if len(attempts) < 2 or not attempts[-1] or set(attempts[-1]) != set(attempts[-2]):
+            return []
+        return [attempts[-1][k] for k in sorted(attempts[-1])]
+
     def stubborn(self, window: int) -> str:
         """`` (word word)``: the script words of ``window`` that came out wrong in every attempt, the ones to rewrite or
         respell in the prompt; empty when the attempts slipped on different words (or nothing was recorded)."""

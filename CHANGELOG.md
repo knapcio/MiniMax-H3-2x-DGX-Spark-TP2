@@ -363,6 +363,12 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-12 22:42: the speech guard stops re-sampling a window when the same script words come out wrong at two seeds
+  running (`Guard.repeated`, a fourth broadcast value from the scorer, the retry loop keeps the best attempt and logs
+  `the same words wrong as at the seed before`). Another seed does not fix a word the model reads its own way: in queue150's
+  recipe chain (seed 3801) window 7 came out `klientów -> klienw` at three seeds and window 10 `długo -> dłongo` at two of
+  three, 683 s per attempt; the chain spent 15013 s on 11 windows of 683 s (21 attempts, limit 0.01). Tests in
+  `tests/test_speech_guard.py` and `tests/test_cont_speech_check.py`.
 - 2026-11-12 22:29: `scripts/render_text_fields.py` rejects an explicit `continuation_prompts` list whose length is not the
   request's window count before anything is uploaded (`continuation_prompts has 6 strings but a 22.2 s request is 3 windows`),
   using the plugin's own window arithmetic (`h3_tp2/cont_prompts.py`, loaded by path). The server rejects the same request
