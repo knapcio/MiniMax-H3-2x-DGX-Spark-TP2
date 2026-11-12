@@ -21,16 +21,24 @@ fe = model = None
 def decode(p, sr=16000):
     raw = subprocess.run(["ffmpeg","-v","error","-i",p,"-vn","-ac","1","-ar",str(sr),"-f","f32le","-"],capture_output=True,check=True).stdout
     return np.frombuffer(raw, dtype=np.float32).copy()
-def pitch(y, sr=16000, n=640, hop=160):
-    """median F0 of voiced 40 ms frames by normalised autocorrelation (lags for 65-500 Hz)"""
+def pitch(y, sr=16000, n=640, hop=160, ratio=0.9):
+    """median F0 of voiced 40 ms frames by autocorrelation (lags for 65-500 Hz), the correlation normalised by the
+    overlap of each lag (unbiased), the pitch the shortest lag whose peak reaches ``ratio`` of the highest. With the
+    biased estimate the peak at the true period loses to the one at half the period whenever the odd harmonics are
+    weak, which doubled a man's F0 on 3 of 104 lines of the 118 s clips; unbiased, every multiple of the period peaks
+    alike and the shortest of them is the period."""
     fr = np.lib.stride_tricks.sliding_window_view(y, n)[::hop]; fr = fr - fr.mean(1, keepdims=True)
+    overlap = np.arange(n, 0, -1, dtype=float)
+    lo, hi = sr // 500, sr // 65
     f0s = []
     for x in fr:
         if np.sqrt(np.mean(x**2)) < 0.01: continue
-        ac = np.correlate(x, x, "full")[n-1:]; ac = ac / (ac[0] + 1e-9)
-        lo, hi = sr // 500, sr // 65
-        k = lo + int(np.argmax(ac[lo:hi]))
-        if ac[k] > 0.6: f0s.append(sr / k)
+        ac = np.correlate(x, x, "full")[n-1:] / overlap; ac = ac / (ac[0] + 1e-9)
+        seg = ac[lo:hi]; m = float(seg.max())
+        if m <= 0.6: continue
+        j = int(np.argmax(seg >= ratio * m))                 # the first lag that reaches the band ...
+        while j + 1 < len(seg) and seg[j + 1] > seg[j]: j += 1   # ... walked up to its peak
+        f0s.append(sr / (lo + j))
     return float(np.median(f0s)) if len(f0s) >= 10 else None
 def emb(y):
     global fe, model

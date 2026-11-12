@@ -30,6 +30,13 @@ class SpeakerDriftTests(unittest.TestCase):
         self.assertAlmostEqual(self.sd.pitch(high), 230, delta=8)
         self.assertIsNone(self.sd.pitch(np.zeros(16000, dtype=np.float32)))
 
+    def test_a_strong_second_harmonic_does_not_double_the_pitch(self):
+        t = np.arange(16000 * 1.5) / 16000
+        voice = (0.1 * np.sin(2 * np.pi * 104 * t) + 0.3 * np.sin(2 * np.pi * 208 * t) + 0.1 * np.sin(2 * np.pi * 312 * t)).astype(np.float32)
+        self.assertAlmostEqual(self.sd.pitch(voice), 104, delta=4)
+        even_only = (0.3 * np.sin(2 * np.pi * 208 * t) + 0.1 * np.sin(2 * np.pi * 416 * t)).astype(np.float32)
+        self.assertAlmostEqual(self.sd.pitch(even_only), 208, delta=8)   # no odd harmonics: that is a 208 Hz voice
+
     def test_summary_means_and_detail(self):
         e = np.eye(4)
         rows = [{"w": 1, "spk": "low", "e": e[0]}, {"w": 1, "spk": "low", "e": e[0] * 0.8 + e[1] * 0.6},

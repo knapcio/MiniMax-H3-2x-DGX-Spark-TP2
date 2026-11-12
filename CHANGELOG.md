@@ -363,6 +363,10 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-12 13:20: the pitch tracker of `scripts/speaker_drift.py` uses the unbiased autocorrelation and takes the shortest
+  lag whose peak reaches 90 % of the highest (walked up to its peak). The biased estimate let the half-period peak win when
+  the odd harmonics were weak: 3 of 105 lines of the 118 s clips came out an octave high against pyin (frame 2048, the
+  long frame; the short frame doubles too), now 1. Tests: pure tones, a strong second harmonic, an even-only tone.
 - 2026-11-12 13:12: `scripts/speaker_drift.py` assigns every segment to the nearer window-1 voice by its x-vector; the
   pitch split stays only to name the two window-1 references. On the 118 s clips the pitch tracker read 167-206 Hz on three
   of the man's lines and handed them to the woman, which made her similarity drop to 0.46-0.61 on those lines; by voice they
