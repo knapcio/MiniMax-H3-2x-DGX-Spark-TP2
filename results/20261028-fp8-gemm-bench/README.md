@@ -11,7 +11,7 @@ DiT step's token count for a 5 s 960x576 clip on one rank.
 | fc1 | 28672 x 5376 | 210.4 ms, 54.0 TFLOPS | 209.8 ms, 54.2 TFLOPS | same |
 | fc2 | 5376 x 14336 | 93.2 ms, 61.0 TFLOPS | 93.0 ms, 61.1 TFLOPS | same |
 
-The idea from the Fable DiT round (the sm120 CUTLASS kernel untuned against a cuBLASLt rowwise path) is closed as far
+The idea from the DiT round (the sm120 CUTLASS kernel untuned against a cuBLASLt rowwise path) is closed as far
 as PyTorch's rowwise entry point goes: 0.3-1 % apart, within noise, and the outputs differ in rounding order so a switch
 would not be output-preserving either. Whether cuBLASLt itself has a faster per-row epilogue on sm121 is not
 established by this (PyTorch routes rowwise scales to its own CUTLASS kernel here). Both run at 54-61 TFLOPS on these shapes; whether that is the GB10's FP8 ceiling at 2200 MHz

@@ -164,17 +164,17 @@ Clips: `lalka118-plain-s3701`, `lalka118-guard-s3701`, `lalka118-cards-s3701` on
 Downloads); scores `voice/drift_*.json`, this directory's `cpu1/` tables came from `scratchpad` scoring on the Mac.
 Queues: `queue124-long.sh`, `queue129-cards118.sh`, `queue131-screen11.sh`.
 
-## 8. The recipe plus one lever (queue145, 2026-11-11 23:26 - running, rev 932e1a0)
+## 8. The recipe plus one lever (queue145, 2026-11-11 23:26 - 2026-11-12 08:18, rev 932e1a0)
 
 The recipe of section 7 (crops, cap at window 6, guard 0.01 with two judges and the respelling table) rendered
 again with one lever each, same seed 3701, paired line by line with the recipe clip. Arm 1 is the noised hand-over
-(`H3_TP2_CONT_EDIT_NOISE=0.35`, section 4's best single-window lever); arm 2 (the voice anchor, `H3_TP2_VOICE_ANCHOR=5`)
-follows in the morning.
+(`H3_TP2_CONT_EDIT_NOISE=0.35`, section 4's best single-window lever); arm 2 is the voice anchor (`H3_TP2_VOICE_ANCHOR=5`).
 
 | arm | samplings | pace | cut-check warnings | scene cuts in the clip | woman per window w1 .. w11 | man | woman face sharpness w1 / w7 / w11 | UTMOS rest of the clip (min) |
 |---|---|---|---|---|---|---|---|---|
 | recipe (section 7) | 21 | 682-686 s | 2 | 1 | 0.76 0.80 0.76 0.76 0.75 0.77 0.79 0.75 0.73 0.69 0.69 | 0.82 0.81 0.83 0.83 0.83 0.85 0.83 0.85 0.80 0.84 0.84 | 325 / 290 / 238 | 3.15 (2.74) |
 | recipe + noise 0.35 | 23 | 682-683 s | 10 | 5 | 0.76 0.81 0.78 0.74 0.81 **0.87 0.89 0.87 0.88 0.88** 0.76 | 0.82 0.89 0.82 0.81 0.81 0.50 0.55 0.82 0.83 0.61 0.82 | 325 / **338** / 263 | **3.34 (3.13)** |
+| recipe + voice anchor 5 s | 18 | 680-696 s | 0 | 1 | 0.76 0.81 0.71 0.70 0.68 0.74 0.81 0.71 0.77 0.73 0.73 | 0.82 0.89 0.79 0.86 0.80 0.79 0.81 0.82 0.77 0.82 0.80 | 325 / 345 / 268 | 3.20 (2.99) |
 
 What the frames show (one frame per window, `win_recipen35.png` on the Mac): the recipe holds its medium two-shot
 for all eleven windows. With the noise the first five windows are the same two-shot, window 6 is a cutaway of the
@@ -197,10 +197,28 @@ shot. So:
   but whether both ranks noised their rows is to be settled with a one-window probe on both logs before this lever is
   used again.
 
-The third attempt at guard 0.01 (sections 7 and 8, nine windows that reached it: 6, 7, 10, 11 twice each and 3 by the
-seam check): it never passed and never became the kept attempt (window 6 tonight tied the second). In the three
-windows whose words were logged the same word failed in attempts 1 and 2 (`widzę`, `klientów`, `długo`). On this data
-`H3_TP2_CONT_RETRY=1` (two attempts) is lossless at guard 0.01 and saves 15-20 % of a 118 s render; the queue of the
-next night runs it.
+Arm 2, the voice anchor (`H3_TP2_VOICE_ANCHOR=5`: the first 5 s of window 1's audio given to windows 2-11 as an audio
+reference, logged ten times on the head). The frames (`win_recipeanchor.png`) show the recipe's composition: the tight
+two-shot of windows 1-2, the wider counter two-shot from window 3 on, no cutaway, one scene cut. The arms diverge at
+window 3 (each re-sampled it on the seam check and kept a different attempt), so the per-window numbers from window 3
+on compare two samples, not the lever alone.
 
-Clip: `lalka118-recipen35-s3701` (Spark_06; a copy in the owner's Downloads). Queue `queue145-recipe-levers.sh`.
+- Speaker similarity to window 1 is what the lever is for, and it is the one number that moved. The woman's worst
+  window: 0.865 with the anchor against 0.71 (recipe) and 0.735 (noise arm); window 11, where both other arms fall to
+  0.79, holds 0.865. The man's worst window: 0.943 against 0.81 and 0.933. No window under 0.86 against two under 0.80
+  in each of the other two arms. One sample against two; the 64.6 s run of `results/20261106-voice/` section 17 saw
+  no such move, so this is a two-minute effect at best and wants a second seed.
+- Everything else is within noise: UTMOS of windows 2-11 3.20 against 3.15 (paired lines +0.05 mean, 20 better / 12
+  worse), clip CER 0.009 against 0.010, faces within the seed spread (the woman's drift -0.03 against -0.07, her
+  mid-clip windows lower), and the pace +10 s per window (1.5 %), which is the extra audio reference.
+- Verdict: not a default yet; the candidate for the end-of-clip speaker drift, to be confirmed on a second seed and a
+  second scene before it goes into the recipe.
+
+The third attempt at guard 0.01 (sections 7 and 8, twelve windows that reached it over the three chains): it passed
+once, in arm 2's window 3 (attempt 1 failed the seam check at CER 0.0074, attempt 2 failed the speech check at 0.0296,
+attempt 3 came out clean), and never otherwise became the kept attempt. In the windows whose words were logged the same
+word failed in attempts 1 and 2 (`widzę`, `klientów`, `długo`). So `H3_TP2_CONT_RETRY=1` (two attempts) saves 15-20 % of
+a 118 s render at the price of about one window in thirty-three kept with a slip of 1-3 % of its characters; it is a
+speed setting, not a free one, and the default stays at two retries.
+
+Clips: `lalka118-recipen35-s3701`, `lalka118-recipeanchor-s3701` (Spark_06; copies in the owner's Downloads). Queue `queue145-recipe-levers.sh`.
