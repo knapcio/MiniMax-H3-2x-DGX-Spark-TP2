@@ -86,7 +86,8 @@ class RealMultipartTests(unittest.TestCase):
             source = root / 'audio.mp3'; source.write_bytes(b'audio-test' * 15000)
             image = root / 'image.png'; image.write_bytes(b'image-test')
             prompt = 'The woman listens; Wokulski says <d>[Polish] Dzień dobry.</d>'
-            extra = {'long_video': True, 'audio_mode': 'lock_source', 'continuation_prompts': [prompt, 'Later; continue.']}
+            # 30 s is three windows; render_text_fields rejects any other number of explicit prompts before the upload
+            extra = {'long_video': True, 'audio_mode': 'lock_source', 'continuation_prompts': [prompt, 'Later; continue.', 'Later; continue.']}
             env = os.environ.copy()
             for key in ('AUDIO_URL', 'H3_AUDIO_MAX_FIELD_BYTES', 'CONT_PROMPTS', 'CONT_PROMPTS_REST', 'CONT_PROMPTS_EXTRA',
                         'H3_PROMPT_FILE', 'H3_EXTRA_JSON_FILE', 'H3_TEXT_MAX_FIELD_BYTES'):

@@ -363,6 +363,11 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-12 22:29: `scripts/render_text_fields.py` rejects an explicit `continuation_prompts` list whose length is not the
+  request's window count before anything is uploaded (`continuation_prompts has 6 strings but a 22.2 s request is 3 windows`),
+  using the plugin's own window arithmetic (`h3_tp2/cont_prompts.py`, loaded by path). The server rejects the same request
+  only after the boot and the upload, which is how queue149 lost an hour (two probes, 0.4 s each, HTTP 500). An explicit
+  null duration is not counted. Test in `tests/test_render_text_files.py`.
 - 2026-11-12 15:45: `scripts/framing_trace.py` samples exact frames (frame 0, then every `round(every*fps)` frames)
   instead of ffmpeg's `fps` filter, which hands out the last frame of each interval and never frame 0, so a cut on frame 1
   was invisible; and a step is a cut when the match fails or the samples barely correlate (under 0.5) with a match zoom

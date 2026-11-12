@@ -88,7 +88,7 @@ print("200", end="")
         self.assertFalse((self.root / "fields.json").exists())
 
     def test_explicit_prompts_are_not_replaced(self):
-        prompts = ["custom first", "custom continuation"]
+        prompts = ["custom first", "custom continuation", "custom end"]   # three windows at the default 30 s
         result, sent, _ = self.run_render({"long_video": True, "continuation_prompts": prompts})
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(sent["continuation_prompts"], prompts)
@@ -101,7 +101,7 @@ print("200", end="")
         self.assertEqual(sent["continuation_prompts"][1:], ["The same scene continues in silence."] * 2)
 
     def test_explicit_prompts_win_over_later_prompt_override(self):
-        prompts = ["first", "later"]
+        prompts = ["first", "later", "later"]   # one per window: the default 30 s request is three windows
         result, sent, _ = self.run_render({"long_video": True, "continuation_prompts": prompts},
                                           CONT_PROMPTS_REST="ignored")
         self.assertEqual(result.returncode, 0, result.stderr)

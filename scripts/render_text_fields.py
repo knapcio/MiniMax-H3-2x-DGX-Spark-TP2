@@ -9,7 +9,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import math
 from pathlib import Path
 
 
@@ -31,6 +30,17 @@ def write_field(path: Path, text: str, limit: int) -> dict:
     with path.open('xb') as stream:
         stream.write(data)
     return {'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
+
+
+def cont_prompts():
+    """The plugin's window arithmetic (``h3_tp2/cont_prompts.py``), loaded by path: this script runs standalone."""
+    import importlib.util
+
+    path = Path(__file__).resolve().parents[1] / 'h3_tp2' / 'cont_prompts.py'
+    spec = importlib.util.spec_from_file_location('h3_tp2_cont_prompts', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def prepare(args):
@@ -64,17 +74,15 @@ def prepare(args):
     target = extra.get('target')
     if target is not None and not isinstance(target, dict):
         raise ValueError('target must be an object')
-    if (args.auto and extra.get('long_video') and extra.get('long_video_mode', 'continuation') == 'continuation'
-            and not extra.get('continuation_prompts')):
-        duration = (target or {}).get('duration_seconds', extra.get('duration_seconds', extra.get('duration')))
+    continuation = bool(extra.get('long_video')) and extra.get('long_video_mode', 'continuation') == 'continuation'
+    duration = (target or {}).get('duration_seconds', extra.get('duration_seconds', extra.get('duration')))
+    window = int(extra.get('continuation_window_frames', 277))
+    overlap = int(extra.get('continuation_overlap_frames', 22))
+    if continuation and duration is not None and window <= overlap:
+        raise ValueError('continuation window must exceed overlap')
+    if args.auto and continuation and not extra.get('continuation_prompts'):
         if duration is not None:
-            frames = int(round(float(duration) * 24))
-            frames = ((frames - 5 + 16) // 17) * 17 + 5
-            window = int(extra.get('continuation_window_frames', 277))
-            overlap = int(extra.get('continuation_overlap_frames', 22))
-            if window <= overlap:
-                raise ValueError('continuation window must exceed overlap')
-            count = 1 if frames <= window else 1 + math.ceil((frames - window) / (window - overlap))
+            count = cont_prompts().window_count(duration, window, overlap)
             words = read_text(args.directory / 'words.input', args.limit).strip()
             template = read_text(args.directory / 'rest.input', args.limit).strip()
             first = prompt.rstrip('. ') + '. One single continuous take from a steady camera, no cuts, no transitions.'
@@ -89,6 +97,14 @@ def prepare(args):
                     len(first.encode('utf-8')) + (count - 1) * len(rest.encode('utf-8')) > args.limit):
                 raise ValueError(f'generated continuation prompts exceed field limit {args.limit} bytes')
             extra['continuation_prompts'] = [first] + [rest] * (count - 1)
+    prompts = extra.get('continuation_prompts')
+    if continuation and duration is not None and isinstance(prompts, list) and prompts:
+        # The server wants one prompt per window, the first window included, and rejects any other count after the
+        # boot and the upload; say so here, before anything is submitted.
+        count = cont_prompts().window_count(duration, window, overlap)
+        if len(prompts) != count:
+            raise ValueError(f'continuation_prompts has {len(prompts)} strings but a {duration} s request is {count} '
+                             f'windows (window {window} frames, overlap {overlap})')
     # Both files are private snapshots. curl and timing read these same bytes,
     # so later edits of caller-owned files cannot change the submitted request.
     metadata = {'limit_bytes': args.limit, 'continuation_base_prefix': args.prefix_base,

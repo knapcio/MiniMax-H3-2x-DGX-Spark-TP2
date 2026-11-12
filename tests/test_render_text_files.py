@@ -168,6 +168,22 @@ os.execv({executable!r}, [{executable!r}, *sys.argv[1:]])
                 self.assertEqual(self.received, 0)
         self.assertFalse(list(Path(self.env['TMPDIR']).glob('h3-text.*')))
 
+    def test_explicit_prompt_count_must_match_the_windows(self):
+        # 30 s is three windows of 277 frames with a 22-frame overlap: two or six prompts fail before any upload
+        # (the server would reject them after the boot), three pass, and an explicit null duration is not counted.
+        for prompts in (['a', 'b'], ['a'] * 6):
+            with self.subTest(n=len(prompts)):
+                result = self.render(b'base', {'long_video': True, 'continuation_prompts': prompts})
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(f'continuation_prompts has {len(prompts)} strings but a 30 s request is 3 windows'.encode(),
+                              result.stderr)
+                self.assertEqual(self.received, 0)
+        result = self.render(b'base', {'long_video': True, 'continuation_prompts': ['a', 'b', 'c']})
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.assertEqual(self.received, 1)
+        result = self.render(b'base', {'long_video': True, 'continuation_prompts': ['a', 'b'], 'duration': None})
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+
     def test_generated_extra_over_default_limit_is_rejected_before_http(self):
         result = self.render(b'x' * 40000, {'long_video': True}, duration=300, CONT_PROMPTS='auto')
         self.assertNotEqual(result.returncode, 0)
