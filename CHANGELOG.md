@@ -363,6 +363,12 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-12 08:27: `scripts/queue-lib.sh` gained `lever_lines "<since>"`: how often the levers that run inside the
+  denoising loop (hand-over noise, audio pin release, voice anchor) logged, per rank, from the head journal and the rank 1
+  worker logs newer than the start time; the head journal alone misses the loop wrappers' per-attempt lines (queue145's
+  `lever:` field came out empty for the noise arm). queue150 (the voice anchor on a second seed, armed after queue149)
+  uses it. Also in section 8: the woman's crops from windows 4-10 of the three arms show the same face everywhere; the
+  0.68-0.76 spread of the face score in the two-shot is head angle, so a 0.05 gap between arms there is pose, not likeness.
 - 2026-11-12 08:22: the recipe plus the voice anchor (queue145 arm 2, `results/20261109-long-chain-identity/` section 8):
   `H3_TP2_VOICE_ANCHOR=5` on the 118 s recipe chain keeps the recipe's composition and moves one number, the speaker
   similarity to window 1: the woman's worst window 0.865 against 0.71 and 0.735 in the two arms without it (window 11

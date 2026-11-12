@@ -213,6 +213,11 @@ on compare two samples, not the lever alone.
   mid-clip windows lower), and the pace +10 s per window (1.5 %), which is the extra audio reference.
 - Verdict: not a default yet; the candidate for the end-of-clip speaker drift, to be confirmed on a second seed and a
   second scene before it goes into the recipe.
+- What the face score measures here (`woman_crops.png`, the woman's box in windows 4, 5, 7 and 10 of all three arms):
+  the same woman in every crop. In the two-shot the score runs 0.68-0.76 with the head angle (a hard profile about 0.69,
+  three-quarter about 0.76), and the noise arm's 0.87-0.89 are the close-ups filling the box. A gap of 0.05 between
+  arms in the two-shot is pose, not likeness; the metric separates faces only at larger gaps (the 0.50-0.55 "man" values
+  were the cutaway with no face in the box).
 
 The third attempt at guard 0.01 (sections 7 and 8, twelve windows that reached it over the three chains): it passed
 once, in arm 2's window 3 (attempt 1 failed the seam check at CER 0.0074, attempt 2 failed the speech check at 0.0296,

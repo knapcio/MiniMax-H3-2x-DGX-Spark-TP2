@@ -9,6 +9,13 @@ health() { curl -s -m 3 -o /dev/null -w "%{http_code}" http://127.0.0.1:18093/he
 # one per window). Both were private to the gate queues until 2026-11-05 (queue83 printed "FAIL" for want of them).
 rate() { journalctl --user -u h3-tp2-head.service -a --since "$1" --no-pager -o short | tr "\r" "\n" | grep -o -E "20/20 \[[0-9:]+<00:00, +[0-9.]+s/it\]" | tr "\n" " "; }
 digs() { journalctl --user -u h3-tp2-head.service --since "$1" --no-pager | grep -o -E "latents sha256 [0-9a-f]{12}" | awk '"'"'{print $3}'"'"' | tr "\n" " "; }
+# lever_lines "<since>": how often the experiment levers that run inside the denoising loop logged, per rank. The head
+# journal misses the per-attempt lines of the loop wrappers (queue145 saw none for the hand-over noise while rank 1 had
+# one per attempt), so the rank 1 worker logs newer than <since> are read too (W must be set to the worker's address).
+LEVER_PAT='hand-over noise: [0-9]+ of [0-9]+ pinned video rows shown at noise level [0-9.]+|voice anchor: the first [0-9.]+ s of window [0-9]+.{0,60}|audio pin released at step [0-9]+ of [0-9]+'
+lever_lines() { local T_=$1
+  echo "rank0: $(journalctl --user -u h3-tp2-head.service --since "$T_" --no-pager | grep -o -E "$LEVER_PAT" | sort | uniq -c | tr -s " " | tr "\n" ";" | cut -c1-400) | rank1: $(ssh -o BatchMode=yes -o ConnectTimeout=10 ${W:-10.100.96.5} "find ~/h3-tp2-logs -name 'worker-rank1-*.log' -newermt '$T_' -print0 | xargs -0 grep -h -o -E '$LEVER_PAT' 2>/dev/null | sort | uniq -c | tr -s ' ' | tr '\n' ';'" 2>/dev/null | cut -c1-400)"
+}
 STRIP='^export H3_TP2_(FP8_CUTLASS_VERIFY|ID_LOCK[A-Z_]*|ID_END_EXTEND|A2A_OVERLAP|A2A_STREAM_PRIORITY|WINDOW_SEED_STEP|REF_SHORT_EDGE|REF_NO_UPSCALE|IDENTITY_[A-Z_]*|SPEECH_[A-Z_]*|WINDOW_TEMPORAL_OFFSET|PROFILE_STEP|ANCHOR_FRAMES|ANCHOR_SOURCE|FP8_GEMM|VAE_STACK_TILES|VAE_TILE_BATCH|FP8_FUSE_SWIGLU|CONT_PROMPTS_EXTRA|CONT_PROMPTS_REST|CONT_MATCH|CONT_XFADE|CONT_EDIT[A-Z_]*|CONT_RETRY[A-Z_]*|CONT_SEAM_RATIO|CONT_LOCK[A-Z_]*|CONT_CUT_RATIO|SAVE_LATENTS|REPLAY_LATENTS|REPLAY_PARTIAL|REF_KEY_SCALE|VAE_BLEND_TRACE|VAE_LEFT_CONTEXT|EMPTY_CACHE_BEFORE_DECODE|KEEP_POOL|LADDER_TAIL|REF_FOLLOW_WINDOW|AUTO_CARDS|GUARD_SINGLE|VOICE_ANCHOR|A2A_STREAM_PRIORITY|ULYSSES_OVERLAP|SEAM_POSTCHECK|ULYSSES_NOCOPY|ULYSSES_EXACT|FP8_CONSUMER_FUSE|STEP_CACHE|FP8_QUANT_FUSE|FP8_QUANT_FUSE_VERIFY|FP8_QUANT_FUSE_MODE)=|^export NCCL_MAX_CTAS='
 BASEENV='export H3_TP2_FP8_FUSE_SWIGLU=1
 export H3_TP2_REF_SHORT_EDGE=1024'
