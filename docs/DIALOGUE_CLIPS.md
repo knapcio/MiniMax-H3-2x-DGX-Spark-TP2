@@ -161,6 +161,9 @@ Both name the words: the dry run prints `misheard: zaprośmy > zapróczmi` next 
 summary line ends with the windows that stayed above the limit and the words that came out wrong in every attempt
 (`still above 0.01 after every attempt: w4 (zaprośmy ją)`). A word the model slips on at every seed is not fixed by
 re-sampling: rewrite the line around it or respell it phonetically in the prompt (section 2), then render again.
+Respell inside the word and map it back in the table (`chrupnjęcie chrupnięcie` took `chrupnięcie` from 0 of 4 seeds
+to 2 of 4, and the guard's retries do the rest); do not split a word into two, which broke the word next to it in three
+of four takes (`results/20261106-voice/` section 18).
 
 ## 5. Checks before anyone sees it
 
