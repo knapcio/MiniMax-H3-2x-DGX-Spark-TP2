@@ -171,5 +171,47 @@ Where this leaves close-ups, as of now: a close-up that must stay a close-up for
 yet. Way (a) gives it after a 1-2.6 s wide head in half the shots; way (c) gives it for the first clause in most shots
 and for the whole shot in one of six. The pinned first frame of `scripts/first_frame_pin.py` (the still as latent
 frame 0 plus the character's card as the only reference, so the wide shot would at least show the right people) is
-the next test (queue148). Clips `flcu-s{2,6,9}-s{6001,6002}` on Spark_06, queue `queue147-fl2va-stills.sh`. Invented
-characters only.
+the next test (queue148, section 7). Clips `flcu-s{2,6,9}-s{6001,6002}` on Spark_06, queue `queue147-fl2va-stills.sh`.
+Invented characters only.
+
+## 7. The pinned first frame: the still is frame 0 and nothing more, the card keeps the right people (queue148)
+
+The last idea for the opening: instead of FL2VA's first-frame conditioning, the still becomes latent frame 0 itself.
+`scripts/first_frame_pin.py` writes the still as a 192-frame source clip plus a token mask with the first latent
+pinned (`H3_SOURCE_VIDEO`, `H3_VIDEO_NOISE_MASK`), the shot renders by Ref2VA with the character's card as the only
+reference, same three stills, lines, seeds and settings as section 6 (1344x768, 7.5 s, 20 steps). Arm "pin" ran with
+the one-window guard off, the lines were transcribed afterwards on the workstation (faster-whisper small); arm
+"pinloop" re-rendered one shot through the guard path. PSNR against the still is frame 0 / frame 1 / frame 24.
+
+| shot, seed | 0 / 1 / 24 vs still (dB) | what the model did | leaves the framing at | line | elapsed |
+|---|---|---|---|---|---|
+| 2 elf, 6001 | 33.8 / 28.2 / 16.8 | holds the medium close-up for all 8 s (the same story as `flcu-s2-s6001`) | never | clean | 1040 s |
+| 6 host, 6001 | 34.3 / 11.2 / 9.5 | cut at frame 1 to a hands-and-food insert, back to the host's close-up at about 2.7 s | frame 1 | clean | 1038 s |
+| 9 host, 6001 | 35.2 / 29.8 / 21.0 | holds the extreme close-up, cut at 2.6 s to a wide shot of the host alone at the table | 2.6 s cut | clean | 1034 s |
+| 2 elf, 6002 | 34.2 / 11.8 / 10.5 | cut at frame 1 to a static wide shot of the elf at the table | frame 1 | one word split | 1038 s |
+| 6 host, 6002 | 34.7 / 24.9 / 10.7 | cut at frame 2 to a static wide shot of the host at the table | frame 2 | clean | 1036 s |
+| 9 host, 6002 | 35.5 / 27.3 / 20.1 | holds the extreme close-up, cut at 2.2 s to a wide two-shot: the host and an invented bearded man | 2.2 s cut | one word repeated | 1034 s |
+
+- The pin pins exactly what it says: one latent, one frame. Frame 0 is the still through the VAE (34-35.5 dB; FL2VA's
+  first-frame conditioning gave 39-43 dB in section 6), and from frame 1 on the model is free. In three of six shots
+  it cuts away at frame 1 or 2: a one-frame flash of the still and then another shot, worse than way (c), which at
+  least held the opening for the first clause.
+- The other three shots behave like way (c): the framing holds for the first clause and a cut lands at 2.2-2.6 s, or
+  it holds for the whole shot in the one shot and seed that held in section 6 too. The shot grammar is the model's,
+  not the conditioning's: first-frame conditioning of either kind does not override it.
+- The card did its job. Every wide shot the model cut to shows the right character (the elf in shot 2, the host in
+  shots 6 and 9), where section 6's FL2VA shots, with no reference, invented people. One wide shot still added a
+  second man (shot 9 seed 6002).
+- The guard path is exact here too: `pinloop-s2-s6001` (guard on, CER 0.0185 on the first attempt) has the same
+  `framemd5` as `pin-s2-s6001`, so the source rows and the mask survive the continuation loop unchanged (section 2,
+  now also with a source video). Without the guard two of six lines had a slip (a split word, a repeated word),
+  which is the usual rate the guard exists for.
+- Cost 1033-1048 s per 8.0 s shot with the card, against 892-899 s for FL2VA with the still and 1211 s for Ref2VA with
+  the scene frame and three crops.
+
+Where this leaves close-ups: still no reliable path for a close-up that must hold for a whole line. The pin is not
+a default and not a recommendation; it stays in the repo as a tool because it works mechanically and the card
+half of it (the right people in whatever wide shot follows) is real. Pinning more latents (`--pin-latents 3`, frames 0-8)
+is untested; the model that cuts at frame 1 would most likely cut at frame 9. The next test is the two-keyframe shot (first and last frame both set, queue151),
+which constrains where the shot ends rather than only where it starts. Clips `pin-s{2,6,9}-s{6001,6002}` and
+`pinloop-s2-s6001` on Spark_06, queue `queue148-pin.sh`. Invented characters only.

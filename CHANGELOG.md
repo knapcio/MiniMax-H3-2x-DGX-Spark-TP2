@@ -363,6 +363,12 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-12 15:40: results: queue148, the pinned first frame (`scripts/first_frame_pin.py` + the character's card as the
+  only reference) as section 7 of `results/20261110-shots-and-close-ups/README.md`. Frame 0 is the still (34-35.5 dB);
+  three of six shots cut away at frame 1 or 2, two hold the first clause and cut at 2.2-2.6 s, one holds the whole shot:
+  first-frame conditioning of either kind does not override the model's shot grammar. The card keeps the right character
+  in every wide shot the model cuts to. The guard path is bit-identical to the direct one with a source video and mask
+  (`pinloop` = `pin` framemd5). Not a default.
 - 2026-11-12 13:24: `scripts/voice-metrics.sh` prints the speaker detail line (segments per window, the lowest one,
   relabelled segments, the window-1 same-voice floor) above the speaker summary.
 - 2026-11-12 13:20: the pitch tracker of `scripts/speaker_drift.py` uses the unbiased autocorrelation and takes the shortest
