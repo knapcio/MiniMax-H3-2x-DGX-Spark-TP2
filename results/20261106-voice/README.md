@@ -696,6 +696,9 @@ latent as a Ref2VA audio reference (400 rows, placed at the window's origin). Ag
   the three windows that slipped in the plain render came out clean, which may be the anchor or the seed's draw.
 - The question the anchor was built for is the second minute (speaker similarity 0.75-0.94 by window 11 in the 118 s
   chains). That run is the next step if the voice of long clips becomes the priority; one 118 s chain at 3-4 h.
+  (2026-11-12: run as queue145 arm 2; the 0.75-0.94 of the 118 s chains was largely the pitch split handing the man's
+  lines to the woman, and with speakers assigned by voice the anchor showed no effect on one seed;
+  `results/20261109-long-chain-identity/` section 8.)
 
 Clip `voicepl-anchor5-s3501`; queue `queue142-voice-anchor.sh`.
 

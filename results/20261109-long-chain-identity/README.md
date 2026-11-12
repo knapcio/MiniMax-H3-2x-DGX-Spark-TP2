@@ -203,16 +203,22 @@ two-shot of windows 1-2, the wider counter two-shot from window 3 on, no cutaway
 window 3 (each re-sampled it on the seam check and kept a different attempt), so the per-window numbers from window 3
 on compare two samples, not the lever alone.
 
-- Speaker similarity to window 1 is what the lever is for, and it is the one number that moved. The woman's worst
-  window: 0.865 with the anchor against 0.71 (recipe) and 0.735 (noise arm); window 11, where both other arms fall to
-  0.79, holds 0.865. The man's worst window: 0.943 against 0.81 and 0.933. No window under 0.86 against two under 0.80
-  in each of the other two arms. One sample against two; the 64.6 s run of `results/20261106-voice/` section 17 saw
-  no such move, so this is a two-minute effect at best and wants a second seed.
+- Speaker similarity to window 1 is what the lever is for, and it looked like the one number that moved: the woman's
+  worst window 0.865 with the anchor against 0.71 (recipe) and 0.735 (noise arm). **Withdrawn the same day**: those
+  dips were the man's lines. `speaker_drift.py` split the speakers by pitch, and on three of Wokulski's lines
+  ("Jeśli to prawda, musimy to naprawić" in window 3, "Znam go" in window 7, "Bo to pani wysłuchała jej pierwsza" in
+  window 11) the pitch tracker read 167-206 Hz instead of his 102-108 Hz and handed the line to the woman, where its
+  x-vector scored 0.46-0.61 against her reference and 0.87-0.95 against his. With every segment assigned to the nearer
+  window-1 voice (the tool does that now and prints a detail line with the segment counts, minima and relabelled
+  segments; `speakers_q145_voice.txt`) the woman's worst window is 0.874 (recipe), 0.865 (anchor), 0.916 (noise) and
+  the man's 0.81 (recipe, one segment of "Czynsz może poczekać" in window 6), 0.943 (anchor), 0.933 (noise). The
+  same-voice floor inside window 1 is 0.94. So one real single-line dip in the recipe clip, none in the other two,
+  and nothing the anchor can claim: the arms are within one line of each other.
 - Everything else is within noise: UTMOS of windows 2-11 3.20 against 3.15 (paired lines +0.05 mean, 20 better / 12
   worse), clip CER 0.009 against 0.010, faces within the seed spread (the woman's drift -0.03 against -0.07, her
   mid-clip windows lower), and the pace +10 s per window (1.5 %), which is the extra audio reference.
-- Verdict: not a default yet; the candidate for the end-of-clip speaker drift, to be confirmed on a second seed and a
-  second scene before it goes into the recipe.
+- Verdict: no measured effect on one seed once the speakers are assigned by voice; queue150 (seed 3801, both arms)
+  closes it either way, rescored with the corrected tool. Not a default.
 - What the face score measures here (`woman_crops.png`, the woman's box in windows 4, 5, 7 and 10 of all three arms):
   the same woman in every crop. In the two-shot the score runs 0.68-0.76 with the head angle (a hard profile about 0.69,
   three-quarter about 0.76), and the noise arm's 0.87-0.89 are the close-ups filling the box. A gap of 0.05 between

@@ -363,6 +363,13 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-12 13:12: `scripts/speaker_drift.py` assigns every segment to the nearer window-1 voice by its x-vector; the
+  pitch split stays only to name the two window-1 references. On the 118 s clips the pitch tracker read 167-206 Hz on three
+  of the man's lines and handed them to the woman, which made her similarity drop to 0.46-0.61 on those lines; by voice they
+  score 0.87-0.95 against him. The tool also prints a detail line (segments per window, the lowest one, relabelled
+  segments, the same-voice floor inside window 1, here 0.94). WITHDRAWN with it: the 08:22 reading that the voice anchor
+  held the woman's voice at the end of the clip (0.865 against 0.71 and 0.735); assigned by voice the three arms are
+  0.865 / 0.874 / 0.916, within one line of each other (`results/20261109-long-chain-identity/` section 8, arm 2). Tests added.
 - 2026-11-12 13:01: `scripts/bench-matrix.sh` passes the keyframe position `both` to `render.sh` when `H3_END_IMAGE_FILE`
   is set (it hard-coded `first`, so a two-keyframe FL2VA request could not go through the queue tooling); test added.
   The shots recipe (`results/20261110-shots-and-close-ups/` section 4) lists way (c).
@@ -395,7 +402,7 @@
   0.68-0.76 spread of the face score in the two-shot is head angle, so a 0.05 gap between arms there is pose, not likeness.
 - 2026-11-12 08:22: the recipe plus the voice anchor (queue145 arm 2, `results/20261109-long-chain-identity/` section 8):
   `H3_TP2_VOICE_ANCHOR=5` on the 118 s recipe chain keeps the recipe's composition and moves one number, the speaker
-  similarity to window 1: the woman's worst window 0.865 against 0.71 and 0.735 in the two arms without it (window 11
+  similarity to window 1 (WITHDRAWN 13:12: the dips were the man's lines mislabelled by pitch): the woman's worst window 0.865 against 0.71 and 0.735 in the two arms without it (window 11
   0.865 against 0.79 in both), the man's 0.943 against 0.81 and 0.933; voice quality, words and faces within noise, pace
   +1.5 %. One seed; a candidate for the end-of-clip speaker drift, to be confirmed on a second seed and scene. Correction
   to the 04:22 entry: over the three chains 12 windows reached a third attempt and one passed (arm 2's window 3), so
