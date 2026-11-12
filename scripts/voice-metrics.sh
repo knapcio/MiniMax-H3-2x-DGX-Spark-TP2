@@ -74,7 +74,7 @@ fi
 
 if [ -n "$PY" ]; then
   if [ -s "$SEG" ]; then
-    nice -n 10 "$PY" "$HERE/speaker_drift.py" "$F" "$SEG" 2> "$OUT/speakers.err" | tail -1 | sed "s/^[^ ]* /speakers (cosine to window 1): /" || echo "speakers: failed ($(tail -1 "$OUT/speakers.err"))"
+    nice -n 10 "$PY" "$HERE/speaker_drift.py" "$F" "$SEG" 2> "$OUT/speakers.err" | tail -2 | sed -e "s/^[^ ]* detail /speakers detail (per window n, min, relabelled; w1_loo = same-voice floor): /; t" -e "s/^[^ ]* /speakers (cosine to window 1): /" || echo "speakers: failed ($(tail -1 "$OUT/speakers.err"))"
   fi
   "$PY" "$HERE/audio_seams.py" --step "$(python3 -c "print($STEP / $FPS)")" "$F" 2> "$OUT/seams.err" | tail -1 | sed "s/^[^ ]* /seams: /" || echo "seams: failed ($(tail -1 "$OUT/seams.err"))"
 else
