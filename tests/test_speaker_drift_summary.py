@@ -66,6 +66,22 @@ class SpeakerDriftTests(unittest.TestCase):
         out, detail = self.sd.summarise([{"w": 1, "spk": "low", "e": man}, {"w": 2, "spk": "high", "e": man}])
         self.assertEqual(out, {"low": {1: 1.0}})
 
+    def test_short_segments_are_counted_and_left_out(self):
+        rng = np.random.default_rng(3)
+        man, woman = self.sd._unit(rng.normal(size=16)), self.sd._unit(rng.normal(size=16))
+        rows = [{"w": 1, "spk": "low", "e": man, "sec": 2.0}, {"w": 1, "spk": "high", "e": woman, "sec": 2.0},
+                {"w": 2, "spk": "low", "e": man, "sec": 2.0},
+                {"w": 2, "spk": "low", "e": self.sd._unit(rng.normal(size=16)), "sec": 1.0}]   # a one-word segment, matches nobody
+        out, detail = self.sd.summarise(rows)
+        self.assertEqual(out["low"], {1: 1.0, 2: 1.0})
+        self.assertEqual(detail["short"], {2: 1})
+        self.assertEqual(detail["low"][2]["n"], 1)
+        out, detail = self.sd.summarise(rows, min_seconds=0.5)   # with the floor lowered it counts and pulls the mean down
+        self.assertLess(out["low"][2], 0.9)
+        self.assertNotIn("short", detail)
+        rows_without = [{k: v for k, v in r.items() if k != "sec"} for r in rows[:3]]   # old rows: nothing is short
+        self.assertEqual(self.sd.summarise(rows_without)[0]["low"], {1: 1.0, 2: 1.0})
+
     def test_one_reference_segment_has_no_leave_one_out(self):
         out, detail = self.sd.summarise([{"w": 1, "spk": "high", "e": [1.0, 0.0]}, {"w": 2, "spk": "high", "e": [0.0, 1.0]}])
         self.assertEqual(out, {"high": {1: 1.0, 2: 0.0}})

@@ -210,10 +210,12 @@ on compare two samples, not the lever alone.
   window 11) the pitch tracker read 167-206 Hz instead of his 102-108 Hz and handed the line to the woman, where its
   x-vector scored 0.46-0.61 against her reference and 0.87-0.95 against his. With every segment assigned to the nearer
   window-1 voice (the tool does that now and prints a detail line with the segment counts, minima and relabelled
-  segments; `speakers_q145_voice.txt`) the woman's worst window is 0.874 (recipe), 0.865 (anchor), 0.916 (noise) and
-  the man's 0.81 (recipe, one segment of "Czynsz może poczekać" in window 6), 0.943 (anchor), 0.933 (noise). The
-  same-voice floor inside window 1 is 0.94. So one real single-line dip in the recipe clip, none in the other two,
-  and nothing the anchor can claim: the arms are within one line of each other.
+  segments; `speakers_q145_voice.txt`) and segments under 1.5 s left out (a one-word segment's x-vector matches
+  nobody: a 1.0 s "Dobrze." scored 0.30 against her and 0.54 against him in the seed-3801 chain; the tool counts them
+  as "short" since 22:51) the woman's worst window is 0.838 (recipe, window 11), 0.865 (anchor, window 11),
+  0.916 (noise, window 11) and the man's 0.81 (recipe, one segment of "Czynsz może poczekać" in window 6), 0.943
+  (anchor), 0.917 (noise). The same-voice floor inside window 1 is 0.94. So single-line dips in every arm, the deepest
+  in the recipe clip, and nothing the anchor can claim: the arms are within one line of each other.
 - Everything else is within noise: UTMOS of windows 2-11 3.20 against 3.15 (paired lines +0.05 mean, 20 better / 12
   worse), clip CER 0.009 against 0.010, faces within the seed spread (the woman's drift -0.03 against -0.07, her
   mid-clip windows lower), and the pace +10 s per window (1.5 %), which is the extra audio reference.

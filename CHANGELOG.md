@@ -363,6 +363,11 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-12 22:51: `scripts/speaker_drift.py` leaves segments shorter than 1.5 s out of the references and the window means
+  and counts them per window in the detail line (`short`): a one-word segment's x-vector matches nobody (a 1.0 s "Dobrze."
+  at 0.30 / 0.54 pulled the man's window 5 to 0.81 in the seed-3801 recipe chain; without it 0.95). The queue145 numbers in
+  `results/20261109-long-chain-identity/` section 8 and `speakers_q145_voice.txt` are rescored (the woman's worst windows
+  0.838 / 0.865 / 0.916, the man's 0.81 / 0.943 / 0.917; the verdict stands). Test in `tests/test_speaker_drift_summary.py`.
 - 2026-11-12 22:42: the speech guard stops re-sampling a window when the same script words come out wrong at two seeds
   running (`Guard.repeated`, a fourth broadcast value from the scorer, the retry loop keeps the best attempt and logs
   `the same words wrong as at the seed before`). Another seed does not fix a word the model reads its own way: in queue150's

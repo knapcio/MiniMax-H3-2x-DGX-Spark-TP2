@@ -54,11 +54,21 @@ def emb(y):
     return torch.nn.functional.normalize(e, dim=-1).numpy()
 def _unit(v):
     v = np.asarray(v, dtype=float); return v / (np.linalg.norm(v) + 1e-12)
-def summarise(rows):
-    """rows: [{"w": window, "spk": pitch label "low"|"high", "e": unit vector}] -> (summary, detail).
+MIN_SECONDS = 1.5   # a one-word segment's x-vector matches nobody (a 1.0 s "Dobrze." at 0.30 / 0.54, 2026-11-12)
+
+
+def summarise(rows, min_seconds=MIN_SECONDS):
+    """rows: [{"w": window, "spk": pitch label "low"|"high", "e": unit vector, "sec": seconds}] -> (summary, detail).
+    Rows shorter than ``min_seconds`` are left out of the references and the means (counted as ``short`` per window).
     The references are the window-1 rows of each pitch label; when both exist every row goes to the nearer reference
     by cosine (``spk`` is then the voice label), otherwise the pitch label stands.
-    summary = {spk: {w: mean cosine to the reference}}; detail = {spk: {"w1_loo": [...], w: {"n", "min", "relabelled"}}}."""
+    summary = {spk: {w: mean cosine to the reference}}; detail = {spk: {"w1_loo": [...], "short": {w: n},
+    w: {"n", "min", "relabelled"}}}."""
+    short = {}
+    for r in rows:
+        if float(r.get("sec", min_seconds)) < min_seconds:
+            short[int(r["w"])] = short.get(int(r["w"]), 0) + 1
+    rows = [r for r in rows if float(r.get("sec", min_seconds)) >= min_seconds]
     refs = {}
     for spk in ("low", "high"):
         ref = [np.asarray(r["e"], dtype=float) for r in rows if r["spk"] == spk and r["w"] == 1]
@@ -79,6 +89,8 @@ def summarise(rows):
         if not per_w: continue
         out[spk] = {w: round(float(np.mean(v)), 3) for w, v in sorted(per_w.items())}
         detail[spk] = {"w1_loo": loo, **{w: {"n": len(v), "min": round(float(min(v)), 3), "relabelled": moved[w]} for w, v in sorted(per_w.items())}}
+    if short:
+        detail["short"] = dict(sorted(short.items()))
     return out, detail
 def run(clip, segjson, step=255/24):
     y = decode(clip); rows = []
@@ -88,7 +100,7 @@ def run(clip, segjson, step=255/24):
         a = y[int(t0*16000):int(t1*16000)]
         f0 = pitch(a)
         if f0 is None: continue
-        rows.append({"w": int(t0 // step) + 1, "spk": "low" if f0 < 150 else "high", "e": emb(a)})
+        rows.append({"w": int(t0 // step) + 1, "spk": "low" if f0 < 150 else "high", "e": emb(a), "sec": t1 - t0})
     out, detail = summarise(rows)
     name = clip.split("/")[-2] if "/" in clip else clip
     print(name, "detail", json.dumps(detail))
