@@ -8,6 +8,13 @@ cosine similarity of the embeddings is reported per sample. 1.0 = the same embed
 different people < 0.4. A slow fall over the clip is identity drift; a step at a window hand-over is a seam that changed
 the face. Also reports how often each face was not found (a turned or occluded face counts as missing, not as drift).
 
+The similarity moves with the head's turn as well as with likeness (the same woman scores about 0.69 in a hard profile
+and 0.76 at three-quarter, queue145), so each sample also carries ``turn``: the nose's offset from the midpoint of the eyes
+over the eye distance (MTCNN's five landmarks; 0 frontal, about 0.5 three-quarter, 1 and beyond a profile, sign = which
+way), and each window reports the mean |turn| and ``matched``, the mean similarity over the samples whose |turn| is
+within 0.2 of the reference face's own (the embedding is anchored to the reference's pose; queue145's reference two-shot
+has both heads at about 0.6), which is the number to compare between arms when the heads turn differently.
+
 Usage:
   python scripts/face_drift.py clip.mp4 reference.png [--every 1.0] [--window 277] [--overlap 22] [--json out.json]
 Needs ffmpeg on PATH and a venv with torch + facenet-pytorch (CPU is fine: ~1 s per sampled frame).
@@ -36,6 +43,26 @@ def window_of(frame: int, window: int, overlap: int, count: int) -> int:
     """The 1-based window whose own frames hold `frame`: the overlap belongs to the earlier window, and the last window
     keeps its tail (the final `overlap` frames are not a window of their own)."""
     return max(1, min(frame // (window - overlap) + 1, count))
+
+
+MATCHED = 0.2   # a sample's |turn| within this of the reference face's |turn| counts as pose-matched
+
+
+def head_turn(points) -> float:  # noqa: ANN001
+    """The head's turn from MTCNN's five landmarks (left eye, right eye, nose, mouth corners): the nose's offset from
+    the midpoint of the eyes along the eye line, over the eye distance (a rolled head is not a turn). 0 frontal, about
+    0.5 three-quarter, 1 and beyond a profile; positive when the nose sits toward the right eye in the image. Clamped to
+    +-3 (profiles make the eye distance tiny)."""
+    (lx, ly), (rx, ry), (nx, ny) = [(float(points[i][0]), float(points[i][1])) for i in range(3)]
+    ex, ey = rx - lx, ry - ly
+    dist2 = max(ex * ex + ey * ey, 1e-12)
+    along = ((nx - (lx + rx) / 2) * ex + (ny - (ly + ry) / 2) * ey) / dist2
+    return max(-3.0, min(3.0, along))
+
+
+def pose_matched(turn: float, ref_turn: float, within: float = MATCHED) -> bool:
+    """Whether a sample's head turn is close enough to the reference face's for the embeddings to compare."""
+    return abs(abs(turn) - abs(ref_turn)) <= within
 
 
 def frame_count(path: str) -> int:
@@ -92,18 +119,18 @@ def main() -> int:
     net = InceptionResnetV1(pretrained="vggface2").eval()
 
     def faces(img):
-        boxes, probs = det.detect(img)
+        boxes, probs, points = det.detect(img, landmarks=True)
         if boxes is None:
             return []
         crops = det.extract(img, boxes, None)
         with torch.no_grad():
             emb = net(crops).numpy()
         out = []
-        for b, p, e in zip(boxes, probs, emb):
+        for b, p, e, pts in zip(boxes, probs, emb, points):
             if p is None or p < 0.9:
                 continue
             out.append({"x": float((b[0] + b[2]) / 2) / img.width, "w": float(b[2] - b[0]) / img.width,
-                        "emb": e / np.linalg.norm(e)})
+                        "emb": e / np.linalg.norm(e), "turn": head_turn(pts)})
         return out
 
     ref_img = Image.open(args.reference).convert("RGB")
@@ -119,6 +146,7 @@ def main() -> int:
     for t, img in frames(args.clip, args.every, args.width):
         found = faces(img)
         sims = [None] * len(ref)
+        turns = [None] * len(ref)
         if found and args.match == "embed":
             # greedy one-to-one assignment by similarity: the best pair first, then the best among the rest
             pairs = sorted(((float(np.dot(f["emb"], rf["emb"])), i, j) for i, rf in enumerate(ref) for j, f in enumerate(found)),
@@ -128,6 +156,7 @@ def main() -> int:
                 if i in used_ref or j in used_found:
                     continue
                 sims[i] = sim
+                turns[i] = found[j]["turn"]
                 used_ref.add(i)
                 used_found.add(j)
         elif found:
@@ -136,17 +165,20 @@ def main() -> int:
                 cand = min(found, key=lambda f: abs(f["x"] - rf["x"]))
                 if abs(cand["x"] - rf["x"]) <= 0.25:
                     sims[i] = float(np.dot(cand["emb"], rf["emb"]))
-        rows.append({"t": round(t, 2), "sims": sims})
+                    turns[i] = cand["turn"]
+        rows.append({"t": round(t, 2), "sims": sims, "turns": [None if v is None else round(v, 2) for v in turns]})
 
     nwin = window_count(frame_count(args.clip), args.window, args.overlap)
     for r in rows:
         r["window"] = window_of(int(round(r["t"] * args.fps)), args.window, args.overlap, nwin)
-    print("t(s)  window  " + "  ".join(f"{n:>14}" for n in names))
+    print("reference turn: " + ", ".join(f"{n} {f['turn']:+.2f}" for n, f in zip(names, ref)))
+    print("t(s)  window  " + "  ".join(f"{n:>14} {'turn':>5}" for n in names))
     for r in rows:
-        print(f"{r['t']:5.1f}  {r['window']:>6}  " + "  ".join(f"{s:14.3f}" if s is not None else f"{'missing':>14}" for s in r["sims"]))
+        print(f"{r['t']:5.1f}  {r['window']:>6}  " + "  ".join(f"{s:14.3f} {u:+5.2f}" if s is not None else f"{'missing':>14} {'':>5}"
+                                                             for s, u in zip(r["sims"], r["turns"])))
 
     summary = {}
-    print("\nper window: mean / min similarity (missing count) per face")
+    print(f"\nper window: mean / min similarity (missing count), mean |turn|, matched = mean over |turn| within {MATCHED} of the reference's (count) per face")
     for w in range(1, nwin + 1):
         sel = [r for r in rows if r["window"] == w]
         line = f"window {w:>2} ({len(sel):>3} samples): "
@@ -155,18 +187,25 @@ def main() -> int:
             vals = [r["sims"][i] for r in sel if r["sims"][i] is not None]
             miss = sum(1 for r in sel if r["sims"][i] is None)
             if vals:
-                line += f"{names[i]} {np.mean(vals):.3f} / {np.min(vals):.3f} ({miss} missing)   "
-                summary[w].append({"face": names[i], "mean": float(np.mean(vals)), "min": float(np.min(vals)), "missing": miss})
+                turn = [abs(r["turns"][i]) for r in sel if r["sims"][i] is not None]
+                front = [r["sims"][i] for r in sel if r["sims"][i] is not None and pose_matched(r["turns"][i], ref[i]["turn"])]
+                line += (f"{names[i]} {np.mean(vals):.3f} / {np.min(vals):.3f} ({miss} missing) turn {np.mean(turn):.2f} "
+                         f"matched {np.mean(front):.3f} ({len(front)})   " if front else
+                         f"{names[i]} {np.mean(vals):.3f} / {np.min(vals):.3f} ({miss} missing) turn {np.mean(turn):.2f} matched none   ")
+                summary[w].append({"face": names[i], "mean": float(np.mean(vals)), "min": float(np.min(vals)), "missing": miss,
+                                   "turn": float(np.mean(turn)), "matched": float(np.mean(front)) if front else None, "matched_n": len(front)})
             else:
                 line += f"{names[i]} all missing   "
-                summary[w].append({"face": names[i], "mean": None, "min": None, "missing": miss})
+                summary[w].append({"face": names[i], "mean": None, "min": None, "missing": miss, "turn": None, "matched": None, "matched_n": 0})
         print(line)
     for i in range(len(ref)):
         vals = [r["sims"][i] for r in rows if r["sims"][i] is not None]
         if vals:
             first = np.mean(vals[: max(1, len(vals) // 10)])
             last = np.mean(vals[-max(1, len(vals) // 10):])
-            print(f"{names[i]}: first 10 % {first:.3f} -> last 10 % {last:.3f} (drift {last - first:+.3f}); overall mean {np.mean(vals):.3f}, min {np.min(vals):.3f}")
+            front = [r["sims"][i] for r in rows if r["sims"][i] is not None and pose_matched(r["turns"][i], ref[i]["turn"])]
+            print(f"{names[i]}: first 10 % {first:.3f} -> last 10 % {last:.3f} (drift {last - first:+.3f}); overall mean {np.mean(vals):.3f}, min {np.min(vals):.3f}"
+                  + (f"; pose-matched mean {np.mean(front):.3f} over {len(front)} of {len(vals)} samples" if front else "; no pose-matched sample"))
     if args.json:
         with open(args.json, "w") as f:
             json.dump({"clip": args.clip, "reference": args.reference, "match": args.match, "faces": names, "rows": rows, "windows": summary}, f, indent=1)

@@ -363,6 +363,15 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-12 08:33: `scripts/face_drift.py` reports the head's turn with the similarity: `turn` per sample (the nose's offset
+  from the midpoint of the eyes along the eye line over the eye distance, from MTCNN's five landmarks; 0 frontal, about
+  0.5 three-quarter, 1 and beyond a profile; a rolled head is not a turn), the mean |turn| per window, and `matched`, the
+  mean similarity over the samples whose |turn| is within 0.2 of the reference face's own. On the three queue145 arms the
+  reference two-shot has both heads at about 0.6; the woman runs 0.7-0.9 (profile) in the two-shot windows and 0.4-0.6 in
+  the noise arm's close-ups, which is most of her 0.69-0.88 spread. Pose-matched, the woman is 0.77 (recipe) / 0.76
+  (anchor) / 0.85 (noise close-ups) and her window-10 dip to 0.69 stays at matched pose (two samples), so the end-of-clip
+  sag is partly real and partly pose. The man's negative minima in the noise arm's close-ups are the position match
+  landing on no face, not drift. Tests `tests/test_face_drift_windows.py` (turn, roll, matched).
 - 2026-11-12 08:27: `scripts/queue-lib.sh` gained `lever_lines "<since>"`: how often the levers that run inside the
   denoising loop (hand-over noise, audio pin release, voice anchor) logged, per rank, from the head journal and the rank 1
   worker logs newer than the start time; the head journal alone misses the loop wrappers' per-attempt lines (queue145's
