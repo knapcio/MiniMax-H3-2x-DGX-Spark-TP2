@@ -124,3 +124,49 @@ silence (shots 2 and 9; `scripts/shot_cuts.py shot.mp4` measures the cuts and si
 keeps 1 s of its 2 s beat), wide shots 1/3/8 from v3, 40 ms audio fade at every cut, `ffmpeg -nostdin`. Result
 `ksiazulo-v5-realroom-closeups.mp4`: 65 s, 9 shots, the same inn in every shot. Clips `fun5-s{2,4,5,6,7,9}` on
 Spark_06, queue `queue144-fun5.sh`. Invented characters only.
+
+## 6. Way (c): the close-up as FL2VA from the model's own still opens exactly and then leaves (queue147)
+
+The third way to a close-up in the real room: no references at all, the shot rendered as FL2VA from a still of the
+model's own close-up frame (the elf, the host with the kebab, the host's extreme close-up, cut from the v5 shots), the
+prompt saying "the first frame is given: keep this person, framing, room and props exactly as in it" and "the camera
+does not move, zoom or cut". Three stills, two seeds, 1344x768, 8.0 s (192 frames), the lines of shots 2/6/9, the
+guard at 0.03 with two retries (the one-window request goes through the guard path). Measured: PSNR of frame 0 against
+the still, the face scale and the camera's zoom over time (`scripts/framing_trace.py`, its first use on rendered
+shots), scene cuts (`scene>0.3`), word times (faster-whisper small), guard CER, elapsed:
+
+| shot, seed | frame 0 vs still | what the model did | leaves the framing at | the line against the move | guard CER | elapsed |
+|---|---|---|---|---|---|---|
+| 2 elf, 6001 | 39.0 dB | holds the medium close-up for all 8 s; the scale and the kebab slide into the frame from 4.7 s, the face stays the same size | never (zoom x1.03) | 1.3 s beat, then the whole line in the close-up | 0.000 | 899 s |
+| 2 elf, 6002 | 39.2 dB | pulls back in the first 0.75 s to a medium shot of the elf behind the scale, the kebab and three lembas, then static | 0.75 s, pull-back x0.76, no cut | starts at 0.0 s, no beat | 0.000 | 893 s |
+| 6 host, 6001 | 40.7 dB | close-up for 3 s, then a pull-back to a two-shot with an invented red-haired woman | 3.5 s, pull-back x0.56, no cut | "A to jest kebab" close, "z Mordoru, i niestety mielonka" wide; no beat | 0.000 | 895 s |
+| 6 host, 6002 | 40.9 dB | close-up for 3.2 s, then a hard cut to a three-shot with two invented women | 3.17 s cut | 2.7 s beat; "A to" before the cut, the rest after | 0.000 | 892 s |
+| 9 host, 6001 | 42.2 dB | extreme close-up with the thumb for 3.3 s, then a hard cut to a wide two-shot with an invented bearded man; sliced white bread where the lembas were | 3.25 s cut | "Lembas dostaje muala" close, "a kebab z Mordoru nie dostaje nic" wide; no beat | 0.000 | 893 s |
+| 9 host, 6002 | 43.1 dB | extreme close-up for 2.3 s, then a hard cut to a two-shot with an invented red-haired woman | 2.25 s cut | the same split at the comma; no beat | 0.022 | 1062 s |
+
+What this says:
+
+- **The opening is solved by construction.** Frame 0 is the still (39-43 dB; the last frame is 12-16 dB from it),
+  so a shot from a still has no invented room and no head to trim. The faces and costumes held in all six.
+- **The model leaves the framing anyway.** Five of six shots pull back or cut to a wider shot within 0.75-3.5 s,
+  and the wider shot invents the other people at the table, because the still carries nobody else. This is section 5
+  mirrored: given the wide scene frame it opens wide and cuts in; given a close-up it opens close and cuts out.
+  The close-up is a shot the model visits; the table is its home framing. "The camera does not move, zoom or cut"
+  was ignored in five of six, and "keep the props exactly" lost the lembas in shot 9.
+- **The cut lands on the phrase.** In all four shots that cut or pulled back during the line, the move sits on a
+  clause boundary of the line (the comma of shot 9 at both seeds, "A to | jest kebab" and "kebab | z Mordoru" in
+  shot 6). The model edits on the sentence, which makes the half before the cut a clean close-up insert of the
+  first clause (2.3-3.5 s) and the half after a wide shot of the wrong people.
+- The silent beat held in two of six (four of six in section 5); four shots start the line at 0.0 s.
+- Cost: 892-899 s per 8.0 s shot with one still and no retries, against 1211 s for the same shot by Ref2VA with the
+  scene frame and three crops; one shot took 1062 s at the same settings.
+- The trace tool earned its place: two of the five moves are pull-backs with no scene cut (`scene>0.3` saw nothing
+  in shot 6 seed 6001 and shot 2 seed 6002), which only the zoom column shows (x0.56, x0.76) and the
+  `head_end` rule dates (3.5 s, 0.75 s).
+
+Where this leaves close-ups, as of now: a close-up that must stay a close-up for a whole line has no reliable path
+yet. Way (a) gives it after a 1-2.6 s wide head in half the shots; way (c) gives it for the first clause in most shots
+and for the whole shot in one of six. The pinned first frame of `scripts/first_frame_pin.py` (the still as latent
+frame 0 plus the character's card as the only reference, so the wide shot would at least show the right people) is
+the next test (queue148). Clips `flcu-s{2,6,9}-s{6001,6002}` on Spark_06, queue `queue147-fl2va-stills.sh`. Invented
+characters only.

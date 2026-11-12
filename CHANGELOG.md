@@ -363,6 +363,13 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-12 12:56: way (c) to a close-up, the shot rendered as FL2VA from the model's own close-up still (queue147,
+  `results/20261110-shots-and-close-ups/` section 6). The opening is solved by construction (frame 0 is the still, 39-43 dB,
+  no invented room, no head to trim), but the model leaves the framing anyway: five of six shots pull back or cut to a
+  wider shot within 0.75-3.5 s and invent the other people, the mirror image of section 5. The move sits on a clause
+  boundary of the line in all four shots that cut during it. Two pull-backs have no scene cut and show only in
+  `scripts/framing_trace.py`'s zoom column (its first use on rendered shots). 892-899 s per 8 s shot with one still
+  against 1211 s by Ref2VA with four references. Next: the pinned first frame plus the card (queue148, running).
 - 2026-11-12 10:50: a word the model slips at every seed (queue146, `results/20261106-voice/` section 18): `chrupnięcie`
   came out as `chrupiącie`-like at all four seeds with the plain spelling (0 of 4), and right in 2 of 4 with `chrupnjęcie`
   in the prompt and the real word in the respelling table; the split spelling `chrup nięcie` also hit 2 of 4 but broke
