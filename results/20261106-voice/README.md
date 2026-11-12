@@ -699,3 +699,29 @@ latent as a Ref2VA audio reference (400 rows, placed at the window's origin). Ag
 
 Clip `voicepl-anchor5-s3501`; queue `queue142-voice-anchor.sh`.
 
+## 18. A word the model slips at every seed: respell it (queue146, 2026-11-12 08:32-10:48)
+
+Shot 4 of the comedy clip has `chrupnięcie`; at seed 5004 the model said `chrupiącie` in two of three attempts
+(queue144). Three spellings of the word in the prompt, four seeds each (5004, 5104, 5204, 5304), 7.5 s at 960x544, the
+guard at 0.5 so it judges and logs every take and never re-samples (small + medium judges). The respelling table maps
+B back to the real word for the score; C is two tokens, so saying it right costs one space of CER.
+
+| spelling in the prompt | the target word heard right | what was heard instead | line CER per seed | mean |
+|---|---|---|---|---|
+| A `chrupnięcie` (control) | 0 of 4 | chrupiącie, chrupiąćłe, chrupiąziec, chrupiącie | 0.035 0.070 0.070 0.035 | 0.053 |
+| B `chrupnjęcie` | 2 of 4 | chrupniesie, chrupiesię | 0.000 0.035 0.053 0.070 | 0.039 |
+| C `chrup nięcie` | 2 of 4 | niecię, niecię | 0.088 0.000 0.088 0.070 | 0.061 |
+
+- The control never says the word: the `-pnię-` cluster collapses to `-pią-` at every seed. Both respellings get it
+  right half the time, and the misses move closer to the word (`chrupniesie` keeps the n). With the guard's two retries
+  that is 0 % against 87 % odds of a clean take.
+- Spelling C costs elsewhere: `wjeżdżamy`, clean in all four control takes, slipped in three of the four C takes
+  (`wieszczamy`, `wyjeżdżamy`, `wjeżdżdżamy`). A split word changes the rhythm of the line around it; B does not (one
+  slip of `wjeżdżamy` in four).
+- The picture is the seed's, not the spelling's: the three takes of a seed share the composition (seed 5204 ignored
+  the close-up in all three), so the respelling is free on the image side.
+- Verdict: when a word fails at every seed, respell it inside the word (B's kind), map it back in the respelling table
+  (`H3_TP2_SPEECH_RESPELL`), and let the guard re-sample; do not split it. Per word, one short screen like this one
+  (four seeds, the guard at 0.5) says which spelling the model can say.
+
+Clips `rs{A,B,C}-s{5004,5104,5204,5304}`; queue `queue146-respell.sh`.
