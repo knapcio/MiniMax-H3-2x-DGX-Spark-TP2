@@ -141,7 +141,7 @@ shots), scene cuts (`scene>0.3`), word times (faster-whisper small), guard CER, 
 | shot, seed | frame 0 vs still | what the model did | leaves the framing at | the line against the move | guard CER | elapsed |
 |---|---|---|---|---|---|---|
 | 2 elf, 6001 | 39.0 dB | holds the medium close-up for all 8 s; the scale and the kebab slide into the frame from 4.7 s, the face stays the same size | never (zoom x1.03) | 1.3 s beat, then the whole line in the close-up | 0.000 | 899 s |
-| 2 elf, 6002 | 39.2 dB | pulls back in the first 0.75 s to a medium shot of the elf behind the scale, the kebab and three lembas, then static | 0.75 s, pull-back x0.76, no cut | starts at 0.0 s, no beat | 0.000 | 893 s |
+| 2 elf, 6002 | 39.2 dB | a hard cut at frame 16 to a medium shot of the elf behind the scale, the kebab and three lembas, then static | 0.67 s cut | starts at 0.0 s, no beat | 0.000 | 893 s |
 | 6 host, 6001 | 40.7 dB | close-up for 3 s, then a pull-back to a two-shot with an invented red-haired woman | 3.5 s, pull-back x0.56, no cut | "A to jest kebab" close, "z Mordoru, i niestety mielonka" wide; no beat | 0.000 | 895 s |
 | 6 host, 6002 | 40.9 dB | close-up for 3.2 s, then a hard cut to a three-shot with two invented women | 3.17 s cut | 2.7 s beat; "A to" before the cut, the rest after | 0.000 | 892 s |
 | 9 host, 6001 | 42.2 dB | extreme close-up with the thumb for 3.3 s, then a hard cut to a wide two-shot with an invented bearded man; sliced white bread where the lembas were | 3.25 s cut | "Lembas dostaje muala" close, "a kebab z Mordoru nie dostaje nic" wide; no beat | 0.000 | 893 s |
@@ -151,21 +151,26 @@ What this says:
 
 - **The opening is solved by construction.** Frame 0 is the still (39-43 dB; the last frame is 12-16 dB from it),
   so a shot from a still has no invented room and no head to trim. The faces and costumes held in all six.
-- **The model leaves the framing anyway.** Five of six shots pull back or cut to a wider shot within 0.75-3.5 s,
+- **The model leaves the framing anyway.** Five of six shots pull back or cut to a wider shot within 0.67-3.5 s,
   and the wider shot invents the other people at the table, because the still carries nobody else. This is section 5
   mirrored: given the wide scene frame it opens wide and cuts in; given a close-up it opens close and cuts out.
   The close-up is a shot the model visits; the table is its home framing. "The camera does not move, zoom or cut"
   was ignored in five of six, and "keep the props exactly" lost the lembas in shot 9.
-- **The cut lands on the phrase.** In all four shots that cut or pulled back during the line, the move sits on a
+- **The cut lands on the phrase.** In all five shots that cut or pulled back during the line, the move sits on a
   clause boundary of the line (the comma of shot 9 at both seeds, "A to | jest kebab" and "kebab | z Mordoru" in
-  shot 6). The model edits on the sentence, which makes the half before the cut a clean close-up insert of the
+  shot 6, after "Patrzcie," in shot 2 seed 6002). The model edits on the sentence, which makes the half before the cut a clean close-up insert of the
   first clause (2.3-3.5 s) and the half after a wide shot of the wrong people.
 - The silent beat held in two of six (four of six in section 5); four shots start the line at 0.0 s.
 - Cost: 892-899 s per 8.0 s shot with one still and no retries, against 1211 s for the same shot by Ref2VA with the
   scene frame and three crops; one shot took 1062 s at the same settings.
-- The trace tool earned its place: two of the five moves are pull-backs with no scene cut (`scene>0.3` saw nothing
-  in shot 6 seed 6001 and shot 2 seed 6002), which only the zoom column shows (x0.56, x0.76) and the
-  `head_end` rule dates (3.5 s, 0.75 s).
+- The trace tool earned its place once and misled once. One of the five moves is a pull-back with no scene cut
+  (shot 6 seed 6001: `scene>0.3` saw nothing, the zoom column shows x0.57 over 2.5 s and the `head_end` rule dates it
+  at 3.5 s). Shot 2 seed 6002 was first written up here as a 0.75 s pull-back x0.76: it is a hard cut at frame 16
+  (`scene>0.3` had it at 0.667 s all along). The first trace sampled through ffmpeg's `fps` filter, which hands out
+  the last frame of each quarter second and never frame 0, and its cut rule asked only for a failed match; 84
+  inliers across the cut read as a zoom. Corrected 2026-11-12 15:45: the trace now samples exact frames and calls
+  a step a cut when the samples barely correlate and the match's zoom is outside 0.8-1.25; rerun on all twelve clips
+  of sections 6 and 7 it finds every cut the eye and `scene>0.3` find and keeps the pull-back a pull-back.
 
 Where this leaves close-ups, as of now: a close-up that must stay a close-up for a whole line has no reliable path
 yet. Way (a) gives it after a 1-2.6 s wide head in half the shots; way (c) gives it for the first clause in most shots
@@ -202,6 +207,8 @@ the one-window guard off, the lines were transcribed afterwards on the workstati
 - The card did its job. Every wide shot the model cut to shows the right character (the elf in shot 2, the host in
   shots 6 and 9), where section 6's FL2VA shots, with no reference, invented people. One wide shot still added a
   second man (shot 9 seed 6002).
+- The corrected trace (see the last bullet of section 6) sees all five departures: cuts at 0.25 s (the first
+  sample after frame 1 or 2) in three shots, at 2.75 s and 2.25 s in shots 9, none in shot 2 seed 6001.
 - The guard path is exact here too: `pinloop-s2-s6001` (guard on, CER 0.0185 on the first attempt) has the same
   `framemd5` as `pin-s2-s6001`, so the source rows and the mask survive the continuation loop unchanged (section 2,
   now also with a source video). Without the guard two of six lines had a slip (a split word, a repeated word),

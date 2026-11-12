@@ -5,11 +5,14 @@ where the opening settles (the establishing head), and the shot size the model e
 A Ref2VA shot opens on its reference's composition and reaches the requested framing by a cut or a push-in; the
 scene-cut rule of ``scripts/shot_cuts.py`` sees the cut and not the push-in. This trace sees both: ``scale`` is the
 largest face's box height over the frame height (MTCNN, facenet-pytorch), ``zoom`` the per-step scale of a
-similarity transform between consecutive samples (ORB + RANSAC, OpenCV; a failed match is a cut). The head ends where
-the final framing starts: the first sample at or after the last cut whose face scale is within 20 % of the last
-half's median and after which the camera zooms by less than 10 % in total (None for a push-in to the last frame).
-The final shot size (wide / medium / close-up by the face scale) says whether a requested close-up
-was ignored.
+similarity transform between consecutive samples (ORB + RANSAC, OpenCV). Samples are exact frames (frame 0, then every
+``round(every * fps)`` frames), so a cut on frame 1 is seen. A step is a cut when the match fails (under 12 inliers) or
+when the two samples barely correlate (under 0.5 on 64x36 grey) and the "zoom" the match found is outside 0.8-1.25,
+which no camera does in a quarter second; calibrated on the nine cuts and two moves (a pull-back, a tilt) of
+queues 147/148, 2026-11-12. The head ends where the final framing starts: the first sample at or after the last cut
+whose face scale is within 20 % of the last half's median and after which the camera zooms by less than 10 % in total
+(None for a push-in to the last frame). The final shot size (wide / medium / close-up by the face scale) says whether
+a requested close-up was ignored.
 
   python scripts/framing_trace.py shot2.mp4 shot4.mp4 --json trace.json
 Needs ffmpeg and a venv with torch + facenet-pytorch; OpenCV is optional (no zoom without it).
@@ -57,25 +60,55 @@ def head_end(times: list[float], scales: list[float | None], zooms: list[float |
     return None
 
 
+def sample_step(every: float, fps: float) -> int:
+    """Frames between samples: ``every`` seconds at ``fps``, at least one frame."""
+    return max(1, round(every * fps))
+
+
 def frames(path: str, every: float, width: int):
-    """Yield (t_seconds, PIL image) for one frame every ``every`` seconds, scaled to ``width``."""
+    """Yield (t_seconds, PIL image) for frame 0 and then every ``round(every * fps)`` frames, scaled to ``width``.
+    Exact frames, not ffmpeg's ``fps`` filter, which hands out the last frame of each interval and so never frame 0."""
     from PIL import Image
 
-    probe = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height",
-                            "-of", "csv=p=0", path], check=True, capture_output=True, text=True).stdout.strip()
-    w0, h0 = (int(x) for x in probe.split(","))
-    h = (h0 * width // w0) // 2 * 2
-    cmd = ["ffmpeg", "-v", "error", "-i", path, "-vf", f"fps=1/{every},scale={width}:{h}", "-f", "image2pipe",
-           "-pix_fmt", "rgb24", "-vcodec", "rawvideo", "-"]
+    probe = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+                            "stream=width,height,r_frame_rate", "-of", "csv=p=0", path],
+                           check=True, capture_output=True, text=True).stdout.strip()
+    w0, h0, rate = probe.split(",")
+    num, _, den = rate.partition("/")
+    fps = float(num) / float(den or 1)
+    h = (int(h0) * width // int(w0)) // 2 * 2
+    step = sample_step(every, fps)
+    cmd = ["ffmpeg", "-v", "error", "-i", path, "-vf", f"select='not(mod(n\\,{step}))',scale={width}:{h}",
+           "-fps_mode", "passthrough", "-f", "image2pipe", "-pix_fmt", "rgb24", "-vcodec", "rawvideo", "-"]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     n, size = 0, width * h * 3
     while True:
         buf = proc.stdout.read(size)
         if len(buf) < size:
             break
-        yield n * every, Image.frombytes("RGB", (width, h), buf)
+        yield n * step / fps, Image.frombytes("RGB", (width, h), buf)
         n += 1
     proc.wait()
+
+
+def correlation(prev, cur) -> float:  # noqa: ANN001
+    """Pearson correlation of the two samples as 64x36 grey images; about 1 within a shot, under 0.5 across a cut."""
+    import numpy as np
+    from PIL import Image
+
+    a, b = (np.asarray(im.convert("L").resize((64, 36), Image.BILINEAR), dtype=float).ravel() for im in (prev, cur))
+    a, b = a - a.mean(), b - b.mean()
+    den = math.sqrt(float((a * a).sum() * (b * b).sum()))
+    return float((a * b).sum() / den) if den > 0 else 1.0
+
+
+def is_cut(inliers: int, zoom: float | None, corr: float | None, min_inliers: int = 12, corr_max: float = 0.5,
+           zoom_band: tuple[float, float] = (0.8, 1.25)) -> bool:
+    """A step is a cut when the match failed, or when the samples barely correlate and the match's "zoom" is one no
+    camera does in one step. A real move (a pull-back, a tilt) keeps its inliers and its zoom inside the band."""
+    if inliers < min_inliers or zoom is None:
+        return True
+    return corr is not None and corr < corr_max and not zoom_band[0] <= zoom <= zoom_band[1]
 
 
 def zoom_between(prev, cur) -> tuple[float | None, int]:  # noqa: ANN001
@@ -104,7 +137,7 @@ def zoom_between(prev, cur) -> tuple[float | None, int]:  # noqa: ANN001
 
 
 def trace(path: str, every: float, width: int, detector) -> dict:  # noqa: ANN001
-    times, scales, xs, counts, zooms, inliers = [], [], [], [], [], []
+    times, scales, xs, counts, zooms, inliers, corrs = [], [], [], [], [], [], []
     prev = None
     for t, img in frames(path, every, width):
         boxes, probs = detector.detect(img)
@@ -120,9 +153,12 @@ def trace(path: str, every: float, width: int, detector) -> dict:  # noqa: ANN00
         z, n_in = zoom_between(prev, img) if prev is not None else (None, 0)
         zooms.append(z)
         inliers.append(n_in)
+        corrs.append(correlation(prev, img) if prev is not None else None)
         times.append(t)
         prev = img
-    cuts = [times[i] for i in range(1, len(times)) if zooms[i] is None and inliers[i] < 12 and counts[i] + counts[i - 1] > 0]
+    cut_idx = [i for i in range(1, len(times)) if is_cut(inliers[i], zooms[i], corrs[i]) and counts[i] + counts[i - 1] > 0]
+    cuts = [times[i] for i in cut_idx]
+    zooms = [None if i in cut_idx else z for i, z in enumerate(zooms)]   # a cut is not a zoom
     end = head_end(times, scales, zooms, cuts)
     last_half = [s for s in scales[len(scales) // 2:] if s is not None]
     final = sorted(last_half)[len(last_half) // 2] if last_half else None
@@ -130,6 +166,7 @@ def trace(path: str, every: float, width: int, detector) -> dict:  # noqa: ANN00
     return {"clip": path, "every_s": every, "times_s": times, "scale": [None if s is None else round(s, 3) for s in scales],
             "x": [None if x is None else round(x, 3) for x in xs], "faces": counts,
             "zoom": [None if z is None else round(z, 4) for z in zooms], "inliers": inliers,
+            "corr": [None if c is None else round(c, 3) for c in corrs],
             "cuts_s": cuts, "head_end_s": end, "final_scale": None if final is None else round(final, 3),
             "final_size": shot_size(final), "opening_scale": next((round(s, 3) for s in scales if s is not None), None),
             "total_zoom": None if total_zoom is None else round(total_zoom, 3)}

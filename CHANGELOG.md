@@ -363,6 +363,12 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-12 15:45: `scripts/framing_trace.py` samples exact frames (frame 0, then every `round(every*fps)` frames)
+  instead of ffmpeg's `fps` filter, which hands out the last frame of each interval and never frame 0, so a cut on frame 1
+  was invisible; and a step is a cut when the match fails or the samples barely correlate (under 0.5) with a match zoom
+  outside 0.8-1.25, calibrated on the nine cuts and two moves of queues 147/148 (the old rule read a cut with 84 inliers
+  as a pull-back x0.76). `corr` column in the JSON; a cut no longer counts as zoom. Section 6 of the shots README
+  corrected: shot 2 seed 6002 is a 0.67 s cut, not a pull-back. Tests: `tests/test_framing_trace.py` (12).
 - 2026-11-12 15:40: results: queue148, the pinned first frame (`scripts/first_frame_pin.py` + the character's card as the
   only reference) as section 7 of `results/20261110-shots-and-close-ups/README.md`. Frame 0 is the still (34-35.5 dB);
   three of six shots cut away at frame 1 or 2, two hold the first clause and cut at 2.2-2.6 s, one holds the whole shot:

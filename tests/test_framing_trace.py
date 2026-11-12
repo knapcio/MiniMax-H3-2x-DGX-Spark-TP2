@@ -17,6 +17,41 @@ class SizeTests(unittest.TestCase):
         self.assertEqual(ft.shot_size(None), "no face")
 
 
+class CutRuleTests(unittest.TestCase):
+    def test_exact_frame_step(self):
+        self.assertEqual(ft.sample_step(0.25, 24.0), 6)
+        self.assertEqual(ft.sample_step(1.0, 24.0), 24)
+        self.assertEqual(ft.sample_step(0.01, 24.0), 1)
+
+    def test_failed_match_is_a_cut(self):
+        self.assertTrue(ft.is_cut(5, None, 0.9))
+        self.assertTrue(ft.is_cut(9, 1.0, 0.99))
+
+    def test_low_correlation_with_an_impossible_zoom_is_a_cut(self):
+        # the nine cuts of queues 147/148: 14-76 inliers, corr 0.13-0.38, "zoom" 0.35-0.76
+        for inl, z, c in ((72, 0.76, 0.27), (29, 0.49, 0.26), (76, 0.75, 0.38), (41, 0.35, -0.05), (14, 0.39, 0.13)):
+            self.assertTrue(ft.is_cut(inl, z, c), (inl, z, c))
+
+    def test_moves_are_not_cuts(self):
+        # a pull-back (zoom 0.92 per step, corr 0.51) and a tilt from the hands to the face (42 inliers, corr 0.19, zoom 1.03)
+        self.assertFalse(ft.is_cut(332, 0.92, 0.51))
+        self.assertFalse(ft.is_cut(42, 1.03, 0.19))
+        self.assertFalse(ft.is_cut(73, 0.92, 0.30))
+        self.assertFalse(ft.is_cut(400, 1.0, None))
+
+    def test_correlation_of_images(self):
+        from PIL import Image
+        import random
+
+        rnd = random.Random(1)
+        a = Image.frombytes("L", (64, 36), bytes(rnd.randrange(256) for _ in range(64 * 36))).convert("RGB")
+        self.assertAlmostEqual(ft.correlation(a, a), 1.0, places=6)
+        b = Image.frombytes("L", (64, 36), bytes(rnd.randrange(256) for _ in range(64 * 36))).convert("RGB")
+        self.assertLess(abs(ft.correlation(a, b)), 0.2)
+        flat = Image.new("RGB", (64, 36), (40, 40, 40))
+        self.assertEqual(ft.correlation(flat, flat), 1.0)
+
+
 class HeadEndTests(unittest.TestCase):
     def test_static_shot_settles_at_zero(self):
         times = [i * 0.25 for i in range(16)]
