@@ -207,6 +207,10 @@ the one-window guard off, the lines were transcribed afterwards on the workstati
 - The card did its job. Every wide shot the model cut to shows the right character (the elf in shot 2, the host in
   shots 6 and 9), where section 6's FL2VA shots, with no reference, invented people. One wide shot still added a
   second man (shot 9 seed 6002).
+- Section 6's "the cut lands on the phrase" did not repeat here. The two mid-line cuts fall inside a clause
+  ("Lembas | dostaje muala" at 2.6 s in shot 9 seed 6001; between a repeated "dostaje" and "muala" at 2.2 s in seed
+  6002), and the three frame-1 cuts come on the first syllable of the line. Five of five in section 6, zero of two
+  here: a tendency of the FL2VA shots, not a rule to build a recipe on.
 - The corrected trace (see the last bullet of section 6) sees all five departures: cuts at 0.25 s (the first
   sample after frame 1 or 2) in three shots, at 2.75 s and 2.25 s in shots 9, none in shot 2 seed 6001.
 - The guard path is exact here too: `pinloop-s2-s6001` (guard on, CER 0.0185 on the first attempt) has the same
