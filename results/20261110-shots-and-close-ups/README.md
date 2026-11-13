@@ -83,7 +83,7 @@ else.
    people within 0.75-3.5 s, on a clause boundary of the line; usable as a close-up insert of the first clause
    (section 6). **(d) FL2VA with two keyframes: the model's own close-up still as the first frame and a later frame of
    the same shot as the last** (`H3_END_IMAGE_FILE`): the shot opens and closes in the framing, and the beat it leaves
-   for (a tilt to the props, a two-second cutaway on a pause of the line) comes back; six of six on one seed
+   for (a tilt to the props, a two-second cutaway on a pause of the line) comes back; twelve of twelve on two seeds
    (section 8). This is the way to render close-ups now.
 4. Cut with jump cuts; a 40 ms audio fade at each cut keeps the room tone from clicking (`ffmpeg -nostdin` in a loop).
 5. Words the model cannot say (invented names) are slips at every seed: write around them.
@@ -248,27 +248,38 @@ between by eye and by `scripts/framing_trace.py` (exact frames, the corrected cu
 | 6 host | late | 40.4 dB | 40.0 dB | the same tilt down to the food at about 1 s, back up by 4 s, then the host eats and talks into the last frame's pose | about 1-4 s, a camera move, no cut | 0.000 | 945 s |
 | 9 host | same | 42.7 dB | 42.0 dB | extreme close-up, a hard cut at 3.25 s to a wide two-shot with an invented red-haired woman, a hard cut back at 5.17 s, extreme close-up to the end | 3.25-5.17 s, two cuts | 0.000 | 948 s |
 | 9 host | late | 41.9 dB | 41.1 dB | the same: out at 3.33 s to the same kind of two-shot, back at 5.33 s | 3.33-5.33 s, two cuts | 0.022 | 950 s |
+| 2 elf | same, seed 6002 | 39.2 dB | 39.2 dB | holds the medium close-up for all 8 s | never | 0.000 | 947 s |
+| 2 elf | late, seed 6002 | 39.3 dB | 38.7 dB | holds the framing, the reach becomes holding the lembas up | never | 0.000 | 944 s |
+| 6 host | same, seed 6002 | 40.8 dB | 40.6 dB | the tilt down to the hands and the food at about 1 s, back up to the close-up by 5 s, held to the end | about 1-5 s, a camera move, no cut | 0.000 | 945 s |
+| 6 host | late, seed 6002 | 40.5 dB | 40.2 dB | pulls back to a medium shot of the host biting, the table and the scale in frame, and comes back to the close-up for the last frame's pose | about 1-5 s, a camera move, no cut | 0.027 | 951 s |
+| 9 host | same, seed 6002 | 42.9 dB | 42.4 dB | out at 2.21 s to the two-shot with the invented woman, back at 5.5 s | 2.21-5.5 s, two cuts | 0.000 | 946 s |
+| 9 host | late, seed 6002 | 42.2 dB | 41.6 dB | the same, out at 2.21 s, back at 5.42 s | 2.21-5.42 s, two cuts | 0.000 | 946 s |
 
 - **The last keyframe turns "leaves" into "leaves and comes back".** With one keyframe (section 6) five of six shots
-  left the close-up and never returned; with two, six of six open and close on it (38-43 dB at both ends), two hold it
-  throughout, and four leave it for a 2-2.5 s beat in the middle and return. The departure is the same per shot in
-  both arms (shot 6 a tilt to the food, shot 9 a cut to the two-shot), so it is the seed's event, and the last frame
-  only decides that the shot comes back from it.
-- **The beat sits on a pause of the line.** In shot 9 the cut away covers "Muala, | a" at both arms (the silence
-  between the clauses, 2.2-3.1 s); in shot 6 the line starts during the insert and "I niestety, mielonka" is said
-  back in the close-up. An editor would call the shot-9 version a close-up with a two-second cutaway and keep it;
+  left the close-up and never returned; with two, twelve of twelve (two arms, two seeds) open and close on it
+  (38.7-42.9 dB at both ends), four hold it throughout, and eight leave it for a 2-4 s beat in the middle and return.
+  The departure is the shot's, not the seed's: shot 2 holds at both seeds and both arms, shot 6 moves the camera to
+  the food and back at both, shot 9 cuts to the same two-shot with an invented woman and back at both (out at
+  2.2-3.3 s, back at 5.2-5.5 s). The last frame decides that the shot comes back from it; what it leaves for is
+  written in the still and the line (a food shot leaves for the food, a comparison of two dishes leaves for the
+  other person).
+- **The beat sits on a pause of the line.** In shot 9 the cut away covers "Muala, | a" at both arms and both seeds
+  (the silence between the clauses, 1.2-4.2 s at seed 6002, 2.2-3.1 s at 6001); in shot 6 the line starts during
+  the insert and "I niestety, mielonka" is said back in the close-up. An editor would call the shot-9 version a close-up with a two-second cutaway and keep it;
   the shot-6 tilt is a camera move no cut check sees (`scene>0.3` and the trace both say no cuts, correctly).
 - **Arm "late" gives motion without a cut.** The elf's shot goes from the reach to holding the lembas up in one
   framing with no departure at all; a second still of the same shot is a cheap way to tell the model where the
   action ends. The late still costs nothing (a frame of the earlier render).
-- Lines clean in five of six at the first attempt; the two-shot's invented woman is section 6's problem again
-  (no reference carries the other person): the cutaway shows the wrong people. Elapsed 945-953 s against 892-899 s
-  for one keyframe (+6 %) and 1033-1048 s for the pin with the card.
+- Lines clean in ten of twelve at the first attempt (0.022 and 0.027 under the 0.03 guard in the other two); the
+  two-shot's invented woman is section 6's problem again (no reference carries the other person): the cutaway shows
+  the wrong people, the same wrong person at both seeds. Elapsed 944-953 s against 892-899 s for one keyframe
+  (+6 %) and 1033-1048 s for the pin with the card.
 
 Where this leaves close-ups: **way (d) is the recommendation.** A close-up that must hold for a whole line is
 rendered as FL2VA from the model's own still as the first frame and a later frame of the same shot as the last;
 the shot opens and closes in the framing, and when it leaves it comes back within about two seconds on a pause of
 the line. If the cutaway must not show invented people, cut it out in the edit (the close-up on both sides of it is
-the same framing, a jump cut hides under the pause) or render the shot again with another seed. Queue152 repeats the
-six shots at seed 6002. Clips `bk-{same,late}-s{2,6,9}-s6001` on Spark_06, queue `queue151-bookends.sh`. Invented
-characters only.
+the same framing, a jump cut hides under the pause); another seed does not help, the shot leaves for the same thing
+at both. Queue153 asks whether the return still happens at a full 11.5 s window. Clips
+`bk-{same,late}-s{2,6,9}-s{6001,6002}` on Spark_06, queues `queue151-bookends.sh`, `queue152-bookends-s6002.sh`.
+Invented characters only.
