@@ -87,7 +87,8 @@ else.
    (section 8). Keep such a shot at 8 s or less: at 11.5 s the beat away grows to 4-6 s and the render costs +81 %.
    This is the way to render close-ups now. When the beat must not show invented people, the same two keyframes pinned
    as latents on the Ref2VA path with the character's card (`scripts/first_frame_pin.py --last`) keep the cast right
-   in four of four, at the price of weaker keyframes (a one-frame flash at one end in two of four shots; section 9).
+   in seven of eight beats, at the price of a hard cut right after the pinned frames in the food shot (section 9; two
+   latents at each end make the ends exact, the departures stay cuts).
 4. Cut with jump cuts; a 40 ms audio fade at each cut keeps the room tone from clicking (`ffmpeg -nostdin` in a loop).
 5. Words the model cannot say (invented names) are slips at every seed: write around them.
 
@@ -319,6 +320,16 @@ the guard at 0.03 with one retry, otherwise as section 8.
   (leave and come back on the line's pause); the pin path also takes 1036-1040 s against 945-953 s.
 - So for a close-up that must not invent people, the pinned two-keyframe shot with the card is the way, with one shot
   in four to render again; when the beat can be cut out in the edit, FL2VA with both keyframes (section 8) is cheaper
-  and its ends are exact. Whether pinning two latents at each end (`--pin-latents 2 --last-latents 2`) turns the
-  flashes into holds is queue155. Clips `pin2-s{6,9}-s{6001,6002}` on Spark_06, queue `queue154-pin2.sh`. Invented
-  characters only.
+  and its ends are exact.
+- **Two latents at each end (`--pin-latents 2 --last-latents 2`, frames 0-4 and the last eight; queue155, the same
+  four shots):** the last frame is now as exact as FL2VA's (38.6-39.9 dB; the first 38.7-39.6) and the shot comes back
+  before the pinned tail in four of four (at 2.2, 6.0, 4.2 and 7.2 s). But the food shot cuts away right after the
+  pinned frames at both seeds (frame 5, a 0.2 s hold instead of a one-frame flash), where FL2VA's conditioning gave a
+  0.75-1 s hold and then a camera move; the pin's departures are cuts, FL2VA's are moves. And the card lowers the
+  invented-people rate without removing it: one of the four beats shows a dark-haired woman next to the host, the
+  other three the host alone or his hands (one of eight over queues 154 and 155, against four of four in section 8's
+  shot 9). Elapsed 1039-1046 s.
+- So: FL2VA with both keyframes is the default (exact ends, departures as camera moves, cheapest); the pinned pair
+  with the card when a beat with invented people is worse than a hard cut after a 0.2 s hold; and when the beat must
+  show the right second person, give the Ref2VA path the second card too (queue156). Clips `pin2-s{6,9}-s{6001,6002}`,
+  `pin2x2-s{6,9}-s{6001,6002}` on Spark_06, queues `queue154-pin2.sh`, `queue155-pin2x2.sh`. Invented characters only.
