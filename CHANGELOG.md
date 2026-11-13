@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-13 22:11: `docs/FILM_FROM_SHOTS.md`, the film-from-shots procedure with the commands (scene frame by T2VA, cards,
+  pass A on Ref2VA with the scene frame and the cards, stills, pass B as FL2VA with both keyframes, the edit, the checks, the
+  costs, the edit with `scripts/cut_shots.py`). Linked from the README's long-clip table.
 - 2026-11-13 21:02: results: the shots recipe end to end on a new scene (queues 157-159, section 10 of the shots README):
   scene frames by T2VA, cards by `make_character_cards.py`, six Ref2VA shots with the scene frame and the cards, three
   close-ups re-rendered as FL2VA with both keyframes from their own stills. Nine of nine renders at the first attempt, the
