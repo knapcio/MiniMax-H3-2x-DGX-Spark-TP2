@@ -363,6 +363,11 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-13 03:15: results: queue151, the close-up as FL2VA with both keyframes (the still first, the same or a later
+  frame of the shot last), section 8 of `results/20261110-shots-and-close-ups/README.md`: six of six open and close in the
+  framing (38-43 dB at both ends), two hold it throughout, four leave it for a 2-2.5 s beat on a pause of the line (a tilt
+  to the props in shot 6, a cutaway to a two-shot in shot 9) and come back; +6 % time. Way (d) is now the recipe's way to
+  render close-ups (section 4); the README's long-clip table says so.
 - 2026-11-13 01:16: results: queue150, the voice anchor on a second seed (3801), closes the lever in section 8 of
   `results/20261109-long-chain-identity/README.md` (`speakers_q150_voice.txt`): the anchor's worst speaker window is above
   the recipe's in all four comparisons over two seeds (0.943 / 0.865 vs 0.81 / 0.838; 0.947 / 0.935 vs 0.857 / 0.869), the

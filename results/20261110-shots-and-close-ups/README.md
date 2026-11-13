@@ -81,7 +81,10 @@ else.
    held, but the room and props are the prompt's and differ from the wide shot's. (v3/v4, queue137-143.) (c) FL2VA from
    the model's own close-up still: the opening is exact, but five of six shots cut or pull back to a wide shot of invented
    people within 0.75-3.5 s, on a clause boundary of the line; usable as a close-up insert of the first clause
-   (section 6).
+   (section 6). **(d) FL2VA with two keyframes: the model's own close-up still as the first frame and a later frame of
+   the same shot as the last** (`H3_END_IMAGE_FILE`): the shot opens and closes in the framing, and the beat it leaves
+   for (a tilt to the props, a two-second cutaway on a pause of the line) comes back; six of six on one seed
+   (section 8). This is the way to render close-ups now.
 4. Cut with jump cuts; a 40 ms audio fade at each cut keeps the room tone from clicking (`ffmpeg -nostdin` in a loop).
 5. Words the model cannot say (invented names) are slips at every seed: write around them.
 
@@ -223,6 +226,49 @@ the one-window guard off, the lines were transcribed afterwards on the workstati
 Where this leaves close-ups: still no reliable path for a close-up that must hold for a whole line. The pin is not
 a default and not a recommendation; it stays in the repo as a tool because it works mechanically and the card
 half of it (the right people in whatever wide shot follows) is real. Pinning more latents (`--pin-latents 3`, frames 0-8)
-is untested; the model that cuts at frame 1 would most likely cut at frame 9. The next test is the two-keyframe shot (first and last frame both set, queue151),
-which constrains where the shot ends rather than only where it starts. Clips `pin-s{2,6,9}-s{6001,6002}` and
+is untested; the model that cuts at frame 1 would most likely cut at frame 9. The two-keyframe shot (first and last frame both set, queue151) is section 8: it constrains where the shot
+ends as well as where it starts, and that is the one that works. Clips `pin-s{2,6,9}-s{6001,6002}` and
 `pinloop-s2-s6001` on Spark_06, queue `queue148-pin.sh`. Invented characters only.
+
+## 8. Way (d): the close-up as FL2VA with both keyframes opens, leaves for a beat and comes back (queue151)
+
+The same three stills, lines and seed as sections 6 and 7, rendered as FL2VA with the still as the first frame **and**
+a last frame (`H3_END_IMAGE_FILE`, `frame_indices [0, -1]`; `scripts/bench-matrix.sh` passes `both` when it is set).
+Arm "same": the last frame is the same still, so the shot must end where it began. Arm "late": the last frame is a
+later frame of the same v5 close-up (the same framing, another pose: the elf holding the lembas up, the host mid-bite,
+the host's thumb lower), so the shot has somewhere to go without changing the framing. 1344x768, 8.0 s, 20 steps,
+guard 0.03, seed 6001. PSNR of frame 0 against the first still and of frame 191 against the last; what happens in
+between by eye and by `scripts/framing_trace.py` (exact frames, the corrected cut rule).
+
+| shot | arm | frame 0 vs first | frame 191 vs last | what the model did in between | away from the framing | guard CER | elapsed |
+|---|---|---|---|---|---|---|---|
+| 2 elf | same | 39.2 dB | 39.1 dB | holds the medium close-up for all 8 s, the elf talks and handles the lembas | never | 0.000 | 953 s |
+| 2 elf | late | 39.2 dB | 38.4 dB | holds the framing for all 8 s and moves from the reach to holding the lembas up, the last frame's pose | never | 0.000 | 948 s |
+| 6 host | same | 40.7 dB | 40.3 dB | a fast tilt down to the food on the table at 0.5-1.2 s, the insert to 3.0 s, a tilt back up to the host's close-up, held to the end | 0.75-3.5 s, a camera move, no cut | 0.000 | 947 s |
+| 6 host | late | 40.4 dB | 40.0 dB | the same tilt down to the food at about 1 s, back up by 4 s, then the host eats and talks into the last frame's pose | about 1-4 s, a camera move, no cut | 0.000 | 945 s |
+| 9 host | same | 42.7 dB | 42.0 dB | extreme close-up, a hard cut at 3.25 s to a wide two-shot with an invented red-haired woman, a hard cut back at 5.17 s, extreme close-up to the end | 3.25-5.17 s, two cuts | 0.000 | 948 s |
+| 9 host | late | 41.9 dB | 41.1 dB | the same: out at 3.33 s to the same kind of two-shot, back at 5.33 s | 3.33-5.33 s, two cuts | 0.022 | 950 s |
+
+- **The last keyframe turns "leaves" into "leaves and comes back".** With one keyframe (section 6) five of six shots
+  left the close-up and never returned; with two, six of six open and close on it (38-43 dB at both ends), two hold it
+  throughout, and four leave it for a 2-2.5 s beat in the middle and return. The departure is the same per shot in
+  both arms (shot 6 a tilt to the food, shot 9 a cut to the two-shot), so it is the seed's event, and the last frame
+  only decides that the shot comes back from it.
+- **The beat sits on a pause of the line.** In shot 9 the cut away covers "Muala, | a" at both arms (the silence
+  between the clauses, 2.2-3.1 s); in shot 6 the line starts during the insert and "I niestety, mielonka" is said
+  back in the close-up. An editor would call the shot-9 version a close-up with a two-second cutaway and keep it;
+  the shot-6 tilt is a camera move no cut check sees (`scene>0.3` and the trace both say no cuts, correctly).
+- **Arm "late" gives motion without a cut.** The elf's shot goes from the reach to holding the lembas up in one
+  framing with no departure at all; a second still of the same shot is a cheap way to tell the model where the
+  action ends. The late still costs nothing (a frame of the earlier render).
+- Lines clean in five of six at the first attempt; the two-shot's invented woman is section 6's problem again
+  (no reference carries the other person): the cutaway shows the wrong people. Elapsed 945-953 s against 892-899 s
+  for one keyframe (+6 %) and 1033-1048 s for the pin with the card.
+
+Where this leaves close-ups: **way (d) is the recommendation.** A close-up that must hold for a whole line is
+rendered as FL2VA from the model's own still as the first frame and a later frame of the same shot as the last;
+the shot opens and closes in the framing, and when it leaves it comes back within about two seconds on a pause of
+the line. If the cutaway must not show invented people, cut it out in the edit (the close-up on both sides of it is
+the same framing, a jump cut hides under the pause) or render the shot again with another seed. Queue152 repeats the
+six shots at seed 6002. Clips `bk-{same,late}-s{2,6,9}-s6001` on Spark_06, queue `queue151-bookends.sh`. Invented
+characters only.
