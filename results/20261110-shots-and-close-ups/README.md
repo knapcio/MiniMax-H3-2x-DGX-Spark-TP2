@@ -88,7 +88,8 @@ else.
    This is the way to render close-ups now. When the beat must not show invented people, the same two keyframes pinned
    as latents on the Ref2VA path with the character's card (`scripts/first_frame_pin.py --last`) keep the cast right
    in seven of eight beats, at the price of a hard cut right after the pinned frames in the food shot (section 9; two
-   latents at each end make the ends exact, the departures stay cuts).
+   latents at each end make the ends exact, the departures stay cuts). The whole recipe on a new scene: section 10
+   (a 48 s film in 2.8 h of renders, nine of nine shots at the first attempt, the close-ups held throughout).
 4. Cut with jump cuts; a 40 ms audio fade at each cut keeps the room tone from clicking (`ffmpeg -nostdin` in a loop).
 5. Words the model cannot say (invented names) are slips at every seed: write around them.
 
@@ -339,3 +340,26 @@ the guard at 0.03 with one retry, otherwise as section 8.
   shows him alone or the room. Clips `pin2-s{6,9}-s{6001,6002}`, `pin2x2-s{6,9}-s{6001,6002}`,
   `pin2x2c-s{6,9}-s{6001,6002}` on Spark_06, queues `queue154-pin2.sh`, `queue155-pin2x2.sh`,
   `queue156-pin2x2-cards.sh`. Invented characters only.
+
+## 10. The recipe end to end on a new scene: a 48 s film in three passes (queues 157-159, 2026-11-13)
+
+Is the recipe general or fitted to the inn? A second film from scratch, nothing reused: a fish-and-chips hut on a
+windy Baltic pier at golden hour, two invented hosts (a woman in a yellow raincoat, a man with a red beard and a
+grey beanie), six shots with one Polish line each (a test of fish against fries, a gull steals a fry). Every step as
+section 4 says, measured:
+
+| pass | what | renders | per render | result |
+|---|---|---|---|---|
+| 0 | scene frames: a 5 s T2VA render of the scene prompt at 1344x768, two seeds, frames 0/40/80 | 2 | 417 s | seed 7102 chosen (the closer two-shot, faces large enough for cards); `scripts/make_character_cards.py` found both faces (512 px cards) |
+| A | Ref2VA, scene frame + two cards: shots 1/3/5 (two-shots) for the film, close-ups 2/4/6 way (a) as the source of stills; guard 0.03, two retries | 6 | 1086-1091 s | six of six at the first attempt, CER 0 / 0.020 / 0 / 0.024 / 0 / 0; the same two people, counter, railing and gulls in all six; shot 5's gull lands, takes a fry and flies off as written; the close-ups open wide and cut to the close-up at 1.4-1.5 s (section 5's head) |
+| B | FL2VA with both keyframes: a still from after the cut of each pass-A close-up as frame 0, a later frame of the same shot as the last frame (`film2/stills/`) | 3 | 948-951 s | three of three hold the close-up for all 8 s (32 of 32 samples with the face, no cut, no camera move; frame 0 40.2-42.7 dB, the last frame 39.2-40.5 dB against the stills), CER 0.024 / 0 / 0 |
+
+- GPU time for the 48 s film: 2 x 417 + 6 x 1089 + 3 x 950 = 10 218 s, 2.8 h of renders, plus three boots and two
+  partition switches (about 45 min). The three close-ups cost two renders each; the wide shots one.
+- No beat away at all in the three pass-B close-ups, where the inn's shots 6 and 9 left for 2-4 s: these stills
+  come from the same shot's own way-(a) render (the camera position the model chose for that framing), the inn's came
+  from another seed's close-up. One film; worth keeping in mind when the stills are picked.
+- Two cuts: `film2-recipe.mp4` (shots 1, 2B, 3, 4B, 5, 6B) and `film2-way-a.mp4` (the six pass-A shots, the
+  close-ups with their wide heads), both 48.0 s, jump cuts with 40 ms audio fades. Clips `film2ref-s710{1,2}`,
+  `film2a-s{1..6}`, `film2b-s{2,4,6}` on Spark_06, queues `queue157-film2ref.sh`, `queue158-film2a.sh`,
+  `queue159-film2b.sh`, prompts and stills in `film2/`. Invented characters only.

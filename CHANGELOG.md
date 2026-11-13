@@ -363,6 +363,10 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-13 21:02: results: the shots recipe end to end on a new scene (queues 157-159, section 10 of the shots README):
+  scene frames by T2VA, cards by `make_character_cards.py`, six Ref2VA shots with the scene frame and the cards, three
+  close-ups re-rendered as FL2VA with both keyframes from their own stills. Nine of nine renders at the first attempt, the
+  three close-ups hold the framing for all 8 s, 2.8 h of renders for a 48 s film.
 - 2026-11-13 16:56: results: queue156 closes the pinned two-keyframe line (section 9 of the shots README): with both
   characters' cards the beat shows the host alone, his hands or the empty room, never the co-host and never an invented
   person (one invented person in twelve pinned shots over queues 154-156, against four of four in FL2VA's shot 9).
