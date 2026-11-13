@@ -1,0 +1,23 @@
+# scripts/speaker_drift.py on the two queue150 clips (seed 3801), every segment assigned to the nearer window-1 voice,
+# segments under 1.5 s counted as "short" and left out (2026-11-13). "low" = the man, "high" = the woman.
+# detail: per window n, min, relabelled; w1_loo = leave-one-out similarity inside window 1 (the same-voice floor).
+#
+# The recipe clip's segments that pull a window down (own = cosine to the pitch label's reference, other = to the other
+# speaker's; the 1.0 s "Dobrze." is a short segment and no longer counted):
+# == q150/recipe-s3801.mp4
+# w 1    0.8-   2.8 f0 115 low  own 0.98 other 0.66 To list od pani nowakowej.
+# w 1    2.8-   4.8 f0 114 low  own 0.98 other 0.58 Jej córce odmówiono pracy w moim sklepie.
+# w 1    4.8-   6.8 f0 208 high own 0.98 other 0.61 Czy zna pan powód?
+# w 1    6.8-   8.8 f0 211 high own 0.98 other 0.56 Nie chciałabym nikogo osądzać pochopnie.
+# w 1    8.8-   9.8 f0  90 low  own 0.98 other 0.58 Ja też nie.
+# w 1    9.8-  11.8 f0  99 low  own 0.97 other 0.51 Dlatego pytam panią.
+# w 5   50.2-  51.2 f0 381 high own 0.30 other 0.54 Dobrze. <<<
+# w 6   57.8-  59.8 f0  94 low  own 0.81 other 0.37 Czyncz moroże poczękać? <<<
+# w 8   77.8-  79.8 f0 168 high own 0.74 other 0.39 Zis pada. <<<
+# w11  107.8- 109.8 f0  94 low  own 0.83 other 0.49 Proszę jeszcze o jedno. <<<
+
+# detail + summary lines:
+recipe-s3801 detail {"low": {"w1_loo": [0.964, 0.955, 0.924], "1": {"n": 3, "min": 0.966, "relabelled": 0}, "2": {"n": 1, "min": 0.962, "relabelled": 0}, "3": {"n": 2, "min": 0.928, "relabelled": 0}, "4": {"n": 2, "min": 0.959, "relabelled": 0}, "5": {"n": 2, "min": 0.949, "relabelled": 0}, "6": {"n": 2, "min": 0.79, "relabelled": 0}, "7": {"n": 2, "min": 0.96, "relabelled": 0}, "8": {"n": 1, "min": 0.943, "relabelled": 0}, "9": {"n": 3, "min": 0.91, "relabelled": 0}, "10": {"n": 2, "min": 0.888, "relabelled": 0}, "11": {"n": 3, "min": 0.812, "relabelled": 0}}, "high": {"w1_loo": [0.902, 0.902], "1": {"n": 2, "min": 0.975, "relabelled": 0}, "2": {"n": 3, "min": 0.884, "relabelled": 0}, "3": {"n": 2, "min": 0.965, "relabelled": 0}, "4": {"n": 2, "min": 0.936, "relabelled": 0}, "5": {"n": 1, "min": 0.95, "relabelled": 0}, "6": {"n": 2, "min": 0.966, "relabelled": 0}, "7": {"n": 2, "min": 0.85, "relabelled": 0}, "8": {"n": 3, "min": 0.742, "relabelled": 0}, "9": {"n": 1, "min": 0.968, "relabelled": 0}, "10": {"n": 3, "min": 0.94, "relabelled": 0}, "11": {"n": 2, "min": 0.876, "relabelled": 0}}, "short": {"1": 1, "5": 1}}
+recipe-s3801 {"low": {"1": 0.977, "2": 0.962, "3": 0.944, "4": 0.959, "5": 0.952, "6": 0.857, "7": 0.964, "8": 0.943, "9": 0.945, "10": 0.909, "11": 0.893}, "high": {"1": 0.975, "2": 0.921, "3": 0.965, "4": 0.938, "5": 0.95, "6": 0.97, "7": 0.908, "8": 0.869, "9": 0.968, "10": 0.949, "11": 0.904}}
+recipeanchor-s3801 detail {"low": {"w1_loo": [0.964, 0.955, 0.925], "1": {"n": 3, "min": 0.966, "relabelled": 0}, "2": {"n": 1, "min": 0.968, "relabelled": 0}, "3": {"n": 2, "min": 0.964, "relabelled": 0}, "4": {"n": 1, "min": 0.971, "relabelled": 0}, "5": {"n": 2, "min": 0.965, "relabelled": 0}, "6": {"n": 1, "min": 0.947, "relabelled": 0}, "7": {"n": 2, "min": 0.964, "relabelled": 0}, "8": {"n": 1, "min": 0.97, "relabelled": 0}, "9": {"n": 2, "min": 0.965, "relabelled": 0}, "10": {"n": 1, "min": 0.985, "relabelled": 0}, "11": {"n": 2, "min": 0.973, "relabelled": 0}}, "high": {"w1_loo": [0.902, 0.902], "1": {"n": 2, "min": 0.975, "relabelled": 0}, "2": {"n": 3, "min": 0.915, "relabelled": 0}, "3": {"n": 2, "min": 0.945, "relabelled": 0}, "4": {"n": 2, "min": 0.914, "relabelled": 0}, "5": {"n": 1, "min": 0.969, "relabelled": 0}, "6": {"n": 2, "min": 0.959, "relabelled": 0}, "7": {"n": 1, "min": 0.942, "relabelled": 0}, "8": {"n": 2, "min": 0.943, "relabelled": 0}, "9": {"n": 1, "min": 0.964, "relabelled": 0}, "10": {"n": 2, "min": 0.934, "relabelled": 0}, "11": {"n": 2, "min": 0.949, "relabelled": 0}}, "short": {"1": 1, "3": 1, "7": 1, "9": 1}}
+recipeanchor-s3801 {"low": {"1": 0.977, "2": 0.968, "3": 0.967, "4": 0.971, "5": 0.97, "6": 0.947, "7": 0.966, "8": 0.97, "9": 0.968, "10": 0.985, "11": 0.979}, "high": {"1": 0.975, "2": 0.935, "3": 0.959, "4": 0.94, "5": 0.969, "6": 0.967, "7": 0.942, "8": 0.949, "9": 0.964, "10": 0.942, "11": 0.954}}

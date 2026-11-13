@@ -219,8 +219,24 @@ on compare two samples, not the lever alone.
 - Everything else is within noise: UTMOS of windows 2-11 3.20 against 3.15 (paired lines +0.05 mean, 20 better / 12
   worse), clip CER 0.009 against 0.010, faces within the seed spread (the woman's drift -0.03 against -0.07, her
   mid-clip windows lower), and the pace +10 s per window (1.5 %), which is the extra audio reference.
-- Verdict: no measured effect on one seed once the speakers are assigned by voice; queue150 (seed 3801, both arms)
-  closes it either way, rescored with the corrected tool. Not a default.
+- Seed 3801 (queue150, both arms again, guard limit 0.01, scored with the voice assignment and the 1.5 s floor;
+  `speakers_q150_voice.txt`, clips `lalka118-recipe-s3801`, `lalka118-recipeanchor-s3801`): the recipe clip's worst
+  speaker windows are 0.857 (the man, window 6: again "Czynsz może poczekać", this time garbled to "czyncz moroże
+  poczękać", the segment at 0.81) and 0.869 (the woman, window 8: "Dziś pada" heard as "zis pada", 0.74); the anchor
+  clip's 0.947 and 0.935, no segment under 0.91. The same-voice floor inside window 1 is 0.90-0.96 at this seed.
+  Everything else within noise again: UTMOS of windows 2-11 3.55 against 3.50 (35 paired lines, +0.01 mean, 13 better
+  / 17 worse), clip CER 0.012 against 0.017 (both arms spent three attempts on windows 7 and 10, where "klientów" and
+  "długo" came out wrong at every seed), faces within the seed spread (the woman 0.772 against 0.755 mean; the man's
+  0.803 against 0.851 is a cutaway in window 7 of the anchor clip, no face in the box), the anchor clip has two scene
+  cuts inside windows against none, pace 696 against 683 s per window (+1.9 %). The video's sampling events are the
+  seed's, not the lever's: both arms re-sampled window 8 twice on the same cut and seam ratios at the same seeds.
+- Verdict after two seeds: the anchor's worst speaker window is above the recipe's in all four comparisons (0.943 /
+  0.865 against 0.81 / 0.838 at seed 3701, 0.947 / 0.935 against 0.857 / 0.869 at 3801), and the recipe's dips are
+  single short lines, the man's "Czynsz może poczekać" at both seeds among them, which the anchor clips deliver in
+  his window-1 voice. That is the lever's mechanism and its whole measured size: one or two lines per two-minute
+  clip, with naturalness, lines, faces and time unchanged. An opt-in for dialogue chains where one line in a changed
+  voice is a fault (`H3_TP2_VOICE_ANCHOR=5`); not a default on two seeds, and the two cuts inside windows of the
+  3801 anchor clip are the reminder that any change to the conditioning re-rolls the seed's events.
 - What the face score measures here (`woman_crops.png`, the woman's box in windows 4, 5, 7 and 10 of all three arms):
   the same woman in every crop. In the two-shot the score runs 0.68-0.76 with the head angle (a hard profile about 0.69,
   three-quarter about 0.76), and the noise arm's 0.87-0.89 are the close-ups filling the box. A gap of 0.05 between

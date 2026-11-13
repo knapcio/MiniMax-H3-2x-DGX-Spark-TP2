@@ -363,6 +363,11 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-13 01:16: results: queue150, the voice anchor on a second seed (3801), closes the lever in section 8 of
+  `results/20261109-long-chain-identity/README.md` (`speakers_q150_voice.txt`): the anchor's worst speaker window is above
+  the recipe's in all four comparisons over two seeds (0.943 / 0.865 vs 0.81 / 0.838; 0.947 / 0.935 vs 0.857 / 0.869), the
+  recipe's dips are single short lines ("Czynsz może poczekać" at both seeds); naturalness, lines, faces and time unchanged.
+  Opt-in `H3_TP2_VOICE_ANCHOR=5` for dialogue chains, not a default.
 - 2026-11-12 22:51: `scripts/speaker_drift.py` leaves segments shorter than 1.5 s out of the references and the window means
   and counts them per window in the detail line (`short`): a one-word segment's x-vector matches nobody (a 1.0 s "Dobrze."
   at 0.30 / 0.54 pulled the man's window 5 to 0.81 in the seed-3801 recipe chain; without it 0.95). The queue145 numbers in

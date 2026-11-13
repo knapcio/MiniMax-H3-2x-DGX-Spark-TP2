@@ -697,7 +697,9 @@ latent as a Ref2VA audio reference (400 rows, placed at the window's origin). Ag
 - The question the anchor was built for is the second minute (speaker similarity 0.75-0.94 by window 11 in the 118 s
   chains). That run is the next step if the voice of long clips becomes the priority; one 118 s chain at 3-4 h.
   (2026-11-12: run as queue145 arm 2; the 0.75-0.94 of the 118 s chains was largely the pitch split handing the man's
-  lines to the woman, and with speakers assigned by voice the anchor showed no effect on one seed;
+  lines to the woman; with speakers assigned by voice the anchor's measured size over two seeds, 2026-11-13, is one or
+  two single-line dips per clip that the recipe has and the anchor clips do not, the worst window 0.94 / 0.87-0.94
+  against 0.81-0.86 / 0.84-0.87, everything else unchanged: an opt-in, not a default;
   `results/20261109-long-chain-identity/` section 8.)
 
 Clip `voicepl-anchor5-s3501`; queue `queue142-voice-anchor.sh`.
