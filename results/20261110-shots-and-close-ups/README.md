@@ -331,5 +331,11 @@ the guard at 0.03 with one retry, otherwise as section 8.
   shot 9). Elapsed 1039-1046 s.
 - So: FL2VA with both keyframes is the default (exact ends, departures as camera moves, cheapest); the pinned pair
   with the card when a beat with invented people is worse than a hard cut after a 0.2 s hold; and when the beat must
-  show the right second person, give the Ref2VA path the second card too (queue156). Clips `pin2-s{6,9}-s{6001,6002}`,
-  `pin2x2-s{6,9}-s{6001,6002}` on Spark_06, queues `queue154-pin2.sh`, `queue155-pin2x2.sh`. Invented characters only.
+  show the right second person, the second card does not put him there (queue156, the same four shots with the host's
+  and the elf's cards: the beats show the host's hands, the host alone twice and the empty room once, the elf never;
+  no invented person in four of four, the ends 38.7-39.8 dB, the same cut right after the pinned frames in the food
+  shot). Over the twelve pinned shots with cards (queues 154-156) one beat invented a person against four of four in
+  FL2VA's shot 9; the model fills a wide beat with whoever the references allow, and with only the host allowed it
+  shows him alone or the room. Clips `pin2-s{6,9}-s{6001,6002}`, `pin2x2-s{6,9}-s{6001,6002}`,
+  `pin2x2c-s{6,9}-s{6001,6002}` on Spark_06, queues `queue154-pin2.sh`, `queue155-pin2x2.sh`,
+  `queue156-pin2x2-cards.sh`. Invented characters only.

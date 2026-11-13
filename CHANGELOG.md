@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-13 16:56: results: queue156 closes the pinned two-keyframe line (section 9 of the shots README): with both
+  characters' cards the beat shows the host alone, his hands or the empty room, never the co-host and never an invented
+  person (one invented person in twelve pinned shots over queues 154-156, against four of four in FL2VA's shot 9).
 - 2026-11-13 14:58: results: queue155, the pinned two-keyframe shot with two latents at each end: the last frame is as exact
   as FL2VA's (38.6-39.9 dB) and the shot returns before the pinned tail in four of four, but the food shot cuts away right
   after the pinned frames at both seeds and one of four beats still shows an invented woman despite the card. FL2VA with
