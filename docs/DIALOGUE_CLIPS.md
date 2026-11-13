@@ -128,7 +128,7 @@ unknown frame (a stranger who stays, but also a blurred pass-by), 0.2 tolerates 
 exactly the window in which a stranger walks in, and run live on the 22 s occlusion probe
 (`results/20261106-identity-guard-calibration/`).
 
-A slip of the tongue is what the **speech guard** catches (opt-in, 2026-11-08): `H3_TP2_SPEECH_GUARD=0.01` with
+A slip of the tongue is what the **speech guard** catches (opt-in, 2026-11-08): `H3_TP2_SPEECH_GUARD=0.03` (0.01 is the strict setting, see the cost below) with
 `H3_TP2_SPEECH_RESPELL=respell.txt` when the prompt uses phonetic spellings (needs faster-whisper in `~/speech-venv`,
 the interpreter of `scripts/speech_qa.py`; `H3_TP2_SPEECH_PY` names another). After every window the guard decodes
 its audio, transcribes it on the CPU (the `small` model, 3-4 s per window; `H3_TP2_SPEECH_MODEL` picks another) and
@@ -142,7 +142,12 @@ own mishearings count against the limit as well, which is why the limit is not 0
 `[Polish]` tag of the lines (`H3_TP2_SPEECH_LANGUAGE` overrides). Measured on three 64.6 s Polish chains at 0.01
 (`results/20261106-voice/` section 15): 21 wrong characters of 2292 without the guard, 7 with it, for one to three
 extra window samplings per chain (+17 to +48 % render time); on a 118 s chain (11 windows) 50 of 1302 without it and
-13 with it for eight extra samplings (+75 %), where the plain chain lost whole words in windows 8 and 11. The voice
+13 with it for eight extra samplings (+75 %), where the plain chain lost whole words in windows 8 and 11; a second 118 s
+chain at 0.01 (seed 3801, 2026-11-12) took ten extra samplings (+100 %, 21 attempts for 11 windows), four of them on words
+that came out the same way at every seed. **The recommended limit for long chains is therefore 0.03 since 2026-11-13**
+(one slipped word in a window passes, a mangled line does not), with the words the dry run names rewritten or respelled;
+0.01 is for a clip whose every word must land and whose render time can double. The guard also stops after two attempts
+that slip on the same words (nothing a seed can fix). The voice
 score moved by -0.13 to +0.08 paired UTMOS over the four chains, which is chain-to-chain spread; a control with a
 re-sampled window and no selection kept the voice. An English chain needed one re-sample and lost no voice. About one Polish window in five and one English window in
 nine is above 0.01 on finished clips.
