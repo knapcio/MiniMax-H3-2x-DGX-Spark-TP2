@@ -192,10 +192,12 @@ shot. So:
   lines +0.20 mean, 17 better / 13 worse, +0.47 and +0.72 in windows 10-11), and the pace is the same.
 - Verdict: not a default and not for a fixed two-shot; a lever for shots that are meant to cut
   (`results/20261110-shots-and-close-ups/`), where the cut check would be off anyway.
-- Open: the head's journal has no per-window `hand-over noise` line (nor an `audio pin released` line) while rank 1
-  logs both for every continuation attempt; the outputs differ from the recipe from window 2 on, so something acted,
-  but whether both ranks noised their rows is to be settled with a one-window probe on both logs before this lever is
-  used again.
+- The probe (queue149b, 2026-11-13: the same 22.2 s three-window request with and without `H3_TP2_CONT_EDIT_NOISE=0.35`,
+  no retries, seed 3501): the lever acts, the two clips have different `framemd5` and the window-3 seam ratio moves
+  1.17 -> 1.21. The logs stay asymmetric: rank 1 prints the `hand-over noise` line per window and rank 0 none, exactly
+  as rank 0 prints no `audio pin released` line for the default pin either (both ranks print the `continuation edit
+  prefix` line), so the missing lines are the rank-0 worker's per-step logging, not evidence that it skipped the step;
+  whether its own rows were noised is still not read off a log. Not a default (above), so left there.
 
 Arm 2, the voice anchor (`H3_TP2_VOICE_ANCHOR=5`: the first 5 s of window 1's audio given to windows 2-11 as an audio
 reference, logged ten times on the head). The frames (`win_recipeanchor.png`) show the recipe's composition: the tight

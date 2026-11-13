@@ -363,6 +363,11 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-13 04:42: results: queue149b, the hand-over noise probe (22.2 s, three windows, with and without the lever, no
+  retries): the lever acts (different `framemd5`, window-3 seam ratio 1.17 -> 1.21); rank 0 logs no per-window line for it,
+  as it logs none for the default audio pin either. Section 8 of `results/20261109-long-chain-identity/README.md`. The first
+  run (queue149) sent the 118 s extra JSON's prompt list to a three-window request and failed in 0.4 s, which is what the
+  22:29 client-side count check now catches.
 - 2026-11-13 03:15: results: queue151, the close-up as FL2VA with both keyframes (the still first, the same or a later
   frame of the shot last), section 8 of `results/20261110-shots-and-close-ups/README.md`: six of six open and close in the
   framing (38-43 dB at both ends), two hold it throughout, four leave it for a 2-2.5 s beat on a pause of the line (a tilt
