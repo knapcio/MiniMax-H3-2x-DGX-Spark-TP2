@@ -84,7 +84,8 @@ else.
    (section 6). **(d) FL2VA with two keyframes: the model's own close-up still as the first frame and a later frame of
    the same shot as the last** (`H3_END_IMAGE_FILE`): the shot opens and closes in the framing, and the beat it leaves
    for (a tilt to the props, a two-second cutaway on a pause of the line) comes back; twelve of twelve on two seeds
-   (section 8). This is the way to render close-ups now.
+   (section 8). Keep such a shot at 8 s or less: at 11.5 s the beat away grows to 4-6 s and the render costs +81 %.
+   This is the way to render close-ups now.
 4. Cut with jump cuts; a 40 ms audio fade at each cut keeps the room tone from clicking (`ffmpeg -nostdin` in a loop).
 5. Words the model cannot say (invented names) are slips at every seed: write around them.
 
@@ -280,6 +281,14 @@ rendered as FL2VA from the model's own still as the first frame and a later fram
 the shot opens and closes in the framing, and when it leaves it comes back within about two seconds on a pause of
 the line. If the cutaway must not show invented people, cut it out in the edit (the close-up on both sides of it is
 the same framing, a jump cut hides under the pause); another seed does not help, the shot leaves for the same thing
-at both. Queue153 asks whether the return still happens at a full 11.5 s window. Clips
-`bk-{same,late}-s{2,6,9}-s{6001,6002}` on Spark_06, queues `queue151-bookends.sh`, `queue152-bookends-s6002.sh`.
-Invented characters only.
+at both.
+
+**Keep the shot short.** At a full window (11.5 s, 277 frames; queue153, arm "late", seed 6001) the return still
+happens in three of three (frame 0 39.2 / 40.4 / 42.1 dB, the last frame 38.7 / 40.3 / 41.4 dB against the late
+still, no scene cuts) but the beat away grows with the shot: shot 2 holds throughout again (the elf lifts the lembas
+in the first second and talks holding it), shot 6 is down on the food for 4 s instead of 2.5, and shot 9 leaves the
+extreme close-up for 6 s of 11.5 (a crash zoom out at 1-2 s to the wide two-shot with the invented woman, a push back
+in at 7-7.5 s, both camera moves, no cut). The model fills the extra time with its home framing. A full window also
+costs 1716-1723 s against 945-953 s for 8 s (+81 % for +44 % frames). So: close-ups at 8 s or less, one line each.
+Clips `bk-{same,late}-s{2,6,9}-s{6001,6002}` and `bk11-late-s{2,6,9}-s6001` on Spark_06, queues
+`queue151-bookends.sh`, `queue152-bookends-s6002.sh`, `queue153-bookends-11s.sh`. Invented characters only.

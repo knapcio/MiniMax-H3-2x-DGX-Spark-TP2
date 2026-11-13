@@ -9,7 +9,8 @@ similarity transform between consecutive samples (ORB + RANSAC, OpenCV). Samples
 ``round(every * fps)`` frames), so a cut on frame 1 is seen. A step is a cut when the match fails (under 12 inliers) or
 when the two samples barely correlate (under 0.5 on 64x36 grey) and the "zoom" the match found is outside 0.8-1.25,
 which no camera does in a quarter second; calibrated on the nine cuts and two moves (a pull-back, a tilt) of
-queues 147/148, 2026-11-12. The head ends where the final framing starts: the first sample at or after the last cut
+queues 147/148, 2026-11-12. Two or more flagged steps in a row are one fast camera move (a crash zoom out of an
+extreme close-up, queue153), reported as ``moves_s`` and not as cuts. The head ends where the final framing starts: the first sample at or after the last cut
 whose face scale is within 20 % of the last half's median and after which the camera zooms by less than 10 % in total
 (None for a push-in to the last frame). The final shot size (wide / medium / close-up by the face scale) says whether
 a requested close-up was ignored.
@@ -102,6 +103,19 @@ def correlation(prev, cur) -> float:  # noqa: ANN001
     return float((a * b).sum() / den) if den > 0 else 1.0
 
 
+def split_runs(flagged: list[int]) -> tuple[list[int], list[tuple[int, int]]]:
+    """Flagged steps that stand alone are cuts; two or more in a row are one fast camera move (a crash zoom or a whip
+    pan changes the picture as much per quarter second as a cut, but keeps doing it), returned as (first, last) steps."""
+    cuts, moves, run = [], [], []
+    for i in flagged + [None]:
+        if run and (i is None or i != run[-1] + 1):
+            (cuts.append(run[0]) if len(run) == 1 else moves.append((run[0], run[-1])))
+            run = []
+        if i is not None:
+            run.append(i)
+    return cuts, moves
+
+
 def is_cut(inliers: int, zoom: float | None, corr: float | None, min_inliers: int = 12, corr_max: float = 0.5,
            zoom_band: tuple[float, float] = (0.8, 1.25)) -> bool:
     """A step is a cut when the match failed, or when the samples barely correlate and the match's "zoom" is one no
@@ -156,8 +170,10 @@ def trace(path: str, every: float, width: int, detector) -> dict:  # noqa: ANN00
         corrs.append(correlation(prev, img) if prev is not None else None)
         times.append(t)
         prev = img
-    cut_idx = [i for i in range(1, len(times)) if is_cut(inliers[i], zooms[i], corrs[i]) and counts[i] + counts[i - 1] > 0]
+    flagged = [i for i in range(1, len(times)) if is_cut(inliers[i], zooms[i], corrs[i]) and counts[i] + counts[i - 1] > 0]
+    cut_idx, moves = split_runs(flagged)
     cuts = [times[i] for i in cut_idx]
+    moves_s = [[times[a], times[b]] for a, b in moves]
     zooms = [None if i in cut_idx else z for i, z in enumerate(zooms)]   # a cut is not a zoom
     end = head_end(times, scales, zooms, cuts)
     last_half = [s for s in scales[len(scales) // 2:] if s is not None]
@@ -167,7 +183,7 @@ def trace(path: str, every: float, width: int, detector) -> dict:  # noqa: ANN00
             "x": [None if x is None else round(x, 3) for x in xs], "faces": counts,
             "zoom": [None if z is None else round(z, 4) for z in zooms], "inliers": inliers,
             "corr": [None if c is None else round(c, 3) for c in corrs],
-            "cuts_s": cuts, "head_end_s": end, "final_scale": None if final is None else round(final, 3),
+            "cuts_s": cuts, "moves_s": moves_s, "head_end_s": end, "final_scale": None if final is None else round(final, 3),
             "final_size": shot_size(final), "opening_scale": next((round(s, 3) for s in scales if s is not None), None),
             "total_zoom": None if total_zoom is None else round(total_zoom, 3)}
 
@@ -176,6 +192,7 @@ def describe(r: dict) -> str:
     sc = [s for s in r["scale"] if s is not None]
     return (f"{r['clip']}: faces {max(r['faces']) if r['faces'] else 0}, scale {r['opening_scale']} -> {r['final_scale']} ({r['final_size']}), "
             f"head ends {r['head_end_s']} s, zoom x{r['total_zoom']}, cuts {' '.join(f'{c:.2f}' for c in r['cuts_s']) or 'none'}, "
+            f"fast moves {' '.join(f'{a:.2f}-{b:.2f}' for a, b in r.get('moves_s', [])) or 'none'}, "
             f"{len(sc)}/{len(r['scale'])} samples with a face")
 
 

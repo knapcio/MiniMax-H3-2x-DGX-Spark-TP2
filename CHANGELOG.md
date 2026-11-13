@@ -363,6 +363,14 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-13 08:40: results: queue153, the two-keyframe close-up at a full 11.5 s window: the return still happens in three
+  of three, but the beat away grows with the shot (shot 9 leaves the extreme close-up for 6 s by a crash zoom out and a push
+  back in, no cut) and the render costs +81 % (1716-1723 s against 945-953 s). Close-ups stay at 8 s or less (shots README
+  sections 4 and 8, README table).
+- 2026-11-13 08:40: `scripts/framing_trace.py` reports two or more flagged steps in a row as one fast camera move (`moves_s`,
+  "fast moves" in the line), not as cuts: a crash zoom changes the picture per quarter second as much as a cut but keeps
+  doing it (queue153 shot 9: 1.0-2.0 s out, 7.0-7.5 s back; queue152 shot 9 seed 6002's return at 5.5-5.75 s is a move,
+  which is why `scene>0.3` saw only the cut out). Test in `tests/test_framing_trace.py`.
 - 2026-11-13 06:55: docs: the recommended speech-guard limit for long chains is 0.03 (`docs/DIALOGUE_CLIPS.md`, README table);
   0.01 stays the strict setting. Owner's call after the second 118 s chain at 0.01 doubled the render time (21 attempts for
   11 windows, four of the retries on words the model says the same way at every seed).

@@ -39,6 +39,12 @@ class CutRuleTests(unittest.TestCase):
         self.assertFalse(ft.is_cut(73, 0.92, 0.30))
         self.assertFalse(ft.is_cut(400, 1.0, None))
 
+    def test_runs_of_flagged_steps_are_moves_not_cuts(self):
+        self.assertEqual(ft.split_runs([]), ([], []))
+        self.assertEqual(ft.split_runs([13]), ([13], []))
+        self.assertEqual(ft.split_runs([4, 5, 6, 7, 8, 21, 28, 29, 30]), ([21], [(4, 8), (28, 30)]))
+        self.assertEqual(ft.split_runs([1, 3]), ([1, 3], []))
+
     def test_correlation_of_images(self):
         from PIL import Image
         import random
