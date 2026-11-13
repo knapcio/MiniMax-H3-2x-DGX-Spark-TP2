@@ -363,6 +363,10 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-13 06:48: `scripts/first_frame_pin.py --last other.png` pins the last latent frame too: the source becomes the
+  request's full length (the first still up to the last four frames, the other still on them) and the mask keeps both
+  ends. The two-keyframe close-up of the shots README section 8 on the Ref2VA path, so the character's card can come
+  along (queue154 tests whether the cutaway then shows the right person). Tests in `tests/test_first_frame_pin.py`.
 - 2026-11-13 06:45: results: queue152 repeats the two-keyframe close-ups at seed 6002: twelve of twelve over two seeds open
   and close in the framing, and what each shot leaves for in the middle is the shot's, not the seed's (shot 2 holds, shot 6
   moves to the food and back, shot 9 cuts to the same two-shot and back, at both seeds). Section 8 and the recipe say

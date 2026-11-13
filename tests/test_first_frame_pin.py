@@ -39,6 +39,16 @@ class MaskTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             fp.mask(57, 768, 1344, pinned=58)
 
+    def test_tail_pins_the_last_latents(self):
+        m = fp.mask(57, 768, 1344, pinned=1, pinned_tail=1)
+        zero = [t for t in range(57) if all(v == 0.0 for row in m[t] for v in row)]
+        self.assertEqual(zero, [0, 56])
+        self.assertEqual([t for t in range(5) if all(v == 0.0 for row in fp.mask(5, 64, 96, 2, 2)[t] for v in row)], [0, 1, 3, 4])
+        with self.assertRaises(ValueError):
+            fp.mask(5, 64, 96, 3, 3)
+        with self.assertRaises(ValueError):
+            fp.mask(5, 64, 96, 1, -1)
+
     def test_json_round_trip_is_plain_floats(self):
         text = json.dumps(fp.mask(2, 64, 96))
         self.assertEqual(json.loads(text), [[[0.0, 0.0, 0.0]] * 2, [[1.0, 1.0, 1.0]] * 2])
@@ -59,6 +69,29 @@ class SourceTests(unittest.TestCase):
             self.assertEqual(probe, "192,96,24")
             m = json.load(open(os.path.join(d, "mask.json")))
             self.assertEqual((len(m), len(m[0]), len(m[0][0])), (7, 3, 6))
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_last_still_fills_the_final_four_frames_of_a_full_length_source(self):
+        d = tempfile.mkdtemp()
+        try:
+            first, last = os.path.join(d, "first.png"), os.path.join(d, "last.png")
+            for path, colour in ((first, "0x0000ff"), (last, "0xff0000")):
+                subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i", f"color=c={colour}:s=320x180",
+                                "-frames:v", "1", path], check=True)
+            fp.main([first, "--last", last, "--frames", "22", "--width", "192", "--height", "96", "--out-dir", d])
+            probe = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-count_packets", "-show_entries",
+                                    "stream=nb_read_packets", "-of", "csv=p=0", os.path.join(d, "source.mp4")],
+                                   capture_output=True, text=True, check=True).stdout.strip()
+            self.assertEqual(probe, "22")
+            raw = subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-i", os.path.join(d, "source.mp4"), "-vf", "scale=1:1",
+                                  "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], capture_output=True, check=True).stdout
+            pixels = [tuple(raw[i:i + 3]) for i in range(0, len(raw), 3)]
+            self.assertEqual(len(pixels), 22)
+            self.assertTrue(all(p[2] > 200 and p[0] < 60 for p in pixels[:18]), pixels[:18])   # blue up to frame 17
+            self.assertTrue(all(p[0] > 200 and p[2] < 60 for p in pixels[18:]), pixels[18:])   # red on the last four
+            m = json.load(open(os.path.join(d, "mask.json")))
+            self.assertEqual([t for t in range(7) if m[t][0][0] == 0.0], [0, 6])
         finally:
             shutil.rmtree(d, ignore_errors=True)
 
