@@ -363,6 +363,11 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-13 10:31: results: queue154, the two-keyframe close-up with both keyframes pinned as latents on the Ref2VA path
+  and the character's card as the reference (section 9 of the shots README): no invented person in four of four beats (the
+  host alone, his hands, an empty room), but the pinned keyframes are weaker than FL2VA's (34-36 dB at the last frame,
+  a one-frame flash at one end in two of four shots). The way for a close-up that must not invent people; FL2VA with both
+  keyframes stays the cheaper default when the beat can be cut in the edit.
 - 2026-11-13 08:40: results: queue153, the two-keyframe close-up at a full 11.5 s window: the return still happens in three
   of three, but the beat away grows with the shot (shot 9 leaves the extreme close-up for 6 s by a crash zoom out and a push
   back in, no cut) and the render costs +81 % (1716-1723 s against 945-953 s). Close-ups stay at 8 s or less (shots README

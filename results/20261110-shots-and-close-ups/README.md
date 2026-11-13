@@ -85,7 +85,9 @@ else.
    the same shot as the last** (`H3_END_IMAGE_FILE`): the shot opens and closes in the framing, and the beat it leaves
    for (a tilt to the props, a two-second cutaway on a pause of the line) comes back; twelve of twelve on two seeds
    (section 8). Keep such a shot at 8 s or less: at 11.5 s the beat away grows to 4-6 s and the render costs +81 %.
-   This is the way to render close-ups now.
+   This is the way to render close-ups now. When the beat must not show invented people, the same two keyframes pinned
+   as latents on the Ref2VA path with the character's card (`scripts/first_frame_pin.py --last`) keep the cast right
+   in four of four, at the price of weaker keyframes (a one-frame flash at one end in two of four shots; section 9).
 4. Cut with jump cuts; a 40 ms audio fade at each cut keeps the room tone from clicking (`ffmpeg -nostdin` in a loop).
 5. Words the model cannot say (invented names) are slips at every seed: write around them.
 
@@ -292,3 +294,31 @@ in at 7-7.5 s, both camera moves, no cut). The model fills the extra time with i
 costs 1716-1723 s against 945-953 s for 8 s (+81 % for +44 % frames). So: close-ups at 8 s or less, one line each.
 Clips `bk-{same,late}-s{2,6,9}-s{6001,6002}` and `bk11-late-s{2,6,9}-s6001` on Spark_06, queues
 `queue151-bookends.sh`, `queue152-bookends-s6002.sh`, `queue153-bookends-11s.sh`. Invented characters only.
+
+## 9. Way (d) on the Ref2VA path: both keyframes pinned as latents, the card as the reference (queue154)
+
+FL2VA takes no references, so the beat the two-keyframe shot leaves for shows invented people (section 8, shot 9: the
+same red-haired woman at both seeds). The Ref2VA path can carry the character's card, and the keyframes can be pinned
+there as latents instead: `scripts/first_frame_pin.py --last` writes a full-length source clip (the still, then the
+late still on the last four frames) and a token mask that keeps latent frame 0 and the last latent, the card is the
+only reference (`H3_SOURCE_VIDEO`, `H3_VIDEO_NOISE_MASK`, `H3_REF_IMAGES=card`). Shots 6 and 9, seeds 6001 and 6002,
+the guard at 0.03 with one retry, otherwise as section 8.
+
+| shot, seed | frame 0 vs first | frame 191 vs last | what the model did | the people in the beat | guard | elapsed |
+|---|---|---|---|---|---|---|
+| 6, 6001 | 38.2 dB | 34.8 dB | the still for one frame, a cut at frame 1 to a hands-and-food insert, back to the host's close-up at 2.2 s, held to the last frame's pose | the host's hands | 0.000 | 1039 s |
+| 9, 6001 | 39.4 dB | 36.2 dB | extreme close-up for 4 s, a cut at 5 s to a wide shot of the empty table and room, back at 6 s, the last frame's pose | nobody | 0.000 | 1036 s |
+| 6, 6002 | 38.7 dB | 34.9 dB | close-up to 0.67 s, a cut to a wide shot of the host alone at the table, back at 4.3 s, the last frame's pose | the host alone | 0.000 | 1040 s |
+| 9, 6002 | 39.2 dB | 34.4 dB | extreme close-up to 0.8 s, a cut to a wide shot of the host alone with his thumb up, which stays to the end; only the pinned last frames are the extreme close-up again | the host alone | 0.111 at the first seed, 0.000 at the second | 1930 s |
+
+- **The card does what it is for.** No invented person in four of four beats (section 8's FL2VA shots had the invented
+  woman in four of four cutaways of shot 9): the host alone, his hands, or an empty room.
+- **The pinned keyframes are weaker than FL2VA's.** The last frame matches the late still at 34-36 dB against 38-42 dB,
+  and a pin is one latent: in one shot the first frame is a one-frame flash before a cut (section 7's failure mode),
+  in another the return is a four-frame flash at the end instead of a return. Two of four shots behave like section 8
+  (leave and come back on the line's pause); the pin path also takes 1036-1040 s against 945-953 s.
+- So for a close-up that must not invent people, the pinned two-keyframe shot with the card is the way, with one shot
+  in four to render again; when the beat can be cut out in the edit, FL2VA with both keyframes (section 8) is cheaper
+  and its ends are exact. Whether pinning two latents at each end (`--pin-latents 2 --last-latents 2`) turns the
+  flashes into holds is queue155. Clips `pin2-s{6,9}-s{6001,6002}` on Spark_06, queue `queue154-pin2.sh`. Invented
+  characters only.
