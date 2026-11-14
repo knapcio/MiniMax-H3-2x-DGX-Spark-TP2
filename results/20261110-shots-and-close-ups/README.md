@@ -85,6 +85,8 @@ else.
    the same shot as the last** (`H3_END_IMAGE_FILE`): the shot opens and closes in the framing, and the beat it leaves
    for (a tilt to the props, a two-second cutaway on a pause of the line) comes back; twelve of twelve on two seeds
    (section 8). Keep such a shot at 8 s or less: at 11.5 s the beat away grows to 4-6 s and the render costs +81 %.
+   The pass-A render that only feeds the stills runs at 10 steps with the guard off (571 s instead of 1088 s; the
+   still is as good a keyframe, section 10), so a close-up costs about 1520 s in all.
    This is the way to render close-ups now. When the beat must not show invented people, the same two keyframes pinned
    as latents on the Ref2VA path with the character's card (`scripts/first_frame_pin.py --last`) keep the cast right
    in seven of eight beats, at the price of a hard cut right after the pinned frames in the food shot (section 9; two
@@ -391,8 +393,11 @@ section 4 says, measured:
 - A cheaper still source (queue166, 2026-11-14): shot 4's pass A at 10 steps instead of 20, with the guard on, took
   1100 s, not 550: the 10-step render said the line wrong (CER 0.24) and the guard sampled it again. The pass-B shot
   from the 10-step stills held the close-up throughout (32 of 32 samples, 39.7 / 39.0 dB at the ends), so the still
-  itself is good enough; a still source does not need its line right, so pass A for stills runs without the guard
-  (queue167 measures that).
+  itself is good enough; a still source does not need its line right, so pass A for stills runs without the guard:
+  so run (queue167, the same shot and seed), pass A took 571 s, the stills differ from the 20-step ones in detail
+  (18.5 / 17.1 dB) and look as sharp by eye, and the pass-B shot from them held throughout at the first attempt
+  (32 of 32, 40.0 / 38.9 dB at the ends, 951 s). **A two-keyframe close-up costs 571 + 951 = 1522 s instead of
+  1088 + 948 = 2036 s** (queue168 does the film's other two close-ups the same way).
 - Two cuts: `film2-recipe.mp4` (shots 1, 2B, 3, 4B, 5, 6B) and `film2-way-a.mp4` (the six pass-A shots, the
   close-ups with their wide heads), both 48.0 s, jump cuts with 40 ms audio fades. Clips `film2ref-s710{1,2}`,
   `film2a-s{1..6}`, `film2b-s{2,4,6}` on Spark_06, queues `queue157-film2ref.sh`, `queue158-film2a.sh`,

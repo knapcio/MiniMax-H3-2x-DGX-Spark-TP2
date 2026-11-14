@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-14 12:39: results: queue167, the still source for a two-keyframe close-up rendered at 10 steps with the guard off:
+  571 s instead of 1088 s, and the pass-B shot from its stills holds throughout at the first attempt. A close-up costs 1522 s
+  instead of 2036 s; the recipe (section 4), section 10 and `docs/FILM_FROM_SHOTS.md` (commands, cost table) say so.
 - 2026-11-14 11:28: results: queue166, pass A at 10 steps as the still source for a two-keyframe close-up: the pass-B shot
   from the 10-step stills holds throughout, but with the guard on the 10-step line failed (CER 0.24) and was sampled again,
   so no time was saved; a still source runs without the guard (queue167). Shots README section 10.

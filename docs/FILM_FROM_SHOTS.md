@@ -78,7 +78,10 @@ re-samples a mangled line.
 
 Wide shots and two-shots are finished here. Close-ups come back as way (a): the shot opens on the scene frame's
 composition and cuts to the close-up on its own after 1-2.6 s, or pulls back out of it later. Keep them as the
-source of the stills for pass B.
+source of the stills for pass B, and render them cheaply for that: 10 steps instead of 20 and no speech guard
+(`bash scripts/bench-matrix.sh "7.5:1344:768:10:7004" film/reference.png` with the guard variables unset), 571 s
+instead of 1088 s; a still does not need the line right, and the 10-step still seeds pass B as well as the 20-step
+one (section 10 of the results).
 
 ## 5. Pass B: the close-ups with two keyframes (FL2VA)
 
@@ -135,11 +138,13 @@ close-ups have no head, and `--trim N=seconds` sets a trim by hand.
 | step | renders for a six-shot film | each | total |
 |---|---|---|---|
 | scene frame (5 s T2VA, two seeds) | 2 | 417 s | 14 min |
-| pass A (6 shots, 1344x768, 8 s, cards) | 6 | 1086-1091 s | 1 h 49 min |
+| pass A, the film's wide shots and two-shots (1344x768, 8 s, cards, guard) | 3 | 1086-1091 s | 55 min |
+| pass A, the close-ups as still sources (10 steps, no guard) | 3 | 571 s | 29 min |
 | pass B (3 close-ups, two keyframes) | 3 | 948-951 s | 47 min |
 | boots and partition switches | 3 + 2 | 5-7 min | about 45 min |
 
-2.8 h of renders for 48 s of film at the first attempt; a re-sampled line adds one render.
+2.4 h of renders for 48 s of film at the first attempt (2.8 h when the still sources run at 20 steps with the guard,
+as the first cut of the film did); a re-sampled line adds one render.
 
 ## What is still open
 
