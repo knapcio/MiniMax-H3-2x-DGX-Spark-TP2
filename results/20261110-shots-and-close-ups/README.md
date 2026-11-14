@@ -292,10 +292,13 @@ at both.
 source seeds (queue161, 2026-11-14, both arms): shot 9 holds the extreme close-up for all 8 s in both arms, no cut
 out and no two-shot with an invented woman (frame 0 42.8-43.0 dB, the last frame 41.7-42.5 dB, `scene>0.3` sees
 nothing, four of four lines clean at the first attempt); shot 6 still tilts down to the food at about 1 s and is back
-by 2.5 s in both arms, as at every other seed. So the cut-away is the seed's and the still's own seed does not take
-it, while the tilt insert is the shot's. The second film's three close-ups, all rendered at their source seeds, held
-throughout (section 10). The rule for pass B: the seed of the render the still was cut from (queue162 checks the
-other direction, the film's stills at other seeds).
+by 2.5 s in both arms, as at every other seed (the trace: 32 of 32 samples with the face and no cut or move in
+shot 9's two clips, 25-26 of 32 in shot 6's). The other direction (queue162): the second film's three close-ups
+rendered at seeds other than their stills' sources (8002/8004/8006) hold the framing throughout as well, 32 of 32,
+no cut, no move, lines clean. So a shot that holds at any seed exists (the film's three), and a shot that cuts away
+at some seeds and not at its still's source exists (the inn's shot 9, whose line compares two dishes and invites a
+two-shot). The still's source seed is the safe default for pass B: it costs nothing, and it is the one seed known to
+hold for a shot that wants to cut away. The tilt insert of the food shot is the shot's at every seed.
 
 **Keep the shot short.** At a full window (11.5 s, 277 frames; queue153, arm "late", seed 6001) the return still
 happens in three of three (frame 0 39.2 / 40.4 / 42.1 dB, the last frame 38.7 / 40.3 / 41.4 dB against the late
