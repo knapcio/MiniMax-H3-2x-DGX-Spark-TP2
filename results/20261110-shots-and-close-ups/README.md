@@ -388,6 +388,11 @@ section 4 says, measured:
 - No beat away at all in the three pass-B close-ups, where the inn's shots 6 and 9 left for 2-4 s: these stills
   come from the same shot's own way-(a) render (the camera position the model chose for that framing), the inn's came
   from another seed's close-up. One film; worth keeping in mind when the stills are picked.
+- A cheaper still source (queue166, 2026-11-14): shot 4's pass A at 10 steps instead of 20, with the guard on, took
+  1100 s, not 550: the 10-step render said the line wrong (CER 0.24) and the guard sampled it again. The pass-B shot
+  from the 10-step stills held the close-up throughout (32 of 32 samples, 39.7 / 39.0 dB at the ends), so the still
+  itself is good enough; a still source does not need its line right, so pass A for stills runs without the guard
+  (queue167 measures that).
 - Two cuts: `film2-recipe.mp4` (shots 1, 2B, 3, 4B, 5, 6B) and `film2-way-a.mp4` (the six pass-A shots, the
   close-ups with their wide heads), both 48.0 s, jump cuts with 40 ms audio fades. Clips `film2ref-s710{1,2}`,
   `film2a-s{1..6}`, `film2b-s{2,4,6}` on Spark_06, queues `queue157-film2ref.sh`, `queue158-film2a.sh`,
