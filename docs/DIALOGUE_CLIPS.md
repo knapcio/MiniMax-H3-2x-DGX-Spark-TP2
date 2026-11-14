@@ -146,7 +146,12 @@ extra window samplings per chain (+17 to +48 % render time); on a 118 s chain (1
 chain at 0.01 (seed 3801, 2026-11-12) took ten extra samplings (+100 %, 21 attempts for 11 windows), four of them on words
 that came out the same way at every seed. **The recommended limit for long chains is therefore 0.03 since 2026-11-13**
 (one slipped word in a window passes, a mangled line does not), with the words the dry run names rewritten or respelled;
-0.01 is for a clip whose every word must land and whose render time can double. The guard also stops after two attempts
+0.01 is for a clip whose every word must land and whose render time can double. Measured on that same chain and seed
+at 0.03 (2026-11-14): 17 attempts instead of 21 and 12 177 s instead of 15 013 s (-19 %; +62 % over the eleven windows'
+7 513 s instead of +100 %), the two speech re-samples left being a 0.030 and a 0.132 first attempt; the six other
+re-samples are the seam and cut checks, which no speech limit touches. The price: one more slipped word kept
+("przeprosiny" heard as "przeproziny", the window at 0.0155), clip CER 0.011 against 0.017, naturalness, speakers and
+faces the same. The guard also stops after two attempts
 that slip on the same words (nothing a seed can fix). The voice
 score moved by -0.13 to +0.08 paired UTMOS over the four chains, which is chain-to-chain spread; a control with a
 re-sampled window and no selection kept the voice. An English chain needed one re-sample and lost no voice. About one Polish window in five and one English window in

@@ -232,6 +232,13 @@ on compare two samples, not the lever alone.
   0.803 against 0.851 is a cutaway in window 7 of the anchor clip, no face in the box), the anchor clip has two scene
   cuts inside windows against none, pace 696 against 683 s per window (+1.9 %). The video's sampling events are the
   seed's, not the lever's: both arms re-sampled window 8 twice on the same cut and seam ratios at the same seeds.
+- The guard limit on this chain (queue160, 2026-11-14: the recipe arm again at seed 3801 with `H3_TP2_SPEECH_GUARD=0.03`
+  instead of 0.01, clip `lalka118-recipe03-s3801`): 17 attempts instead of 21, 12 177 s instead of 15 013 s. The speech
+  re-samples fell from five to two (first attempts of 0.030 and 0.132); the other six re-samples are the seam and
+  cut checks at the same windows and seeds as before (window 7's cut at seed 3807, window 8's seam at 11727, window
+  11's at 3811), which a speech limit does not touch. Kept one more slipped word ("przeproziny"), clip CER 0.011
+  against 0.017, UTMOS of 46 paired lines +0.03, speakers' worst windows 0.895 / 0.921, faces as before. The
+  recommended limit for long chains is 0.03 since 2026-11-13 (`docs/DIALOGUE_CLIPS.md`).
 - Verdict after two seeds: the anchor's worst speaker window is above the recipe's in all four comparisons (0.943 /
   0.865 against 0.81 / 0.838 at seed 3701, 0.947 / 0.935 against 0.857 / 0.869 at 3801), and the recipe's dips are
   single short lines, the man's "Czynsz może poczekać" at both seeds among them, which the anchor clips deliver in
