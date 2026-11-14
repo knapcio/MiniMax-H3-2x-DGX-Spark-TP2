@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-14 09:53: results: queue165, the one-clause line in a 4 s shot: three of four seeds hold the close-up throughout
+  (four of four cut away at 8 s), 404-413 s per render. Shot length is most of the rule; lines under about 3 s are better
+  merged into a neighbour's shot (shots README section 8, `docs/FILM_FROM_SHOTS.md`).
 - 2026-11-14 08:46: results: queue164, the inn's shot 9 with its line cut to one clause (1.5 s of speech in an 8 s shot)
   cuts away at four of four seeds, against two of four with the two-clause line: the cut-away fills silence. The guide's
   "one clause per shot" is replaced by "the shot as long as the line plus a beat" (shots README section 8, `docs/FILM_FROM_SHOTS.md`).

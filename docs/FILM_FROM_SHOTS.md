@@ -42,8 +42,9 @@ wide shots (`docs/DIALOGUE_CLIPS.md` section 1 for the long-clip measurements).
 
 One line per shot, 8 s or less of picture, and **the shot as long as the line needs plus a beat, not longer**: when a
 shot leaves its framing it does so in a pause of two seconds or more, between clauses or after a short line in a
-long shot (the inn's shot 9: a 1.5 s line in an 8 s shot cut away at four of four seeds, the two-clause line at two of
-four, the second film's lines that fill their shots never). Words the
+long shot (the inn's shot 9: a 1.5 s line in an 8 s shot cut away at four of four seeds, the same line in a 4 s shot
+at one of four, the two-clause line in 8 s at two of four, the second film's lines that fill their shots never). The
+shortest shot is 4 s (107 frames), so a line under about 3 s is better merged into a neighbour's shot. Words the
 model cannot say (invented names, rare spellings) are slips at every seed: write around them or respell them
 (`docs/DIALOGUE_CLIPS.md` section 2, `scripts/speech_guard_dryrun.py` names them on a finished clip).
 
@@ -144,6 +145,6 @@ close-ups have no head, and `--trim N=seconds` sets a trim by hand.
 
 - A beat the model leaves for shows invented people on the FL2VA path (no references there); the pinned variant
   with cards keeps them out but cuts harder. The co-host's card does not put him in the beat.
-- Whether a shot sized to its line (the inn's one-clause line at 4 s, queue165) never cuts away, which would make
-  shot length the whole rule.
+- A shot sized to its line still cuts away at one seed in four when the line leaves three seconds of silence
+  (queue165); the still's source seed and a re-render are the remedies left.
 - The silent beat before a line lands where the model wants it (section 5): plan the trim, not the beat.

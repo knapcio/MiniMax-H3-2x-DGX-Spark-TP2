@@ -310,7 +310,11 @@ by a push-in), against two of four with the two-clause line. A 1.5 s line in an 
 silence and the model fills them with its home framing; the two-clause line's cut-aways sat in the pause between
 the clauses, and the second film's close-ups, whose lines fill their 8 s, never left. So the earlier "one clause per
 shot" reading was wrong: what a shot must not have is a pause of two seconds or more, which means a shot as long
-as its line and a beat (queue165 renders this line at 4 s).
+as its line and a beat. The same line in a 4 s shot (107 frames, 4.46 s, the shortest FL2VA takes; queue165, the
+same four seeds): three of four hold the extreme close-up throughout and one (5103, the seed that cut earliest at
+8 s too) cuts out at 1.25 s and back at 3.25 s; 404-413 s per render against 945 s. From four of four cut-aways to
+one of four by shot length alone. A 1.5 s line still leaves three seconds of silence in the shortest shot the model
+renders, so lines that short are better merged into a neighbour's shot than given one of their own.
 
 **Keep the shot short.** At a full window (11.5 s, 277 frames; queue153, arm "late", seed 6001) the return still
 happens in three of three (frame 0 39.2 / 40.4 / 42.1 dB, the last frame 38.7 / 40.3 / 41.4 dB against the late
