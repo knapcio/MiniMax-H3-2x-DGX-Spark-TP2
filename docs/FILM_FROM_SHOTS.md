@@ -91,11 +91,12 @@ export TASK=fl2va H3_PROMPT_FILE=film/shot4_fl.txt H3_END_IMAGE_FILE=film/stills
 bash scripts/bench-matrix.sh "7.5:1344:768:20:7004" film/stills/s4.png     # bench-matrix passes keyframe position "both"
 ```
 
-The shot opens on the first still and closes on the second (39-43 dB at both ends), 945-953 s each. In the film of
-section 10 all three held the framing for the whole 8 s; in the inn's shots of section 8, whose stills came from
-another seed's render, the shot left the framing for a 2-4 s beat on a pause of the line and came back (a tilt to
-the props, or a cutaway to a wide shot of invented people). Use the seed of the still's source render for pass B
-(as above: shot 4's still came from seed 7004, pass B runs at 7004); whether that is the cause is being measured.
+The shot opens on the first still and closes on the second (39-43 dB at both ends), 945-953 s each. **Render pass B
+with the seed of the render the still was cut from** (as above: shot 4's still came from seed 7004, pass B runs at
+7004). In the film of section 10 all three close-ups, rendered that way, held the framing for the whole 8 s; the
+inn's shots of section 8, rendered at other seeds, left for a 2-4 s beat on a pause of the line (a cutaway to a
+wide shot of invented people), and rendered again at their source seeds the cutaway is gone (section 8, queue161).
+A tilt to the props in the middle of a food shot stays whatever the seed: it is the shot's.
 Keep the shot at 8 s or less: at a full 11.5 s window the beat away grows to 4-6 s and the render costs +81 %.
 If a beat shows invented people and must not, cut it out in the edit (the close-up on both sides of it is the same
 framing and the cut hides under the pause), or render the shot on the Ref2VA path with both keyframes pinned as
@@ -138,5 +139,6 @@ close-ups have no head, and `--trim N=seconds` sets a trim by hand.
 
 - A beat the model leaves for shows invented people on the FL2VA path (no references there); the pinned variant
   with cards keeps them out but cuts harder. The co-host's card does not put him in the beat.
-- Whether pass B with the still's source seed is what kept the second film's close-ups whole (queue161).
+- Whether a pass-B shot at a seed other than its still's source always leaves for a beat (queue162, the film's
+  close-ups at other seeds).
 - The silent beat before a line lands where the model wants it (section 5): plan the trim, not the beat.
