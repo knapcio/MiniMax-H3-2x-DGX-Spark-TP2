@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-14 22:13: results: the shots recipe on a third scene, in English (queues 171-173, section 11 of the shots README):
+  nine of nine renders at the first attempt, the three two-keyframe close-ups held throughout, 2.4 h of renders for 48 s. The
+  one guard re-sample was Whisper's "30" for "Thirty" and "role" for "roll", not a slip.
 - 2026-11-14 17:58: results: queues 168 and 170, the second film's other two close-ups from 10-step still sources: both
   hold throughout at the first attempt; `film2-cheap.mp4` is the film with all three cheap close-ups (2.4 h of renders
   against 2.8). Shots README section 10.

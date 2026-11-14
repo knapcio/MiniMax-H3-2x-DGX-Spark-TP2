@@ -406,3 +406,28 @@ section 4 says, measured:
   close-ups with their wide heads), both 48.0 s, jump cuts with 40 ms audio fades. Clips `film2ref-s710{1,2}`,
   `film2a-s{1..6}`, `film2b-s{2,4,6}` on Spark_06, queues `queue157-film2ref.sh`, `queue158-film2a.sh`,
   `queue159-film2b.sh`, prompts and stills in `film2/`. Invented characters only.
+
+## 11. The recipe on a third scene, in English (queues 171-173, 2026-11-14)
+
+The same procedure, nothing reused, in another language: an old hardware store, a woman in a denim apron and a man
+in a flannel shirt test a cheap roll of duct tape against an expensive one, six shots, one English line each. Pass A
+as section 10 now prescribes: the three close-ups rendered at 10 steps without the guard as still sources, the three
+wide and two-shots at 20 steps with the guard; pass B the three close-ups as FL2VA with both keyframes.
+
+| pass | renders | each | result |
+|---|---|---|---|
+| scene frames (T2VA 5 s, two seeds) | 2 | 418 s | seed 7201 chosen, both cards found |
+| A, still sources (10 steps, no guard) | 3 | 808 / 736 / 584 s | the first two carried the slow first renders after a boot; all three cut to the close-up at 1.25-2.1 s and gave their stills |
+| A, wide and two-shots (20 steps, guard 0.03) | 3 | 1110-1118 s | three of three at the first attempt, CER 0; the plank lifts stuck to the man's hand in shot 5 as written |
+| B, close-ups (two keyframes) | 3 | 951 / 1867 / 950 s | three of three hold the close-up for all 8 s (32 of 32 samples, no cut or move, 38.7-40.9 dB at the ends) |
+
+- Nine of nine renders usable at the first attempt; the one re-sample (shot 4, 1867 s) was the guard's own doing:
+  the line "Thirty years behind this counter, and I still trust the roll that costs more" came back from Whisper as
+  "30 years ... the role" at both seeds, CER 0.073 of digits and a homophone, no slip in the speech. The repeated-slip
+  stop ended it after two attempts. Numbers in a line are a guard problem, not a model one (fixed the same evening:
+  the guard spells digits out before comparing).
+- Cost: 2 x 418 + 808 + 736 + 584 + 3 x 1114 + 951 + 950 (+ 917 for the re-sample) = 2.4 h of renders for 48 s,
+  as section 10's cheap variant predicted.
+- `film3-recipe.mp4` with the other films in `films/` on Spark_06; clips `film3ref-s720{1,2}`, `film3a10-s{2,4,6}`,
+  `film3a-s{1,3,5}`, `film3b-s{2,4,6}`, queues `queue171-film3ref.sh`, `queue172-film3a.sh`, `queue173-film3b.sh`,
+  prompts and stills in `film3/`. Invented characters only.
