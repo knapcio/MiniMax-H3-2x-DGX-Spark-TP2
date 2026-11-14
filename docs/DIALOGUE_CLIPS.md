@@ -88,7 +88,7 @@ mux path (the 120 s clip was recovered that way in 21 min, bit-identical windows
 A long clip can cut away in a late window (two of three samples of the 118 s Polish scene did, with the seam check at
 1.0): the interior cut check (`H3_TP2_CONT_CUT_RATIO`, default 1.7) re-samples such a window during the render, and
 with `H3_TP2_SAVE_LATENTS` set a window that still goes wrong is re-sampled afterwards in minutes with
-`H3_TP2_REPLAY_LATENTS` + `H3_TP2_REPLAY_PARTIAL=1` and another request seed, instead of a full re-render.
+`H3_TP2_REPLAY_LATENTS` + `H3_TP2_REPLAY_PARTIAL=1` and another request seed, instead of a full re-render. Measured on the 118 s Polish chain (seed 3801, 2026-11-14): with the seam and cut checks off the chain renders in 9 461 s instead of 12 177 s and comes back with five hard cuts, inside two windows and on two seams, exactly where the checks had re-sampled, plus a -7.2 dB audio jump at a seam; the six re-samples the checks cost were all visible cuts removed, so they stay on (`results/20261109-long-chain-identity/` section 8).
 
 Identity over two minutes: the scene reference alone holds the faces for about 60 s and loses them in the second
 minute (118 s chains, 2026-11-09: the woman 0.71 -> 0.60 similarity, another person on screen); with a head-and-shoulders
