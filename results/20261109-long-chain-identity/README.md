@@ -239,6 +239,13 @@ on compare two samples, not the lever alone.
   11's at 3811), which a speech limit does not touch. Kept one more slipped word ("przeproziny"), clip CER 0.011
   against 0.017, UTMOS of 46 paired lines +0.03, speakers' worst windows 0.895 / 0.921, faces as before. The
   recommended limit for long chains is 0.03 since 2026-11-13 (`docs/DIALOGUE_CLIPS.md`).
+- What the seam and cut checks buy (queue169, 2026-11-14: the same chain at 0.03 with `H3_TP2_CONT_SEAM_RATIO=100` and
+  `H3_TP2_CONT_CUT_RATIO=0`, so only the speech guard re-samples; clip `lalka118-recipe03nc-s3801`): 13 attempts and
+  9 461 s against 17 and 12 177 s, and the clip has five scene cuts where the checked chain has none: inside windows 7
+  and 8 (67.1, 71.8, 78.8 s; the cut check had re-sampled both at ratios 3.03 and 1.98) and on the seams into windows 9
+  and 11 (85.9 and 107.2 s; the seam check had seen ratios 2.64 and 2.86), with a -7.2 dB audio level jump at one of
+  them against -2.7 dB at worst with the checks. Every one of the six re-samples the checks cost was a visible cut
+  they removed. The checks stay on; the 29 % they cost on this chain is the price of a clip without hard cuts.
 - Verdict after two seeds: the anchor's worst speaker window is above the recipe's in all four comparisons (0.943 /
   0.865 against 0.81 / 0.838 at seed 3701, 0.947 / 0.935 against 0.857 / 0.869 at 3801), and the recipe's dips are
   single short lines, the man's "Czynsz może poczekać" at both seeds among them, which the anchor clips deliver in
