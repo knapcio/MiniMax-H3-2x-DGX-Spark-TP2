@@ -157,6 +157,34 @@ class MisheardTests(unittest.TestCase):
                                       "still above 0.01 after every attempt: w4 (zaprośmy ją), w6")
 
 
+class NumberTests(unittest.TestCase):
+    def test_digits_are_spelled_out_in_the_line_language(self):
+        self.assertEqual(sg.words("30 years behind this counter", "en"), ["thirty", "years", "behind", "this", "counter"])
+        self.assertEqual(sg.number_words(21, "en"), ["twenty", "one"])
+        self.assertEqual(sg.number_words(100, "en"), ["one", "hundred"])
+        self.assertEqual(sg.number_words(1970, "en"), ["one", "thousand", "nine", "hundred", "seventy"])
+        self.assertEqual(sg.words("30 lat", "pl"), ["trzydzieści", "lat"])
+        self.assertEqual(sg.number_words(21, "pl"), ["dwadzieścia", "jeden"])
+        self.assertEqual(sg.number_words(115, "pl"), ["sto", "piętnaście"])
+        self.assertEqual(sg.number_words(1000, "pl"), ["tysiąc"])
+        self.assertEqual(sg.number_words(2000, "pl"), ["dwa", "tysiące"])
+        self.assertEqual(sg.number_words(5000, "pl"), ["pięć", "tysięcy"])
+        self.assertEqual(sg.number_words(12000, "pl"), ["dwanaście", "tysięcy"])
+        self.assertEqual(sg.number_words(0, "en"), ["zero"])
+        self.assertEqual(sg.words("30 years", None), ["30", "years"])          # no language: digits stay
+        self.assertEqual(sg.words("30 years", "de"), ["30", "years"])          # unknown language: digits stay
+        self.assertEqual(sg.words("1970s", "en"), ["1970s"])                   # not a pure number
+
+    def test_a_number_heard_as_digits_is_not_a_slip(self):
+        script, language = sg.script_of("<d>[English] Thirty years behind this counter, and I still trust the roll that costs more.</d>")
+        self.assertEqual(language, "en")
+        self.assertEqual(script[:2], ["thirty", "years"])
+        heard = sg.words("30 years behind this counter and I still trust the roll that costs more", "en")
+        self.assertEqual(sg.judge(script, heard, 0.03)["cer"], 0.0)
+        heard = sg.words("30 years behind this counter and I still trust the role that costs more", "en")
+        self.assertGreater(sg.judge(script, heard, 0.03)["cer"], 0.0)   # the homophone stays a difference
+
+
 class RepeatedSlipTests(unittest.TestCase):
     def test_the_same_words_wrong_twice_running_are_repeated(self):
         g = sg.Guard(sg.Config(max_cer=0.01))

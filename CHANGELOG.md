@@ -363,6 +363,10 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-14 22:15: the speech guard spells digits out in the language of the lines before comparing (English and Polish,
+  0-99999): Whisper writes "30 years" for a line that says "thirty years", which cost a 950 s re-sample in the third film
+  (CER 0.073 at two seeds, no slip in the speech). `h3_tp2/speech_guard.py` (`number_words`, `words(text, language)`),
+  tests in `tests/test_speech_guard.py`.
 - 2026-11-14 22:13: results: the shots recipe on a third scene, in English (queues 171-173, section 11 of the shots README):
   nine of nine renders at the first attempt, the three two-keyframe close-ups held throughout, 2.4 h of renders for 48 s. The
   one guard re-sample was Whisper's "30" for "Thirty" and "role" for "roll", not a slip.

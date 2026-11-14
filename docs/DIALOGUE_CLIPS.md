@@ -166,7 +166,10 @@ that much noise in it.
 `scripts/speech_guard_dryrun.py clip.mp4 --extra extra.json [--respell respell.txt]` runs the same judgement on a
 finished clip, window by window, and lists which windows each limit would have re-sampled; use it on clips you already
 have before choosing a limit. A name Whisper spells its own way (`Nowak` heard as `Novak`) costs a character in every
-window that says it: put it in the respelling table too (`nowak novak`), or it eats the limit's margin.
+window that says it: put it in the respelling table too (`nowak novak`), or it eats the limit's margin. Numbers are
+handled: a line that says "thirty years" and a transcript that says "30 years" compare equal (digits are spelled out
+in the line's language, English and Polish, since 2026-11-14); a homophone ("roll" heard as "role") is still a
+difference, so a line with one has a character or two less margin.
 Both name the words: the dry run prints `misheard: zaprośmy > zapróczmi` next to a window's rate, and the live guard's
 summary line ends with the windows that stayed above the limit and the words that came out wrong in every attempt
 (`still above 0.01 after every attempt: w4 (zaprośmy ją)`). A word the model slips on at every seed is not fixed by

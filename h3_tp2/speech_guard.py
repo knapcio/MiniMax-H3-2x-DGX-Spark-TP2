@@ -128,8 +128,57 @@ def normalise(text: str) -> str:
     return unicodedata.normalize("NFKC", text).casefold()
 
 
-def words(text: str) -> list[str]:
-    return re.findall(r"\w+", normalise(text), flags=re.UNICODE)
+_EN_ONES = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
+            "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
+_EN_TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
+_PL_ONES = ["zero", "jeden", "dwa", "trzy", "cztery", "pięć", "sześć", "siedem", "osiem", "dziewięć", "dziesięć",
+            "jedenaście", "dwanaście", "trzynaście", "czternaście", "piętnaście", "szesnaście", "siedemnaście",
+            "osiemnaście", "dziewiętnaście"]
+_PL_TENS = ["", "", "dwadzieścia", "trzydzieści", "czterdzieści", "pięćdziesiąt", "sześćdziesiąt", "siedemdziesiąt",
+            "osiemdziesiąt", "dziewięćdziesiąt"]
+_PL_HUNDREDS = ["", "sto", "dwieście", "trzysta", "czterysta", "pięćset", "sześćset", "siedemset", "osiemset", "dziewięćset"]
+
+
+def number_words(n: int, language: str) -> list[str]:
+    """``n`` (0-99999) spelled out in English or Polish, the way the lines of a prompt write numbers; other languages
+    or larger numbers come back as the digits."""
+    if language not in ("en", "pl") or not 0 <= n < 100000:
+        return [str(n)]
+    out: list[str] = []
+    thousands, rest = divmod(n, 1000)
+    if thousands:
+        if language == "en":
+            out += number_words(thousands, "en") + ["thousand"]
+        else:
+            last, tens = thousands % 10, thousands % 100
+            if thousands == 1:
+                out.append("tysiąc")
+            else:
+                out += number_words(thousands, "pl") + (["tysiące"] if 2 <= last <= 4 and not 12 <= tens <= 14 else ["tysięcy"])
+    hundreds, rest = divmod(rest, 100)
+    if hundreds:
+        out += ([_EN_ONES[hundreds], "hundred"] if language == "en" else [_PL_HUNDREDS[hundreds]])
+    if rest or not out:
+        ones, tens = _EN_ONES if language == "en" else _PL_ONES, _EN_TENS if language == "en" else _PL_TENS
+        if rest < 20:
+            out.append(ones[rest])
+        else:
+            out.append(tens[rest // 10])
+            if rest % 10:
+                out.append(ones[rest % 10])
+    return out
+
+
+def words(text: str, language: str | None = None) -> list[str]:
+    """The comparable words of ``text``: NFKC, case-folded, split on non-word characters; with ``language`` a run of
+    digits is spelled out (Whisper writes "30 years" for a line that says "thirty years"; that is not a slip)."""
+    out: list[str] = []
+    for w in re.findall(r"\w+", normalise(text), flags=re.UNICODE):
+        if language and w.isdigit() and len(w) <= 5:
+            out.extend(number_words(int(w), language))
+        else:
+            out.append(w)
+    return out
 
 
 def script_of(prompt: str, respellings: dict | None = None) -> tuple[list[str], str | None]:
@@ -139,7 +188,7 @@ def script_of(prompt: str, respellings: dict | None = None) -> tuple[list[str], 
     for tag, text in DIALOGUE.findall(prompt or ""):
         if tag and language is None:
             language = LANGUAGES.get(normalise(tag).strip()) or (normalise(tag).strip() if len(tag.strip()) == 2 else None)
-        out.extend((respellings or {}).get(w, w) for w in words(text))
+        out.extend((respellings or {}).get(w, w) for w in words(text, language))
     return out, language
 
 
@@ -302,7 +351,7 @@ def judge_wav(cfg: Config, script: list[str], language: str | None, wav: str, di
     out, heard, heard_words, rates = None, [], [], []
     for model in models_of(cfg):
         texts = transcribe(cfg, wav, language, os.path.join(directory, f"speech-{model.replace('/', '_')}.json"), model)
-        tokens = [w for text in texts for w in words(text)]
+        tokens = [w for text in texts for w in words(text, language)]
         verdict = judge(script, tokens, limit)
         rates.append(verdict["cer"])
         if out is None or verdict["cer"] < out["cer"]:
