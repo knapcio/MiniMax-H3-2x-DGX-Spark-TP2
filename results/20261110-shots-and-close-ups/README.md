@@ -397,8 +397,12 @@ section 4 says, measured:
   so run (queue167, the same shot and seed), pass A took 571 s, the stills differ from the 20-step ones in detail
   (18.5 / 17.1 dB) and look as sharp by eye, and the pass-B shot from them held throughout at the first attempt
   (32 of 32, 40.0 / 38.9 dB at the ends, 951 s). **A two-keyframe close-up costs 571 + 951 = 1522 s instead of
-  1088 + 948 = 2036 s** (queue168 does the film's other two close-ups the same way).
-- Two cuts: `film2-recipe.mp4` (shots 1, 2B, 3, 4B, 5, 6B) and `film2-way-a.mp4` (the six pass-A shots, the
+  1088 + 948 = 2036 s**. The film's other two close-ups the same way (queues 168 and 170): still sources 571 and
+  570 s, pass B 950 and 951 s, both hold throughout at the first attempt (32 of 32, 42.6 / 41.2 and 41.2 / 40.1 dB at
+  the ends). `film2-cheap.mp4` is the film with the three cheap close-ups; the three close-ups cost 4 563 s against
+  6 108 s, the film 2.4 h of renders against 2.8.
+- Three cuts: `film2-recipe.mp4` (shots 1, 2B, 3, 4B, 5, 6B), `film2-cheap.mp4` (the same with the close-ups from the
+  10-step still sources) and `film2-way-a.mp4` (the six pass-A shots, the
   close-ups with their wide heads), both 48.0 s, jump cuts with 40 ms audio fades. Clips `film2ref-s710{1,2}`,
   `film2a-s{1..6}`, `film2b-s{2,4,6}` on Spark_06, queues `queue157-film2ref.sh`, `queue158-film2a.sh`,
   `queue159-film2b.sh`, prompts and stills in `film2/`. Invented characters only.
