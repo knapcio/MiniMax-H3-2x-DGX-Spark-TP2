@@ -21,6 +21,7 @@ BASEENV='export H3_TP2_FP8_FUSE_SWIGLU=1
 export H3_TP2_REF_SHORT_EDGE=1024'
 # restart_head "export VAR=value[newline export ...]": rewrite the experiment vars, restart, wait for health (20 min max)
 restart_head() {
+  local i   # the wait loops below must not clobber a caller's loop variable (2026-11-14: a queue lost two renders to i=24)
   # skip when the head is healthy and the env file already carries exactly the requested experiment lines (a queue
   # that ends with a restoring restart followed by one that starts with the same restart cost a 13-minute double boot)
   # (H3_FORCE_RESTART=1 skips the shortcut: restart_head_gated sets it after a slow probe, when "the same env on a
@@ -46,6 +47,7 @@ restart_head() {
 }
 # restart_head_gated "env": restart, then the boot probe; a slow boot is restarted again (up to 3 boots)
 restart_head_gated() {
+  local i   # the wait loops below must not clobber a caller's loop variable (2026-11-14: a queue lost two renders to i=24)
   for attempt in 1 2 3; do
     restart_head "$1"; unset H3_FORCE_RESTART
     bash ~/h3-tp2/scripts/boot-probe.sh ${PROBE_REF:-8.65} ${PROBE_TOL:-0.08}; rc=$?
@@ -57,6 +59,7 @@ restart_head_gated() {
 }
 # run <name> <duration_s> "<dur:w:h:steps:seed>" [image]: render via bench-matrix, wait, print timing/seam/lock lines
 run() { name=$1; dur=$2; shift 2
+  local i   # see restart_head
   [ "$(health)" = 200 ] || { echo "health $(health) before $name, skipping"; return 1; }
   T0=$(date "+%Y-%m-%d %H:%M:%S")
   OUT=~/h3-tp2-results/$name setsid nohup bash ~/h3-tp2/scripts/bench-matrix.sh "$@" > ~/h3-tp2-results/$name.log 2>&1 < /dev/null &

@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-14 13:46: `scripts/queue-lib.sh`: the wait loops of `run`, `restart_head` and `restart_head_gated` count in a
+  local `i`; they used to leave the caller's loop variable at the poll count (a queue that cut stills after `run` wrote
+  `s24.png` and lost two renders).
 - 2026-11-14 12:39: results: queue167, the still source for a two-keyframe close-up rendered at 10 steps with the guard off:
   571 s instead of 1088 s, and the pass-B shot from its stills holds throughout at the first attempt. A close-up costs 1522 s
   instead of 2036 s; the recipe (section 4), section 10 and `docs/FILM_FROM_SHOTS.md` (commands, cost table) say so.
