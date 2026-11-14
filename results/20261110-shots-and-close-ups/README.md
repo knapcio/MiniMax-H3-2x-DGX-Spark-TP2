@@ -304,6 +304,14 @@ three. The still's source seed is the safe default for pass B: it costs nothing,
 hold for a shot that wants to cut away; a shot that cuts away at that seed too has about an even chance at the next.
 The tilt insert of the food shot is the shot's at every seed.
 
+**The cut-away fills silence, so size the shot to the line.** The same shot 9 at the same four seeds with the line
+cut to one clause, "Lembas dostaje muala." (queue164): four of four cut away (out at 1.8-2.8 s, back at 4.6-5.3 s or
+by a push-in), against two of four with the two-clause line. A 1.5 s line in an 8 s shot leaves six seconds of
+silence and the model fills them with its home framing; the two-clause line's cut-aways sat in the pause between
+the clauses, and the second film's close-ups, whose lines fill their 8 s, never left. So the earlier "one clause per
+shot" reading was wrong: what a shot must not have is a pause of two seconds or more, which means a shot as long
+as its line and a beat (queue165 renders this line at 4 s).
+
 **Keep the shot short.** At a full window (11.5 s, 277 frames; queue153, arm "late", seed 6001) the return still
 happens in three of three (frame 0 39.2 / 40.4 / 42.1 dB, the last frame 38.7 / 40.3 / 41.4 dB against the late
 still, no scene cuts) but the beat away grows with the shot: shot 2 holds throughout again (the elf lifts the lembas

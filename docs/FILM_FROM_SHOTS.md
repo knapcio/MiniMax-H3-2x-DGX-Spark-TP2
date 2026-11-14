@@ -40,8 +40,10 @@ wide shots (`docs/DIALOGUE_CLIPS.md` section 1 for the long-clip measurements).
 
 ## 3. The lines and the shot list
 
-One line per shot, one or two clauses, 8 s or less of picture. The model edits on the sentence: when a shot
-leaves its framing it does so on a pause of the line, so a shot with one clause has nowhere to cut. Words the
+One line per shot, 8 s or less of picture, and **the shot as long as the line needs plus a beat, not longer**: when a
+shot leaves its framing it does so in a pause of two seconds or more, between clauses or after a short line in a
+long shot (the inn's shot 9: a 1.5 s line in an 8 s shot cut away at four of four seeds, the two-clause line at two of
+four, the second film's lines that fill their shots never). Words the
 model cannot say (invented names, rare spellings) are slips at every seed: write around them or respell them
 (`docs/DIALOGUE_CLIPS.md` section 2, `scripts/speech_guard_dryrun.py` names them on a finished clip).
 
@@ -98,7 +100,8 @@ inn's shots of section 8, rendered at other seeds, left for a 2-4 s beat on a pa
 wide shot of invented people), and rendered again at their source seeds the cutaway is gone (section 8, queue161);
 the film's close-ups hold at other seeds too (queue162), so the source seed is the safe default rather than the
 cause; the inn's shot 9 cut away at four of seven seeds and held at three, its still's source seed among them
-(queue163). A tilt to the props in the middle of a food shot stays whatever the seed: it is the shot's.
+(queue163); a shot much longer than its line cuts away in the silence at every seed (queue164). A tilt to the
+props in the middle of a food shot stays whatever the seed: it is the shot's.
 Keep the shot at 8 s or less: at a full 11.5 s window the beat away grows to 4-6 s and the render costs +81 %.
 If a beat shows invented people and must not, cut it out in the edit (the close-up on both sides of it is the same
 framing and the cut hides under the pause), or render the shot on the Ref2VA path with both keyframes pinned as
@@ -141,6 +144,6 @@ close-ups have no head, and `--trim N=seconds` sets a trim by hand.
 
 - A beat the model leaves for shows invented people on the FL2VA path (no references there); the pinned variant
   with cards keeps them out but cuts harder. The co-host's card does not put him in the beat.
-- Why some shots want to cut away (the inn's shot 9, a comparison of two dishes) and some never do (the film's
-  three); the still's source seed holds the former, other seeds may not.
+- Whether a shot sized to its line (the inn's one-clause line at 4 s, queue165) never cuts away, which would make
+  shot length the whole rule.
 - The silent beat before a line lands where the model wants it (section 5): plan the trim, not the beat.
