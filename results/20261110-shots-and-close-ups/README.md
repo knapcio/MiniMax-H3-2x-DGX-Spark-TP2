@@ -297,8 +297,12 @@ shot 9's two clips, 25-26 of 32 in shot 6's). The other direction (queue162): th
 rendered at seeds other than their stills' sources (8002/8004/8006) hold the framing throughout as well, 32 of 32,
 no cut, no move, lines clean. So a shot that holds at any seed exists (the film's three), and a shot that cuts away
 at some seeds and not at its still's source exists (the inn's shot 9, whose line compares two dishes and invites a
-two-shot). The still's source seed is the safe default for pass B: it costs nothing, and it is the one seed known to
-hold for a shot that wants to cut away. The tilt insert of the food shot is the shot's at every seed.
+two-shot). Four fresh seeds of that shot (queue163, 5101-5104, arm "late"): two hold the extreme close-up throughout
+(5101, 5104), one cuts out at 3.25 s to the two-shot and back at 5.25 s (5102), one cuts out at 2.0 s and pushes back
+in by 5.0 s (5103). Over seven seeds the shot cuts away at four and holds at three, its still's source seed among the
+three. The still's source seed is the safe default for pass B: it costs nothing, and it is the one seed known to
+hold for a shot that wants to cut away; a shot that cuts away at that seed too has about an even chance at the next.
+The tilt insert of the food shot is the shot's at every seed.
 
 **Keep the shot short.** At a full window (11.5 s, 277 frames; queue153, arm "late", seed 6001) the return still
 happens in three of three (frame 0 39.2 / 40.4 / 42.1 dB, the last frame 38.7 / 40.3 / 41.4 dB against the late

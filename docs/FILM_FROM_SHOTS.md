@@ -97,7 +97,8 @@ with the seed of the render the still was cut from** (as above: shot 4's still c
 inn's shots of section 8, rendered at other seeds, left for a 2-4 s beat on a pause of the line (a cutaway to a
 wide shot of invented people), and rendered again at their source seeds the cutaway is gone (section 8, queue161);
 the film's close-ups hold at other seeds too (queue162), so the source seed is the safe default rather than the
-cause. A tilt to the props in the middle of a food shot stays whatever the seed: it is the shot's.
+cause; the inn's shot 9 cut away at four of seven seeds and held at three, its still's source seed among them
+(queue163). A tilt to the props in the middle of a food shot stays whatever the seed: it is the shot's.
 Keep the shot at 8 s or less: at a full 11.5 s window the beat away grows to 4-6 s and the render costs +81 %.
 If a beat shows invented people and must not, cut it out in the edit (the close-up on both sides of it is the same
 framing and the cut hides under the pause), or render the shot on the Ref2VA path with both keyframes pinned as

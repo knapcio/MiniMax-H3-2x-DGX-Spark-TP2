@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-14 07:08: results: queue163, the inn's shot 9 as a two-keyframe close-up at four fresh seeds: two hold throughout,
+  two cut away for 2-3 s and come back; over seven seeds four cut away and three hold, the still's source seed among the
+  three. Section 8 and the guide carry the rate.
 - 2026-11-14 03:53: results: queue162, the second film's close-ups at seeds other than their stills' sources hold the
   framing throughout as well (three of three): the still's source seed is the safe default for pass B, not the cause;
   some shots never cut away, some (the inn's shot 9) do at seeds other than their still's. Section 8 and the guide.
