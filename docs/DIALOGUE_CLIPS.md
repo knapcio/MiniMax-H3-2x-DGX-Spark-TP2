@@ -157,7 +157,8 @@ score moved by -0.13 to +0.08 paired UTMOS over the four chains, which is chain-
 re-sampled window and no selection kept the voice. An English chain needed one re-sample and lost no voice. About one Polish window in five and one English window in
 nine is above 0.01 on finished clips. A 118 s English two-hander by the whole recipe (2026-11-15,
 `results/20261109-long-chain-identity/` section 9): 15 attempts for 11 windows at 0.03, one wrong word in 219, no
-scene cut, UTMOS 3.9 over the chain.
+scene cut, UTMOS 3.9 over the chain; at 180 s (17 windows) the same scene held faces, voices and lines through the
+third minute with one push-in and cut back at 120 s, for 26 attempts and 5.0 h of render.
 The guards judge a plain one-window request (4-14 s, no `long_video`) as well since 2026-11-10: with a guard configured
 such a request runs as a one-window continuation, the same sampling plus the checks and retries (`H3_TP2_GUARD_SINGLE=0`
 turns that off). Shots rendered one by one and cut together get the same speech guard as a long take.

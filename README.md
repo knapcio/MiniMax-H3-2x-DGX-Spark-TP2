@@ -556,8 +556,9 @@ TASK=ref2va EXTRA_JSON='{"long_video": true, "long_video_mode": "continuation"}'
 What is open as of 2026-11-15, after the shots recipe (`docs/FILM_FROM_SHOTS.md`) and the long-clip recipe
 (`docs/DIALOGUE_CLIPS.md`) were measured on three scenes and two languages:
 
-- How long a dialogue chain holds by the recipe: 118 s holds faces, voices and lines in Polish and English; a 180 s
-  English chain with the faces to the camera is being rendered (queue179).
+- How long a dialogue chain holds by the recipe: 118 s holds faces, voices and lines in Polish and English, and a 180 s
+  English chain held them through the third minute with one push-in and cut back at 120 s (26 attempts, 5.0 h;
+  `results/20261109-long-chain-identity/` section 9). Four minutes and beyond are not measured.
 - The beat a two-keyframe close-up leaves for on the FL2VA path shows invented people, because FL2VA takes no
   references; the edit cuts it out, or the pinned variant with cards keeps the cast right at the price of a harder
   cut (`results/20261110-shots-and-close-ups/` section 9). A reference-bearing two-keyframe shot would close this.

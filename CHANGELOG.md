@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-15 18:50: results: a 180 s English chain by the recipe (queue179, 17 windows): faces, voices and lines hold through
+  the third minute, one push-in and cut back at 120 s, 26 attempts and 5.0 h (section 9 of the long-chain README; the
+  README's Next and `docs/DIALOGUE_CLIPS.md` carry the number).
 - 2026-11-15 13:08: README: the Next section lists what is open now (chain length beyond 118 s, the FL2VA beat's invented
   people, a three-person scene, homophones in the guard, profile scene frames); the 2026-10-27 speed measurements move to a
   short closed-levers list.

@@ -306,5 +306,15 @@ and the cards, the identity lock, the speech guard at 0.03 with two retries, the
   chosen with the faces to the camera: that is what the cards are cut from and what the identity measures see, and
   the dialogue loses nothing by it. The speakers' single-window dips are here too (the man's window 5 at 0.80), the
   same shape as every chain above.
-- Not measured here: whether the profile two-shot costs identity over longer chains (the profile chain held the two
-  people by eye for 118 s, so probably little).
+- A third minute (queue179, `chain180-enface180-s3901`: the en-face scene, the dialogue extended to 34 lines in 17
+  windows, 180 s, seed 3901): 26 attempts and 18 137 s (5.0 h), the retries now mostly the seam and cut checks (windows
+  4, 10, 12 three times, 14) with speech re-samples at windows 15 (a slip twice, then clean), 16 and 17 (the same word
+  twice, stopped). The finished clip: one wrong word by the guard's judge (CER 0.0099 by the single-judge script tool,
+  which still reads "forty" against "40"), voices 0.81-0.98 to the man's and 0.90-0.99 to the woman's window-1 voice
+  through all 17 windows, UTMOS 4.06, the man's face 0.88 falling to 0.82 by the end (drift -0.055), the woman's 0.87
+  with one dip to 0.65 in windows 11-12: at 113-120 s the camera pushes in on the man for seven seconds and a hard cut
+  (the clip's only one, 120.5 s) brings the two-shot back, the same two people before and after. So the recipe holds a
+  third minute for identity, voice and lines; what grows is the structural re-sampling and, once, the model's wish
+  to move the camera, which the cut check did not price as a cut.
+- Not measured here: four minutes and beyond; whether the profile two-shot costs identity over longer chains (the
+  profile chain held the two people by eye for 118 s, so probably little).
