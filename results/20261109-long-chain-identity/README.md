@@ -292,7 +292,8 @@ and the cards, the identity lock, the speech guard at 0.03 with two retries, the
 - Two tool findings on the way: the speaker tool's window-1 split by a 150 Hz pitch line put this 147 Hz woman's
   lines into the 95 Hz man's reference (the tool now splits window 1 by voice and names the two by mean pitch); and
   the audio seam tool's "+31 dB level jump" at one seam is a line against a pause straddling the seam (the per-half-
-  second RMS of the clip is -20 dB in speech and -55 dB between lines throughout), not a seam artefact.
+  second RMS of the clip is -20 dB in speech and -55 dB between lines throughout), not a seam artefact; the tool now
+  reports the room-tone floor's jump instead (-8.8 to +1.8 dB across this clip's seams).
 - The second seed (queue176, 3902, paired with 3901): 14 attempts and 10 189 s (windows 3 and 6 twice on the checks,
   window 9 twice on a slip, 0.075 then 0), one wrong word in the clip ("coal" heard as "cold", CER 0.0023), no scene
   cut, UTMOS 3.54 in window 1 and 4.01 over windows 2-11 (paired lines +0.03 against seed 3901), speakers 0.84-0.99

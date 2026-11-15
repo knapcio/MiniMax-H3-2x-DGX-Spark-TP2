@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Audio hand-over seams of a stitched clip: the log-mel spectral distance between the 250 ms before and after every
-window boundary, and the level jump across it, next to the same distance at every other 250 ms grid point of the clip
+window boundary, and the jump of the room-tone floor across it, next to the same distance at every other 250 ms grid point of the clip
 (median, 95th percentile, max).  A seam that sits inside the clip's own grid spread is not a cut the ear picks out.
 
     ~/h3-long/.venv/bin/python scripts/audio_seams.py clip.mp4 [more clips]       # numpy + ffmpeg only
@@ -26,10 +26,27 @@ def main(p, step_s, win=0.25):
     total = len(y)/16000; bounds = [k*step_s for k in range(1, 6) if k*step_s < total-1]
     grid = [t for t in np.arange(1.0, total-1, 0.25) if min(abs(t-b) for b in bounds) > 0.6]
     d_b = [dist(b) for b in bounds]; d_g = np.array([dist(t) for t in grid])
-    rms = lambda t0,t1: 20*np.log10(np.sqrt(np.mean(y[int(t0*16000):int(t1*16000)]**2))+1e-9)
-    lvl = [round(float(rms(b, b+0.25)-rms(b-0.25, b)),1) for b in bounds]
-    print(p.split('/')[-2], "seam dist", [round(d,1) for d in d_b], "level jump dB", lvl,
+    lvl = [round(floor_jump(y, b), 1) for b in bounds]
+    print(p.split('/')[-2], "seam dist", [round(d,1) for d in d_b], "floor jump dB", lvl,
           "| grid median %.1f p95 %.1f max %.1f" % (np.median(d_g), np.percentile(d_g,95), d_g.max()))
+
+
+def frame_rms_db(y, t0, t1, sr=16000, frame=320):
+    """RMS in dB of every 20 ms frame of ``y`` between ``t0`` and ``t1`` seconds."""
+    seg = y[int(t0*sr):int(t1*sr)]
+    n = len(seg) // frame
+    if n < 1:
+        return np.array([20*np.log10(np.sqrt(np.mean(seg**2))+1e-9)]) if len(seg) else np.array([-180.0])
+    f = seg[:n*frame].reshape(n, frame)
+    return 20*np.log10(np.sqrt(np.mean(f**2, axis=1))+1e-9)
+
+
+def floor_jump(y, b, span=2.0, q=10):
+    """The jump of the room tone across boundary ``b``: the ``q``-th percentile of the 20 ms frame levels in the ``span``
+    seconds after it minus the same before it (two seconds, so that a pause falls inside the span on both sides).  A plain RMS jump reads a line against a pause as +30 dB (the English
+    chain of 2026-11-15); the floor ignores whoever is speaking and sees the hand-over's level step."""
+    before, after = frame_rms_db(y, max(0.0, b-span), b), frame_rms_db(y, b, b+span)
+    return float(np.percentile(after, q) - np.percentile(before, q))
 if __name__ == "__main__":
     argv = sys.argv[1:]; step = 255 / 24
     if argv and argv[0] == "--step":

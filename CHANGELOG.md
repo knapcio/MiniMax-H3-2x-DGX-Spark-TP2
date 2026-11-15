@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-15 05:52: `scripts/audio_seams.py` reports the jump of the room-tone floor across each window boundary (the 10th
+  percentile of the 20 ms frame levels over two seconds each side) instead of the raw RMS jump, which read a line against a
+  pause as +31 dB on the English chain; on that clip the floors move -8.8 to +1.8 dB. `tests/test_audio_seams_floor.py`.
 - 2026-11-15 05:49: results: the English 118 s chain at a second seed (queue176): 14 attempts, 10 189 s, one wrong word, no
   scene cut, UTMOS 4.0; two seeds with the same shape, the long-clip recipe carries over to English (section 9).
 - 2026-11-15 02:20: results: the long-clip recipe on an English 118 s two-hander (queue175; section 9 of
