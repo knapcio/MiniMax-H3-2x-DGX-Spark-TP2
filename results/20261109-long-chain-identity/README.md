@@ -293,4 +293,9 @@ and the cards, the identity lock, the speech guard at 0.03 with two retries, the
   lines into the 95 Hz man's reference (the tool now splits window 1 by voice and names the two by mean pitch); and
   the audio seam tool's "+31 dB level jump" at one seam is a line against a pause straddling the seam (the per-half-
   second RMS of the clip is -20 dB in speech and -55 dB between lines throughout), not a seam artefact.
-- Not measured here: a second seed (queue176), and whether the profile two-shot costs identity over longer chains.
+- The second seed (queue176, 3902, paired with 3901): 14 attempts and 10 189 s (windows 3 and 6 twice on the checks,
+  window 9 twice on a slip, 0.075 then 0), one wrong word in the clip ("coal" heard as "cold", CER 0.0023), no scene
+  cut, UTMOS 3.54 in window 1 and 4.01 over windows 2-11 (paired lines +0.03 against seed 3901), speakers 0.84-0.99
+  except the man's window 11 (0.80) and window 9 (0.85), the man's face 0.85 throughout, the woman in profile again
+  rarely found. Two seeds, the same shape: the recipe carries over to English as it stands.
+- Not measured here: whether the profile two-shot costs identity over longer chains.
