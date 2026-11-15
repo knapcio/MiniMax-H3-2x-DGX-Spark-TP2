@@ -13,7 +13,7 @@ name. Three prompt rounds were needed for the shop scene: a negation ("no teleph
 naming the counter, a brass inkwell and a scale instead gave a usable frame (`xclip/reference_prompt3.txt`). An
 invented face is a must for anything public: do not prompt a real actor.
 
-## 2. The lines
+## 2. The lines Have the faces to the camera in it: the cards are cut from this frame and the identity measures look for these faces, and a profile two-shot gives them little to hold (the English lighthouse chains of 2026-11-15: the woman found in 33 of 118 samples in profile, in 61 of 65 at 0.89 facing the camera; `results/20261109-long-chain-identity/` section 9).
 
 - About **three short lines per 11.5 s window** (277 frames), fewer in a partial last window. One line per window left
   the model 7-8 s to fill, and it filled them with 2-4 s pauses or, in Polish, with invented non-Polish speech; three

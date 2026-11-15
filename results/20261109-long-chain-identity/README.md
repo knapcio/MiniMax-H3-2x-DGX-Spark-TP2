@@ -299,4 +299,12 @@ and the cards, the identity lock, the speech guard at 0.03 with two retries, the
   cut, UTMOS 3.54 in window 1 and 4.01 over windows 2-11 (paired lines +0.03 against seed 3901), speakers 0.84-0.99
   except the man's window 11 (0.80) and window 9 (0.85), the man's face 0.85 throughout, the woman in profile again
   rarely found. Two seeds, the same shape: the recipe carries over to English as it stands.
-- Not measured here: whether the profile two-shot costs identity over longer chains.
+- The same scene with both faces to the camera (queue178, `chain65-enface-s3901`: the first twelve lines, 64.6 s, six
+  windows, a new scene frame and cards from it, seed 3901): 7 attempts (one slip re-sampled), 4 995 s, no scene cut,
+  UTMOS 4.13 over windows 2-6, and the face tool now finds the woman in 61 of 65 samples at 0.89 (0.83 at worst) and
+  the man at 0.86; in the profile scene it found her in 33 of 118 and said nothing reliable. So the scene frame is
+  chosen with the faces to the camera: that is what the cards are cut from and what the identity measures see, and
+  the dialogue loses nothing by it. The speakers' single-window dips are here too (the man's window 5 at 0.80), the
+  same shape as every chain above.
+- Not measured here: whether the profile two-shot costs identity over longer chains (the profile chain held the two
+  people by eye for 118 s, so probably little).
