@@ -363,6 +363,9 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-15 13:08: README: the Next section lists what is open now (chain length beyond 118 s, the FL2VA beat's invented
+  people, a three-person scene, homophones in the guard, profile scene frames); the 2026-10-27 speed measurements move to a
+  short closed-levers list.
 - 2026-11-15 08:01: results: the lighthouse scene with both faces to the camera (queue178, 64.6 s): the face tool finds the
   woman in 61 of 65 samples at 0.89 against 33 of 118 in profile, the man 0.86; one slip re-sampled, no cut, UTMOS 4.1.
   The scene frame is chosen with the faces to the camera (`docs/DIALOGUE_CLIPS.md` section 1, long-chain README section 9).

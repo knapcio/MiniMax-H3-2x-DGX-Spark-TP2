@@ -553,28 +553,32 @@ TASK=ref2va EXTRA_JSON='{"long_video": true, "long_video_mode": "continuation"}'
 
 ## Next
 
+What is open as of 2026-11-15, after the shots recipe (`docs/FILM_FROM_SHOTS.md`) and the long-clip recipe
+(`docs/DIALOGUE_CLIPS.md`) were measured on three scenes and two languages:
+
+- How long a dialogue chain holds by the recipe: 118 s holds faces, voices and lines in Polish and English; a 180 s
+  English chain with the faces to the camera is being rendered (queue179).
+- The beat a two-keyframe close-up leaves for on the FL2VA path shows invented people, because FL2VA takes no
+  references; the edit cuts it out, or the pinned variant with cards keeps the cast right at the price of a harder
+  cut (`results/20261110-shots-and-close-ups/` section 9). A reference-bearing two-keyframe shot would close this.
+- A scene with three people in the film recipe (who speaks, who looks where) has not been rendered as shots since v5.
+- The speech guard treats a homophone ("roll" heard as "role") as a slip; numbers are handled since 2026-11-14, names
+  go in the respelling table, homophones still cost a character or two of margin.
+- A scene frame with the faces in profile gives the face tool and the cards little to hold; the frame is chosen with
+  the faces to the camera (`docs/DIALOGUE_CLIPS.md` section 1).
+
+## Closed speed levers (measured 2026-10-27, kept for reference)
+
 - Longer than 15 s is a model limit (duration range 4 to 15 s), not a memory one: with the cap lifted
   (`H3_TP2_MAX_OUTPUT_SECONDS=20`, experiment only) a 20 s 1344x768 clip rendered in 6740 s with 20 GB still free on
-  both hosts and looked coherent to the last frame on a calm landscape prompt (`results/20261027-20s-out-of-spec/`).
-  One sample outside the model's training range; the serving configuration keeps the 15 s cap.
-- Measured all-to-all share of a denoising step at 20 s: 2.9 % including the permute copies, 2.1 % inside the
-  collectives. That is the ceiling for `H3_TP2_A2A_OVERLAP`.
-- Attention is 57 % of a denoising step at 10 s and 66 % at 15 s (fit of step time against sequence length:
-  t ≈ 4.9e-4·S + 8.8e-9·S² s); an exact, faster attention kernel for SM121 is the only lever above 10 %. Of the exact
-  kernels installed here cuDNN is already the fastest: vLLM's FlashAttention-2 is 3 % slower and torch's flash SDPA
-  4-7 % slower on the per-rank shapes (`scripts/attn-bench.py`, `results/20261027-attn-bench/`).
-- Ulysses sequence parallel issues three all-to-alls per attention layer (q, k, v) and one back, and the GPU idles
-  during them: 2.9 % of a denoising step at 20 s (`H3_TP2_A2A_TIMING=1`). Hiding them behind the attention kernel on a
-  second stream (`H3_TP2_A2A_OVERLAP=<groups>`, off, kept for reference) gives identical frames but is 4.5 % slower:
-  NCCL kernels queue behind the attention kernel on this GPU instead of running beside it
-  (`results/20261027-a2a-overlap/`). Closed.
-- Phase timers (`h3_tp2 phase encode_prompt / diffuse / decode` in the head journal) for the 5 s 1344x768 20-step
-  render: prompt encoding 0.2 s, denoising 598.9 s (30 s per step), VAE decode 42.1 s with the decoder split over both
-  GPUs; the rest (audio decode, uint8 conversion, muxing) is about 2 s. Denoising is the whole game above 5 s.
-- Regional `torch.compile` of the eager modulation and elementwise work (drop `--enforce-eager`) is 5-10 % of the
-  non-attention time but changes floating-point association, so it stays out of a lossless recipe.
-- `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`: identical frames, peak 75.2 -> 74.1 GB, but 3.3 % slower
-  (VAE decode 42 -> 50 s). Off (`results/20261027-expandable-segments/`). Closed.
+  both hosts (`results/20261027-20s-out-of-spec/`); the serving configuration keeps the 15 s cap, long clips go by
+  continuation.
+- Attention is 57-66 % of a denoising step at 10-15 s; cuDNN is the fastest exact kernel installed (vLLM's
+  FlashAttention-2 3 % slower, torch's flash SDPA 4-7 % slower; `results/20261027-attn-bench/`). All-to-all is 2.9 % of
+  a step at 20 s and hiding it behind attention is 4.5 % slower on this GPU (`results/20261027-a2a-overlap/`).
+- Denoising is the whole game above 5 s (prompt encoding 0.2 s, decode 42 s of a 640 s render). Regional
+  `torch.compile` would be 5-10 % of the non-attention time but changes floating-point association, so it stays out of
+  a lossless recipe; `expandable_segments` saves 1 GB and costs 3.3 % (`results/20261027-expandable-segments/`).
 
 ## Licences
 
