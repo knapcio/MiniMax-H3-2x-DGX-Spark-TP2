@@ -57,6 +57,34 @@ def _unit(v):
 MIN_SECONDS = 1.5   # a one-word segment's x-vector matches nobody (a 1.0 s "Dobrze." at 0.30 / 0.54, 2026-11-12)
 
 
+def split_window_one(rows):
+    """Re-label window 1's rows by voice, not by the 150 Hz pitch line: the two most dissimilar window-1 x-vectors seed
+    two groups, every window-1 row goes to the nearer group mean (two passes), and the group with the lower mean pitch
+    is "low". A 147 Hz woman and a 95 Hz man both fell on the "low" side of 150 Hz (2026-11-15) and her lines went into
+    his reference. Rows without ``f0`` keep their labels; fewer than three window-1 rows are left as they are."""
+    w1 = [r for r in rows if int(r["w"]) == 1]
+    if len(w1) < 3 or any("f0" not in r for r in w1):
+        return rows
+    e = [_unit(np.asarray(r["e"], dtype=float)) for r in w1]
+    n = len(e)
+    i, j = max(((a, b) for a in range(n) for b in range(a + 1, n)), key=lambda ab: -float(e[ab[0]] @ e[ab[1]]))
+    groups = {0: [i], 1: [j]}
+    for _ in range(2):
+        means = [_unit(np.mean([e[k] for k in groups[g]], 0)) for g in (0, 1)]
+        groups = {0: [], 1: []}
+        for k in range(n):
+            groups[0 if float(e[k] @ means[0]) >= float(e[k] @ means[1]) else 1].append(k)
+        if not groups[0] or not groups[1]:
+            return rows
+    pitch_of = [float(np.mean([w1[k]["f0"] for k in groups[g]])) for g in (0, 1)]
+    low = 0 if pitch_of[0] <= pitch_of[1] else 1
+    label = {}
+    for g in (0, 1):
+        for k in groups[g]:
+            label[id(w1[k])] = "low" if g == low else "high"
+    return [{**r, "spk": label[id(r)]} if id(r) in label else r for r in rows]
+
+
 def summarise(rows, min_seconds=MIN_SECONDS):
     """rows: [{"w": window, "spk": pitch label "low"|"high", "e": unit vector, "sec": seconds}] -> (summary, detail).
     Rows shorter than ``min_seconds`` are left out of the references and the means (counted as ``short`` per window).
@@ -69,6 +97,7 @@ def summarise(rows, min_seconds=MIN_SECONDS):
         if float(r.get("sec", min_seconds)) < min_seconds:
             short[int(r["w"])] = short.get(int(r["w"]), 0) + 1
     rows = [r for r in rows if float(r.get("sec", min_seconds)) >= min_seconds]
+    rows = split_window_one(rows)
     refs = {}
     for spk in ("low", "high"):
         ref = [np.asarray(r["e"], dtype=float) for r in rows if r["spk"] == spk and r["w"] == 1]
@@ -100,7 +129,7 @@ def run(clip, segjson, step=255/24):
         a = y[int(t0*16000):int(t1*16000)]
         f0 = pitch(a)
         if f0 is None: continue
-        rows.append({"w": int(t0 // step) + 1, "spk": "low" if f0 < 150 else "high", "e": emb(a), "sec": t1 - t0})
+        rows.append({"w": int(t0 // step) + 1, "spk": "low" if f0 < 150 else "high", "e": emb(a), "sec": t1 - t0, "f0": f0})
     out, detail = summarise(rows)
     name = clip.split("/")[-2] if "/" in clip else clip
     print(name, "detail", json.dumps(detail))

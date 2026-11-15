@@ -363,6 +363,13 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
+- 2026-11-15 02:20: results: the long-clip recipe on an English 118 s two-hander (queue175; section 9 of
+  `results/20261109-long-chain-identity/`): 15 attempts, 10 907 s, one wrong word in 219, no scene cut, UTMOS 3.9, speakers
+  and faces as the Polish chains; a second seed runs as queue176.
+- 2026-11-15 02:17: `scripts/speaker_drift.py` splits window 1 into the two voices by their x-vectors (two groups seeded by
+  the most dissimilar pair, named low/high by mean pitch) instead of a 150 Hz line: in the English chain a 147 Hz woman and
+  a 95 Hz man both fell on the low side and her window-1 lines went into his reference. Rows now carry `f0`; clips whose
+  speakers straddle 150 Hz keep their numbers (checked on the five Polish chains). Test in `tests/test_speaker_drift_summary.py`.
 - 2026-11-14 22:15: the speech guard spells digits out in the language of the lines before comparing (English and Polish,
   0-99999): Whisper writes "30 years" for a line that says "thirty years", which cost a 950 s re-sample in the third film
   (CER 0.073 at two seeds, no slip in the speech). `h3_tp2/speech_guard.py` (`number_words`, `words(text, language)`),

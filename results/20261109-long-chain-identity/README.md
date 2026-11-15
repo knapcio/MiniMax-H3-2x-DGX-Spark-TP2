@@ -267,3 +267,30 @@ a 118 s render at the price of about one window in thirty-three kept with a slip
 speed setting, not a free one, and the default stays at two retries.
 
 Clips: `lalka118-recipen35-s3701`, `lalka118-recipeanchor-s3701` (Spark_06; copies in the owner's Downloads). Queue `queue145-recipe-levers.sh`.
+
+## 9. The recipe in English: a 118 s two-hander in a lighthouse kitchen (queue175, 2026-11-15)
+
+Everything above is Polish. The same recipe on an English dialogue written for it: two lighthouse keepers at a
+table on a stormy night, 22 lines of at most eleven words planned into eleven windows by
+`scripts/plan_dialogue_windows.py` (two lines per window, 219 words, about 2.5 words per second of speech), the
+scene frame from a 5 s T2VA render, the two cards cut from it (both faces in profile), Ref2VA with the scene frame
+and the cards, the identity lock, the speech guard at 0.03 with two retries, the seam and cut checks on, seed 3901
+(`chain118-en-s3901`, `chain-en/` on Spark_06).
+
+- 15 attempts for 11 windows, 10 907 s: window 3 twice on the same word ("then" heard as "and", CER 0.046 at both
+  seeds, so the guard stopped), window 5 twice on a real slip (0.067, then 0), windows 4 and 7 twice on the seam and
+  cut checks. One wrong word in the finished clip (CER 0.0046), no scene cut in 118 s, the two-shot and the room the
+  same from the first window to the last.
+- Voices: UTMOS 3.79 in window 1 and 3.92 over windows 2-11, above the Polish chains' 3.5-3.6. Speaker similarity to
+  window 1 (the tool's window-1 split by voice, below) stays at 0.90-0.98 except the man's windows 6 and 9 (0.85, one
+  segment each at 0.81-0.85) and the woman's window 2 (0.81, one segment at 0.68); the same shape as the Polish
+  recipe (worst windows 0.86-0.87). 12 pauses longer than 1.5 s: two short lines per window leave about two seconds
+  of silence between them, which the model fills with looks and small gestures, not with cuts.
+- Faces: the man 0.84 the whole way (pose-matched over 118 of 118 samples); the woman, in profile, is found by the
+  face tool in 33 of 118 samples (0.80 where found), so her number says little. A scene with the faces in profile
+  is a weak case for the face metric and for the cards; the clip itself keeps her the same person by eye.
+- Two tool findings on the way: the speaker tool's window-1 split by a 150 Hz pitch line put this 147 Hz woman's
+  lines into the 95 Hz man's reference (the tool now splits window 1 by voice and names the two by mean pitch); and
+  the audio seam tool's "+31 dB level jump" at one seam is a line against a pause straddling the seam (the per-half-
+  second RMS of the clip is -20 dB in speech and -55 dB between lines throughout), not a seam artefact.
+- Not measured here: a second seed (queue176), and whether the profile two-shot costs identity over longer chains.

@@ -82,6 +82,28 @@ class SpeakerDriftTests(unittest.TestCase):
         rows_without = [{k: v for k, v in r.items() if k != "sec"} for r in rows[:3]]   # old rows: nothing is short
         self.assertEqual(self.sd.summarise(rows_without)[0]["low"], {1: 1.0, 2: 1.0})
 
+    def test_window_one_is_split_by_voice_not_by_the_pitch_line(self):
+        # a low-voiced woman (147 Hz) and a man (95 Hz) are both under 150 Hz; her two window-1 lines carry her voice
+        rng = np.random.default_rng(5)
+        man, woman = self.sd._unit(rng.normal(size=16)), self.sd._unit(rng.normal(size=16))
+        near = lambda v: self.sd._unit(v + 0.05 * rng.normal(size=16))
+        rows = [{"w": 1, "spk": "low", "e": near(woman), "sec": 2.0, "f0": 147.0},
+                {"w": 1, "spk": "low", "e": near(man), "sec": 2.0, "f0": 95.0},
+                {"w": 1, "spk": "low", "e": near(woman), "sec": 2.0, "f0": 140.0},
+                {"w": 1, "spk": "low", "e": near(man), "sec": 2.0, "f0": 99.0},
+                {"w": 2, "spk": "low", "e": near(woman), "sec": 2.0, "f0": 145.0},
+                {"w": 2, "spk": "low", "e": near(man), "sec": 2.0, "f0": 97.0}]
+        out, detail = self.sd.summarise(rows)
+        self.assertEqual(sorted(out), ["high", "low"])
+        self.assertGreater(out["high"][2], 0.95)   # the woman's window-2 line against her own reference
+        self.assertGreater(out["low"][2], 0.95)
+        self.assertEqual(len(detail["low"]["w1_loo"]), 2)
+        self.assertEqual(len(detail["high"]["w1_loo"]), 2)
+        # fewer than three window-1 rows, or rows without f0: nothing changes
+        self.assertEqual(self.sd.split_window_one(rows[:2]), rows[:2])
+        bare = [{k: v for k, v in r.items() if k != "f0"} for r in rows]
+        self.assertEqual(self.sd.split_window_one(bare), bare)
+
     def test_one_reference_segment_has_no_leave_one_out(self):
         out, detail = self.sd.summarise([{"w": 1, "spk": "high", "e": [1.0, 0.0]}, {"w": 2, "spk": "high", "e": [0.0, 1.0]}])
         self.assertEqual(out, {"high": {1: 1.0, 2: 0.0}})
