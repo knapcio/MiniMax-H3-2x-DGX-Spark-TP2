@@ -363,7 +363,7 @@
 - 2026-11-03 01:35: consumer-fused FP8 scale pass on by default (`H3_TP2_FP8_CONSUMER_FUSE=1`): the qkv/out/fc2 scale
   pass is applied inside the consuming kernels; GPU probe bit-identical on every site with no spills and a lower peak,
   -1.04 s/step at 1344 (-0.52 at 960); serving: 5 s 1344 digest 4d6d69e4 unchanged at 21.5-22.1 s/step.
-- 2026-11-15 07:19: results: the shots recipe with three people (a Polish radio studio, queues 180-182, section 12 of the shots
+- 2026-11-16 07:19: results: the shots recipe with three people (a Polish radio studio, queues 180-182, section 12 of the shots
   README): the cast holds with three cards (+11-12 % render time), the three-shots and two of three close-ups hold, the
   requested two-shot becomes the three-shot plus a cut to the speaker's close-up; 2.9 h of renders for 48 s.
 - 2026-11-15 18:50: results: a 180 s English chain by the recipe (queue179, 17 windows): faces, voices and lines hold through
