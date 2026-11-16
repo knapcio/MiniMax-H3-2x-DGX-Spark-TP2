@@ -450,10 +450,22 @@ close-ups with both keyframes.
 - Three cards cost 11-12 % more render time than two (635 against 571 s for a still source, 1216 against 1090 s for
   a wide shot), and the cast held in every shot: the same three people in the three-shots, the right one in each
   close-up.
-- With three people the model goes to the speaker, not to a pair: asked for a two-shot of the old man and the young
-  woman (the third host "out of frame") it gave the three-shot and then the speaker's close-up. In the edit that shot
-  is a three-shot head and a usable close-up; for a true two-shot the still-and-two-keyframes route of the close-ups
-  would be needed with a two-shot still, not yet tried.
+- With three people the model goes to the speaker, not to a pair. The two-shot request (the old man and the young
+  woman, the third host "out of frame") at four seeds, queues 181 and 183, 1216-1218 s each, all CER 0:
+
+  | seed | opens on | then |
+  |---|---|---|
+  | 7503 | the three-shot (scene frame) | cut at 2.2 s to the old man's close-up |
+  | 7513 | the three-shot | cut at 1.0 s to the old man's close-up |
+  | 7523 | the three-shot | push-in (x2.85, no cut) to the old man's close-up by 3.75 s |
+  | 7533 | the three-shot | cut at 3.25 s to the **two-shot** asked for, held to the end |
+
+  Every take opens on the scene frame, as Ref2VA does, and 3 of 4 go to the speaker. The one that gives the two-shot
+  gives it after a 3.25 s head, which makes it a still source like the close-ups': stills from after its cut
+  (frames 96 and 184) and pass B with both keyframes at the source seed, queue 184: **the two-shot holds** from the
+  first frame to the last (954 s, CER 0, no cut, no move, both faces in every sample, first and last frames 40.8 /
+  40.0 dB to the stills). So a two-shot of two of three people is made like a close-up: a wide-shot render at a few
+  seeds until one gives the pair, stills from it, pass B. Budget one to four 1216 s renders for the still source.
 - The one guard re-sample that took three attempts (shot 5, CER 0.11, 0.105, 0.026) was a 15-word line with
   "dzwonek do drzwi i szczekanie psa"; the kept attempt has one slipped word. The close-ups' first attempts came in at
   0.0125 / 0.0141 / 0.

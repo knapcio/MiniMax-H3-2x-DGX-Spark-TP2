@@ -563,8 +563,9 @@ What is open as of 2026-11-15, after the shots recipe (`docs/FILM_FROM_SHOTS.md`
   references; the edit cuts it out, or the pinned variant with cards keeps the cast right at the price of a harder
   cut (`results/20261110-shots-and-close-ups/` section 9). A reference-bearing two-keyframe shot would close this.
 - A scene with three people (`results/20261110-shots-and-close-ups/` section 12): the cast holds with three cards at
-  +11-12 % render time, the close-ups hold, but a requested two-shot of two of the three comes back as the three-shot
-  and a cut to the speaker's close-up; a two-shot by the two-keyframe route is not yet tried.
+  +11-12 % render time and the close-ups hold. A requested two-shot of two of the three comes as the three-shot and a
+  cut to the speaker's close-up at 3 of 4 seeds; the fourth gave the two-shot after a 3.25 s head and its stills gave a
+  two-shot pass B that holds, so a two-shot costs one to four wide-shot renders for the still source plus pass B.
 - The speech guard treats a homophone ("roll" heard as "role") as a slip; numbers are handled since 2026-11-14, names
   go in the respelling table, homophones still cost a character or two of margin.
 - A scene frame with the faces in profile gives the face tool and the cards little to hold; the frame is chosen with
