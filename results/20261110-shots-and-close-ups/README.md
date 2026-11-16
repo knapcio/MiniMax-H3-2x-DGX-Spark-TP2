@@ -431,3 +431,34 @@ wide and two-shots at 20 steps with the guard; pass B the three close-ups as FL2
 - `film3-recipe.mp4` with the other films in `films/` on Spark_06; clips `film3ref-s720{1,2}`, `film3a10-s{2,4,6}`,
   `film3a-s{1,3,5}`, `film3b-s{2,4,6}`, queues `queue171-film3ref.sh`, `queue172-film3a.sh`, `queue173-film3b.sh`,
   prompts and stills in `film3/`. Invented characters only.
+
+## 12. Three people: a radio studio in Polish (queues 180-182, 2026-11-15)
+
+The recipe with three hosts at a round table (a woman with a blonde bob, an old man in a bow tie, a young woman in a
+yellow hoodie), six Polish shots of 14-18 words so the lines fill their 8 s: a three-shot, a close-up of each host,
+a two-shot of two of them, a three-shot reaction. Scene frame by T2VA, three cards from it, pass A with the scene frame
+and all three cards (still sources at 10 steps without the guard, the wide shots at 20 with it), pass B the three
+close-ups with both keyframes.
+
+| pass | renders | each | result |
+|---|---|---|---|
+| scene frames | 2 | 418 s | seed 7501, three faces found and cut |
+| A, still sources (10 steps, no guard, 3 cards) | 3 | 635 s | each cuts to the host's close-up at 0.4-2.4 s; stills from after the cut |
+| A, wide shots (20 steps, guard, 3 cards) | 3 | 1216-1218 s (+1 shot at 3 attempts, 3 567 s) | the three-shots hold and act as written (the record slides across the table); **the two-shot was not given**: shot 3 opens on the three-shot and cuts at 2.2 s to a close-up of the man who speaks |
+| B, close-ups (two keyframes) | 3 | 1102 / 947 / 948 s | two hold throughout (32 of 32, no cut); the young woman's opens on a three-shot of the hosts from a new angle for 2 s (0.5-2.4 s) and comes back; ends 39.8-43.8 dB |
+
+- Three cards cost 11-12 % more render time than two (635 against 571 s for a still source, 1216 against 1090 s for
+  a wide shot), and the cast held in every shot: the same three people in the three-shots, the right one in each
+  close-up.
+- With three people the model goes to the speaker, not to a pair: asked for a two-shot of the old man and the young
+  woman (the third host "out of frame") it gave the three-shot and then the speaker's close-up. In the edit that shot
+  is a three-shot head and a usable close-up; for a true two-shot the still-and-two-keyframes route of the close-ups
+  would be needed with a two-shot still, not yet tried.
+- The one guard re-sample that took three attempts (shot 5, CER 0.11, 0.105, 0.026) was a 15-word line with
+  "dzwonek do drzwi i szczekanie psa"; the kept attempt has one slipped word. The close-ups' first attempts came in at
+  0.0125 / 0.0141 / 0.
+- The beat the young woman's close-up left for shows the three hosts from another angle, not strangers: the pass-B
+  prompt still carries the scene sentence that describes all three, which is what FL2VA has to go on.
+- 2.9 h of renders for 48 s with the re-samples (2.4 h without), `film4-recipe.mp4` in `films/` on Spark_06; clips
+  `film4ref-s750{1,2}`, `film4a10-s{2,4,6}`, `film4a-s{1,3,5}`, `film4b-s{2,4,6}`, queues `queue180-film4ref.sh`,
+  `queue181-film4a.sh`, `queue182-film4b.sh`, prompts and stills in `film4/`. Invented characters only.
